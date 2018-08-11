@@ -1,0 +1,37 @@
+/*
+#include StatistDB.vih
+#include MT.vih
+
+Interface StatistDB;
+
+Create view as select * from mtStatist;
+
+Function  GetFileName: string;
+{
+  result := 'Staff';
+}
+
+Procedure LoadRecord;
+{
+  mtStaff.NRec  := comp(part[1]);
+  mtStaff.Node  := comp(part[2]);
+  mtStaff.Sotr  := comp(part[3]);
+  mtStaff.Post  := comp(part[4]);
+  mtStaff.Group := comp(part[5]);
+  insert current mtStaff;
+}
+
+Procedure SaveAll;
+{
+  _loop mtStaff
+  {
+    f.WriteLn(check(mtStaff.NRec)
+      + ';' + check(mtStaff.Node)
+      + ';' + check(mtStaff.Sotr)
+      + ';' + check(mtStaff.Post)
+      + ';' + check(mtStaff.Group));
+  }
+}
+
+End.
+*/

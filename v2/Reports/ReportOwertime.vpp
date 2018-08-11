@@ -1,0 +1,147 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Сверхурочные
+//------------------------------------------------------------------------------
+/*
+Window wnSelPeriod 'Период отчета' DoAccept;
+  show at (,, 50, 6);
+
+Screen scPeriod;
+Fields
+  wRepMonth: NoProtect;
+  wRepYear: NoProtect;
+Buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+       `Месяц` .@@@@  `Год` .@@@@@@@
+
+   <. Сформировать .>   <.     Отмена     .>
+>>
+End;
+
+End;
+
+WindowEvent wnSelPeriod;
+
+cmInit:
+{
+  wRepMonth := Month(Cur_Date);
+  wRepYear  := Year(Cur_Date);
+  bDialogOk := false;
+}
+
+cmOk:
+{
+  bDialogOk := true;
+  CloseWindow(wnSelPeriod);
+}
+
+End;
+*/
+private procedure ReportOwertime;
+{
+/*
+  RunWindowModal(wnSelPeriod);
+  if (not bDialogOk)
+    exit;
+
+  PushPos(#mtStruct);
+  ResetBounds(#mtStruct);
+  PushCondition(tcSotrOnly);
+
+  delete all mtOwertime;
+  var lNpp: longint = 0;
+
+  dRepBeg := date(1, wRepMonth, wRepYear);
+  dRepEnd := date(Last_Day(dRepBeg), wRepMonth, wRepYear);
+  cOtgul := coGetTune('SpecialWork.Otgul');
+
+  InitQuery;
+
+  StartNewVisual(vtIndicatorVisual, vfBreak + vfConfirm + vfTimer, 'Формирование отчета', RecordsInTable(#mtStruct));
+
+  _loop mtStruct
+  {
+    if (not NextVisual)
+      break;
+
+    ClearBuffer(#mtOwertime);
+    mtOwertime.Staff := StructName;
+    mtOwertime.Npp := lNpp++;
+
+    _loop WorkDays where (( KatSotr.FilialNo == WorkDays.wOffice   and
+                            dRepBeg         <<= WorkDays.DayDate   and
+                            dRepEnd         >>= WorkDays.DayDate (NoIndex) ))
+    {
+      var tWorkHours, tManufZatr, tOwer: time = ZeroTime;
+
+      // Длительность рабочего дня
+      if (WorkDays.DayOff <> cgCdDayOff)
+        tWorkHours := oDuration.GetSotrDayDurationTime(KatSotr.Nrec, WorkDays.DayDate);
+
+      // Производственные затраты
+      tManufZatr := GetDataDayHours(KatSotr.NRec, WorkDays.DayDate, 'SUMDayHours');
+
+      // Сверхурочные за день
+      if (tManufZatr > tWorkHours)
+        tOwer*/ /*mtOwertime.tOwer[day]*/ /*:= Sub_Time(tManufZatr, tWorkHours);
+
+      // Сверхурочные за месяц
+      mtOwertime.tOwertime := Add_Time(mtOwertime.tOwertime, tOwer*/ /*mtOwertime.tOwer[day]*/ /*);
+      //day++;
+
+      var wProj: word = cgProj_None; // Проект. Сверхурочные будут отнесены на последний проект, на который списывалось время в течение дня
+
+      _loop DayWork where (( WorkDays.DayDate == DayWork.DayDate    and
+                             KatSotr.NRec     == DayWork.cKatSotr ))
+      {
+        if (GetFirst TekPl where (( DayWork.cTekPl == TekPl.NRec )) = tsOk)
+          if (GetFirst PlanTask where (( TekPl.cPlanTask == PlanTask.NRec )) = tsOk)
+          {
+            var sProj: string;
+            sProj := oProjFunc.LongProjectName(PlanTask.cGrpTask);
+
+
+            if (pos('ERP - директивные (в интересах ПНР) \ Энергомаш \', sProj) = 1)
+              wProj := cgProj_EM;
+
+            if (pos('ERP - директивные (в интересах ПНР) \ ЕРЦ \', sProj) = 1)
+              wProj := cgProj_MO;
+
+            if (pos('ТН ТК \', sProj) = 1)
+              wProj := cgProj_TK;
+
+            if (wProj = cgProj_None) and (sProj <> '')
+              wProj := cgProj_Other;
+
+            // Отгулы за день с накоплением за месяц
+            if (PlanTask.NRec = cOtgul)
+              mtOwertime.tTimeOff := Add_Time(mtOwertime.tTimeOff, DayWork.DayHours);
+          }
+      }
+
+      if (wProj <> cgProj_None) and (tOwer <> ZeroTime) // Учитываем только если была переработка и работа по проекту
+        mtOwertime.tProj[wProj] := Add_Time(mtOwertime.tProj[wProj], tOwer);
+    }
+
+    // Всего сверхурочных за месяц
+    if (mtOwertime.tOwertime > mtOwertime.tTimeOff)
+      mtOwertime.tTotal := Sub_Time(mtOwertime.tOwertime, mtOwertime.tTimeOff);
+
+    insert current mtOwertime;
+  }
+
+  StopVisual;
+
+  PopCondition(tcSotrOnly);
+  SetBounds(#mtStruct);
+  PopPos(#mtStruct);
+
+  if (GetFirst mtOwertime = tsOk) {}
+  RunWindow(wnOwertime);
+*/
+}
+

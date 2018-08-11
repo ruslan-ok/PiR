@@ -1,0 +1,569 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Экспорт в xml
+//------------------------------------------------------------------------------
+
+Const
+  cgArch_None = 0;
+  cgArch_Rar = 1;
+  cgArch_7z = 2;
+end;
+
+var
+  wToArchive: word;
+  sPassword: string;
+  sXmlFile, sResFile: string;
+
+procedure doExport; forward;
+procedure CheckFileName; forward;
+
+Window wnExport 'Параметры экспорта' ('',, sci13Esc);
+  show at(,, 82, 9);
+
+Screen scExport;
+  table mtStruct;
+Fields
+  wToArchive ('Выполнять ли архивирование xml-файла'): [List cgArch_None 'нет', cgArch_Rar 'используя RAR', cgArch_7z 'используя 7-ZIP'], protect;
+  sPassword ('Пароль для архива',, sci1Esc): NoProtect;
+  sResFile ('Каталог (можно не указывать, тогда сохранит в OutputFilesDirectory) и/или имя файла (если не указывать, то Wage_DD.MM.YYYY_HH-MM-SS.xml)'): noProtect, pickButton;
+buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+        `Архивировать` .@@@@@@@@@@@@@@@    `Пароль`.@@@@@@@@@@@@@@@@@@@@@@@@@
+
+  `Куда сохранить`
+   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+                                 <.  Сохранить  .>      <.   Отмена    .>
+>>
+End;
+
+End;
+
+WindowEvent wnExport;
+
+cmInit:
+{
+  wToArchive := cgArch_None;
+  ReadMyDsk(wToArchive, 'OldWageView_wToArchive', false);
+  ReadMyDsk(sResFile, 'OldWageView_sResFile', false);
+  if (wToArchive <> cgArch_None)
+    SetFieldState(#sPassword, sfVisible);
+  else
+    ClearFieldState(#sPassword, sfVisible);
+}
+
+cmPick:
+  case CurField of
+    #sResFile:
+    {
+      var sTmp: string;
+      sTmp := GetDirName('Выбор каталога для сохраняемого файла');
+      if (sTmp <> '')
+        set sResFile := AddSlashToPath(sTmp);
+    }
+  end;
+
+cmOk:
+  doExport;
+
+End;
+
+TableEvent
+  table mtStruct;
+
+cmCheckField:
+  case CurField of
+
+    #wToArchive:
+    {
+      if (wToArchive <> cgArch_None)
+        SetFieldState(#sPassword, sfVisible);
+      else
+        ClearFieldState(#sPassword, sfVisible);
+      CheckFileName;
+    }
+
+    #sResFile:
+      CheckFileName;
+
+  end;
+
+End;
+
+exception exUserBreaked;
+
+// Поиск последнего вхождения подстроки
+function Last_Pos(_substr, _str: string): byte;
+{
+  result := 0;
+  var p: byte;
+  p := Pos(_substr, _str);
+  while (p > 0)
+  {
+    result += p;
+    _str := SubStr(_str, p+1, 255);
+    p := Pos(_substr, _str);
+  }
+}
+
+// Разбор пути и имени файла на составляющие
+procedure ParseFileName(_file: string; var _path, _name, _ext: string);
+{
+  _path := _name := _ext := '';
+  var p: byte;
+  p := Last_Pos('\', _file);
+  if (p > 0)
+    _path := SubStr(_file, 1, p);
+
+  _name := SubStr(_file, p+1, 255);
+  p := Last_Pos('.', _name);
+  if (p > 0)
+  {
+    _ext := SubStr(_name, p+1, 255);
+
+    if (UpCase(_ext) <> 'XML') and (UpCase(_ext) <> 'RAR') and (UpCase(_ext) <> '7Z')
+      _ext := '';
+    else
+      _name := SubStr(_name, 1, p-1);
+  }
+}
+
+// Название файла для указанной части
+function GetFilePartName(_part: word; _file: string): string;
+{
+  var sPath, sName, sExt: string;
+  ParseFileName(_file, sPath, sName, sExt);
+  result := sPath + sName + if(_part = 0, '', '.Part' + string(_part+1)) + '.xml';
+}
+
+File fTest;
+
+// проверка прав доступа на запись в файл
+function CheckFileAccess: boolean;
+{
+  result := false;
+  if not fTest.OpenFile(sXmlFile, stCreate)
+    message('Не удалось открыть на запись файл: ' + sXmlFile);
+  else
+  {
+    result := true;
+    fTest.Close;
+  }
+}
+
+// Имя файла, используемое по умолчанию
+function DefaultFileName: string;
+{
+  result := 'Wage' + DateToStr(Cur_Date, '_DD.MM.YYYY_') + TimeToStr(Cur_Time, 'HH-MM-SS');
+}
+
+// Путь и имя файла, используемое по умолчанию
+//function DefaultFullFileName: string;
+//{
+//  result := AddSlashToPath(GetStringParameter('Files', 'OutputFilesDirectory', 0)) + DefaultFileName + '.xml';
+//}
+
+// Проверка имени файла
+private procedure CheckFileName;
+{
+  var sPath, sName, sExt: string;
+  ParseFileName(sResFile, sPath, sName, sExt);
+
+  if (sName = '')
+    sName := DefaultFileName;
+  else
+    if (SubStr(sName, 1, 8) = 'Wage_') and (length(sName) = 27)
+      sName := DefaultFileName; // актуализация даты-времени
+
+  case wToArchive of
+    cgArch_None: sExt := 'xml';
+    cgArch_Rar:  sExt := 'rar';
+    cgArch_7z:   sExt := '7z';
+  end;
+
+  if (sPath <> '')
+    sPath := AddSlashToPath(sPath);
+
+  set sResFile := sPath + sName + '.' + sExt;
+}
+
+// Проверки перед началом экспорта
+function StartCheckExport: boolean;
+{
+  result := false;
+
+  if (sResFile = '')
+    message('Не задан файл или путь');
+  else
+  {
+    CheckFileName;
+
+    var sPath, sName, sExt: string;
+    ParseFileName(sResFile, sPath, sName, sExt);
+
+    sResFile := sPath + sName + '.' + sExt;
+    sXmlFile := sPath + sName + '.xml';
+    result := true;
+  }
+
+  if (result)
+    result := CheckFileAccess;
+
+  RereadRecord;
+}
+
+// Описание кодов возврата функции ExecProgram
+function GetRetCodeDescr(_code: integer): string;
+{
+  case _code of
+    2:  result := 'Запускаемая программа не найдена';
+    5:  result := 'Нет прав на доступ к запускаемой программе или каталогу';
+    8:  result := 'Не хватает памяти для загрузки программы';
+    10: result := 'Не найдена одна из динамических библиотек запускаемой программы';
+    11: result := 'Запускаемый файл не является программой';
+  else  result := 'Неизвестная ошибка';
+  end;
+  result += '. Код возврата ' + string(_code) + '.';
+}
+
+// Описание кодов ошибок архиватора
+function GetErrorCodeDescr(_code: integer): string;
+{
+  case _code of
+      1: result := 'Произошла некритическая ошибка. Например, файл заблокирован другой программой.';
+      2: result := 'Критическая ошибка';
+      3: result := 'Ошибка контрольной суммы CRC';
+      4: result := 'Предпринята попытка изменить архив, заблокированный командой k';
+      5: result := 'Ошибка записи на диск';
+      6: result := 'Ошибка открытия файла';
+      7: result := 'Ошибка параметров командной строки';
+      8: result := 'Недостаточно памяти для выполнения операции';
+      9: result := 'Ошибка при создании файла';
+    255: result := 'Операция прервана пользователем';
+  else   result := 'Неизвестная ошибка';
+  end;
+
+  result += '. Код ошибки ' + string(_code) + '.';
+}
+
+// Архивация
+procedure Archivate;
+{
+  if (wToArchive = cgArch_None)
+    exit;
+
+  message('Архивация');
+
+  var sXml, sArh, sCommand, sParams, sCmd: string = '';
+
+  case wToArchive of
+
+    cgArch_Rar:
+    {
+      sCommand := 'rar';
+      sParams  := 'm -ep1';
+    }
+
+    cgArch_7z:
+    {
+      sCommand := '7z';
+      sParams  := 'a';
+    }
+
+  end;
+
+  sXml := GetFilePartName(0, sXmlFile);
+  sArh := sResFile;
+
+  if (Pos(' ', sXml) > 0)
+    sXml := '"' + sXml + '"';
+
+  if (Pos(' ', sArh) > 0)
+    sArh := '"' + sArh + '"';
+
+  sCmd := sParams + if(sPassword <> '', ' -p' + sPassword, '') + ' ' + sArh + ' ' + sXml;
+
+  var retCode, aErrorCode: integer;
+  retCode := ExecProgram(sCommand, sCmd, 'Выполняется архивация данных', 0, aErrorCode);
+
+  if (retCode <> 0) or (aErrorCode <> 0)
+  {
+    if (retCode <> 0)
+      message(GetRetCodeDescr(retCode));
+    else
+      if (aErrorCode <> 0)
+        message(GetErrorCodeDescr(aErrorCode));
+
+    message('Использовалась команда: ' + sCommand + ' ' + sCmd);
+  }
+  else
+  {
+    message('Создан архив ' + sResFile);
+    //LogLine(APE_INFO, 'Использовалась команда: ' + sCommand + ' ' + sCmd);
+    if (wToArchive = cgArch_7z)
+      DeleteFileEx(sXml);
+  }
+}
+
+private procedure AddAppoint(_e: IDomNode; _TabNum: string; _salary: double; _start, _stop: date; _TDKol: word);
+{
+  var xnode: IDomNode;
+  xnode := _e.AddNode('rok:Appoint');
+  xnode.AddAttr('rok:Depart=' + string(mtStaff.Group,0,0));
+  xnode.AddAttr('rok:Post='   + string(KatPost.NRec,0,0));
+  xnode.AddAttr('rok:dBeg='   + string(_start));
+  xnode.AddAttr('rok:dEnd='   + string(_stop));
+  xnode.AddAttr('rok:Salary=' + DoubleToStr(_salary, '\2p[|-]3666666666666~99'));
+  xnode.AddAttr('rok:Currency=USD');
+  xnode.AddAttr('rok:TabNum=' + _TabNum);
+  xnode.AddAttr('rok:TaxDed=' + string(_TDKol));
+}
+
+var lSumNpp: longint;
+
+private procedure AddSum(_e: IDomNode; _mode: string; _taxcur: byte; _value, _rate: double; _title, _info: string; _payed: date = ZeroDate);
+{
+  if (_value = 0)// or ((_rate = 0) and (_mode <> cgSum_DebtIn) and (_mode <> cgSum_DebtOut))
+    exit;
+
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:' + _mode);
+
+  if (_payed <> ZeroDate)
+    xnode.AddAttr('rok:Payed='  + string(_payed));
+
+  xnode.AddAttr('rok:Sort='   + string(lSumNpp++));
+  xnode.AddAttr('rok:Title='  + _title);
+  xnode.AddAttr('rok:Value='  + DoubleToStr(_value, '\2p[|-]3666666666666~99'));
+  xnode.AddAttr('rok:TaxCur=' + string(_taxcur));
+  xnode.AddAttr('rok:Rate='   + DoubleToStr(_rate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:Info='   + _info);
+}
+
+private procedure AddNachisl(_e: IDomNode; _row: byte);
+{
+  if (UE(_row) <> 0)
+    AddSum(_e, 'Nachisl', cgNetUSD, UE(_row), Rate(_row), GetParamName(_row), GetComment(_row));
+  else
+    if (RB(_row) <> 0)
+      AddSum(_e, 'Nachisl', cgNetBYN, RB(_row), Rate(_row), GetParamName(_row), GetComment(_row));
+}
+
+private procedure AddPayment(_e: IDomNode; _row: byte);
+{
+  var dPayed: date = ZeroDate;
+
+  case _row of
+    R10: dPayed := mtPeriod.Prepayment; // Аванс
+    R13: dPayed := mtPeriod.SecPart; // Перечислено
+    R14: dPayed := mtPeriod.ThirdPart; // 2 часть
+  end;
+
+  AddSum(_e, 'Payment', cgNetBYN, RB(_row), Rate(_row), GetParamName(_row), if(_row = R10 or _row = R13, '', GetComment(_row)), dPayed);
+}
+
+private function GetPerTDKol: word;
+{
+  if (mtMoney.TaxDeductKol = 0)
+    result := mtStaff.TaxDeduct;
+  else
+    result := mtMoney.TaxDeductKol;
+}
+
+// Старт экспорта
+private procedure doExport;
+{
+  if (not StartCheckExport)
+    exit;
+
+  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
+  SetVisualTitle('Сохранение в файл ' + sXmlFile);
+
+  PushPos(#mtPeriod);
+  PushPos(#mtStruct);
+  ResetBounds(#mtPeriod);
+  ResetBounds(#mtStruct);
+
+  _try
+  {
+    var doc: DomDoc new;
+    doc.CreateXmlDoc;
+    var xwage, xnode, xpers, xper, xpp: IDomNode;
+    xwage := doc.AddNode('rok:Wage');
+    xwage.AddAttr('xmlns:rok=http://178.172.132.68/pir/');
+
+      xpers := xwage.AddNode('rok:Periods');
+        _loop mtPeriod
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          xnode := xpers.AddNode('rok:Period');
+          xnode.AddAttr('rok:dBeg='        + string(date(1, mtPeriod.Month, mtPeriod.Year)));
+          if (GetFirst mtMoney2 where (( mtPeriod.Year == mtMoney2.Year (NoIndex) and
+                                         mtPeriod.Month == mtMoney2.Month (NoIndex) )) = tsOk)
+            xnode.AddAttr('rok:PlanDays='    + string(byte(mtMoney2.DaysPlan)));
+          xnode.AddAttr('rok:AvansDate='   + string(mtPeriod.Prepayment));
+          xnode.AddAttr('rok:PaymentDate=' + string(mtPeriod.SecPart));
+          xnode.AddAttr('rok:AvansRate='   + DoubleToStr(mtPeriod.PrepayExch, '\4p[|-]3666666666~9999'));
+          xnode.AddAttr('rok:PaymentRate=' + DoubleToStr(mtPeriod.SecPartExch, '\4p[|-]3666666666~9999'));
+        }
+
+      xpers := xwage.AddNode('rok:Departs');
+
+        ResetBounds(#mtGroup);
+        _loop mtGroup
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          xnode := xpers.AddNode('rok:Depart');
+          xnode.AddAttr('rok:NRec=' + string(mtGroup.NRec,0,0));
+          xnode.AddAttr('rok:Code=' + mtGroup.Code);
+          xnode.AddAttr('rok:Name=' + mtGroup.Name);
+        }
+        SetBounds(#mtGroup);
+
+        var m: longint;
+        m := InitMarker('', 8, 100, 100, true);
+        ClearMarker(m);
+
+        _loop mtStruct
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          case mtStruct.Mode of
+
+            1:
+            {
+              xnode := xpers.AddNode('rok:DepHist');
+              xnode.AddAttr('rok:NRec='   + string(mtStruct.NRec,0,0));
+              xnode.AddAttr('rok:dBeg='   + string(date(1,1,2000)));
+              xnode.AddAttr('rok:Node='   + string(mtStruct.Node,0,0));
+              xnode.AddAttr('rok:Sort='   + string(mtStruct.NRec,0,0));
+              xnode.AddAttr('rok:Depart=' + string(mtStruct.Rec,0,0));
+            }
+
+            2:
+            {
+              if (not FoundMarker(m, KatPost.NRec))
+              {
+                InsertMarker(m, KatPost.NRec);
+                xnode := xpers.AddNode('rok:Post');
+                xnode.AddAttr('rok:NRec=' + string(KatPost.NRec,0,0));
+                xnode.AddAttr('rok:Code=' + KatPost.Code);
+                xnode.AddAttr('rok:Name=' + KatPost.Name);
+              }
+            }
+
+          end;
+        }
+        DoneMarker(m, '');
+
+      xpers := xwage.AddNode('rok:Persons');
+      var lPersNpp: longint = 1;
+
+        _loop mtStruct
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          case mtStruct.Mode of
+
+            2:
+            {
+              SetVisualHeader(KatSotr.FIO);
+              xper := xpers.AddNode('rok:Person');
+              xper.AddAttr('rok:Login=' + KatSotr.Name);
+              xper.AddAttr('rok:FIO='   + KatSotr.FIO);
+              xper.AddAttr('rok:EMail=' + KatSotr.EMail);
+              xper.AddAttr('rok:Passw=' + mtStaff.Password);
+              xper.AddAttr('rok:Sort='  + string(lPersNpp++));
+
+              var fSalary: double = 0;
+              var sTabNum: string = '';
+              var wTDKol: word = 0;
+              var dStart, dStop: date = ZeroDate;
+
+              _loop backward mtMoney where (( mtStaff.NRec == mtMoney.Sotr ))
+              {
+                if not NextVisual
+                  _raise exUserBreaked;
+
+                if (fSalary <> mtMoney.SalaryUE) or (sTabNum <> mtMoney.TabNmb) or (wTDKol <> GetPerTDKol)
+                {
+                  if (dStart <> ZeroDate)
+                    AddAppoint(xper, sTabNum, fSalary, dStart, Sub_Day(date(1, mtMoney.Month, mtMoney.Year), 1), wTDKol);
+
+                  fSalary := mtMoney.SalaryUE;
+                  sTabNum := mtMoney.TabNmb;
+                  wTDKol  := GetPerTDKol;
+                  dStart := date(1, mtMoney.Month, mtMoney.Year);
+                }
+              }
+
+              if (dStart <> ZeroDate)
+                AddAppoint(xper, sTabNum, fSalary, dStart, mtStaff.Contract, wTDKol);
+
+              _loop backward mtMoney where (( mtStaff.NRec == mtMoney.Sotr ))
+              {
+                if not NextVisual
+                  _raise exUserBreaked;
+
+                SetVisualHeader(DateToStr(date(1, mtMoney.Month, mtMoney.Year), 'MM.YYYY') + ' ' + KatSotr.FIO);
+
+                if (GetFirst mtPeriod where (( mtMoney.Year == mtPeriod.Year and
+                                               mtMoney.Month == mtPeriod.Month )) <> tsOk)
+                {
+                }
+
+                lSumNpp := 1;
+                xpp := xper.AddNode('rok:PersPer');
+                xpp.AddAttr('rok:Period='   + string(date(1, mtMoney.Month, mtMoney.Year)));
+                xpp.AddAttr('rok:FactDays=' + string(byte(mtMoney.DaysFact)));
+
+                AddSum(xpp, 'DebtIn',  cgNetBYN, RB(R08), Rate(R08), GetParamName(R08), GetComment(R08)); // Зачет с прошлого месяца
+
+                AddNachisl(xpp, R02); // Премия отдела
+                AddNachisl(xpp, R03); // Премия Управления
+                AddNachisl(xpp, R04); // Проектный бизнес
+                AddNachisl(xpp, R05); // Компенсация разницы курсов
+                AddNachisl(xpp, R06); // Выплата отложенной части
+
+                AddPayment(xpp, R10); // Аванс
+                AddPayment(xpp, R11); // Межрасчетные выплаты
+                AddPayment(xpp, R13); // Перечислено
+                AddPayment(xpp, R14); // 2 часть
+
+                AddSum(xpp, 'DebtOut', cgNetBYN, RB(R15), Rate(R15), GetParamName(R15), GetComment(R15)); // Зачет на следующий месяц
+              }
+            }
+
+          end;
+        }
+
+    doc.Save(sXmlFile);
+    doc.Free;
+  }
+  _except
+    on exUserBreaked:
+    {
+    }
+  _finally
+  {
+    StopVisual;
+    Archivate;
+    SaveMyDsk(sResFile, 'OldWageView_sResFile');
+    SaveMyDsk(wToArchive, 'OldWageView_wToArchive');
+    SetBounds(#mtStruct);
+    SetBounds(#mtPeriod);
+    PopPos(#mtStruct);
+    PopPos(#mtPeriod);
+    CloseWindow(wnExport);
+  }
+}

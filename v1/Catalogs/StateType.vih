@@ -1,0 +1,7 @@
+ObjInterface IStateType;
+  Procedure Load;
+End;
+
+VipInterface StateType
+  implements IStateType
+  licensed(free);

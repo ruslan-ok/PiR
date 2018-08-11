@@ -1,0 +1,9 @@
+ObjInterface IGathering;
+  Function GetCurDatePir: longint;
+  Function GetNormCheckPir: longint;
+End;
+
+VipInterface Gathering
+  implements IGathering
+  licensed(free)
+  parameters(wMode: word);

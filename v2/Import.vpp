@@ -1,0 +1,108 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно параметров импорта
+//------------------------------------------------------------------------------
+
+Window wnImport 'Параметры импорта';
+  show at(,, 82, 8);
+
+Screen scImport ('',, sci13Esc);
+  table mtPeriods;
+fields
+  sXmlFile ('xml-файл для импорта'): noProtect, pickButton;
+buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+  `Файл для импорта`
+   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+                                 <.  Загрузить  .>      <.   Отмена    .>
+>>
+End;
+
+End;
+
+private procedure DoImport; forward;
+private procedure BuildTree; forward;
+
+WindowEvent wnImport;
+
+cmInit:
+{
+  sXmlFile := '';
+  ReadMyDsk(sXmlFile, 'WageView_sXmlFile', false);
+}
+
+cmPick:
+  case CurField of
+    #sXmlFile:
+    {
+      sXmlFile := GetFileName('*.xml;*.xlsx', 'Выбор xml- или xlsx-файла для импорта');
+      RedrawPanel(#mtPeriods);
+    }
+  end;
+
+cmOk:
+{
+  DoImport;
+  CloseWindow(wnImport);
+}
+
+End;
+
+#include ImportXml.vpp
+#include ImportXlsx.vpp
+
+var bFromXml: boolean;
+
+// Проверки перед началом импорта
+function StartCheckImport: boolean;
+{
+  result := false;
+
+  if (sXmlFile = '')
+  {
+    message('Не задан файл');
+    exit;
+  }
+
+  if not ExistFile(sXmlFile)
+  {
+    message('Указанный файл не найден');
+    exit;
+  }
+
+  var sPath, sName, sExt: string;
+  ParseFileName(sXmlFile, sPath, sName, sExt);
+
+  if (UpCase(sExt) <> 'XML') and (UpCase(sExt) <> 'XLSX')
+  {
+    message('Импорт возможен только из файлов с расширениями xml и xlsx.');
+    exit;
+  }
+
+  bFromXml := (UpCase(sExt) = 'XML');
+
+  if bFromXml and isValid(#mtStruct)
+    if (message('Текущие данные будут удалены.'#13#13 +
+                'Продолжить?', Confirmation + YesNo + mfSwapButtons) <> cmYes)
+    {
+      exit;
+    }
+
+  result := true;
+}
+
+private procedure DoImport;
+{
+  if (not StartCheckImport)
+    exit;
+
+  if bFromXml
+    DoImportXml;
+  else
+    DoImportXlsx;
+}

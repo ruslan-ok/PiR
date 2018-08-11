@@ -1,0 +1,104 @@
+#include PirDB.vih
+#include MT.vih
+
+Interface PirDB;
+
+Var LastDate: date;
+
+Create view as select * from mtPir, mtStateType, mtDateList;
+
+Function GetFileName: string;
+{
+  result := 'Pir';
+}
+
+Procedure Load(_Mode: word);
+{
+  delete all mtPir;
+  delete all mtDateList;
+  LastDate := ZeroDate;
+  inherited::Load(_Mode);
+}
+
+Function GetPartName(_period: date): string;
+{
+  result := string(CalcDaysBetweenDates(cgiStartDate, _period, false) - 1)
+}
+
+Procedure LoadPeriod(_period: date);
+{
+  LoadPart(GetPartName(_period));
+}
+
+Procedure LoadRecord;
+{
+  var StateType: word;
+  StateType := word(part[2]);
+
+  if (GetFirst mtStateType where (( StateType == mtStateType.Value )) <> tsOk)
+    exit;
+
+  mtPir.Period    := Add_Day(cgiStartDate, longint(part[1]));
+  mtPir.StateCode := mtStateType.StateCode;
+  mtPir.TypeCode  := mtStateType.TypeCode;
+  mtPir.Sotr      := comp(part[3]);
+  mtPir.Quantity  := longint(part[4]);
+  insert current mtPir;
+
+  if (mtPir.Period <> LastDate)
+  {
+    insert mtDateList set Period := mtPir.Period;
+    LastDate := mtPir.Period;
+  }
+}
+
+Procedure SaveRecord;
+{
+  DoSet(        GetPartName(mtPir.Period),
+                string(mtStateType.Value)
+        + ';' + string(mtPir.Sotr)
+        + ';' + string(mtPir.Quantity));
+}
+
+Procedure SaveAll;
+{
+  var cur: date;
+  cur := ZeroDate;
+
+  _loop mtPir ordered by mtPir.Period
+  {
+    if not NextVisual
+      break;
+
+    if (cur <> mtPir.Period)
+    {
+      if (cur <> ZeroDate)
+      {
+        StopVisual;
+        HttpDonePart(GetPartName(cur));
+      }
+
+      StartNewVisual(vtNumericVisual, vfTimer + vfBreak + vfConfirm,
+                     'Выгрузка в буфер блока "' + GetPartName(mtPir.Period) + '" таблицы ' + GetFileName + '...', 1);
+      cur := mtPir.Period;
+      HttpClear;
+    }
+
+    if (mtPir.Quantity = 0)
+      continue;
+
+    if (GetFirst mtStateType where (( mtPir.StateCode == mtStateType.StateCode and
+                                      mtPir.TypeCode  == mtStateType.TypeCode )) <> tsOk)
+      continue;
+
+    SaveRecord;
+  }
+
+  if (cur <> ZeroDate)
+  {
+    StopVisual;
+    HttpDonePart(GetPartName(cur));
+  }
+}
+
+End.

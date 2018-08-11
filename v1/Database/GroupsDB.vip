@@ -1,0 +1,46 @@
+#include GroupsDB.vih
+#include MT.vih
+
+Interface GroupsDB;
+
+Create view as select * from mtGroup;
+
+Function  GetFileName: string;
+{
+  result := 'Groups';
+}
+
+Procedure LoadRecord;
+{
+  mtGroup.NRec := comp(part[1]);
+  mtGroup.Node := comp(part[2]);
+  mtGroup.Code := part[3];
+  mtGroup.Name := part[4];
+  insert current mtGroup;
+}
+
+Procedure SaveRecord;
+{
+  DoSet( '',
+         check(string(mtGroup.NRec)) + ';' +
+         check(string(mtGroup.Node)) + ';' +
+         check(mtGroup.Code) + ';' +
+         check(mtGroup.Name));
+}
+
+Procedure SaveAll;
+{
+  HttpClear;
+
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfBreak + vfConfirm, 'Выгрузка таблицы ' +
+                                    GetFileName + 'в буфер...', RecordsInTable(#mtGroup));
+  _loop mtGroup
+  {
+    if not NextVisual
+      break;
+    SaveRecord;
+  }
+  StopVisual;
+}
+
+End.

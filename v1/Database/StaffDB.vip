@@ -1,0 +1,55 @@
+#include StaffDB.vih
+#include MT.vih
+
+Interface StaffDB;
+
+Create view as select * from mtStaff, KatSotr where (( mtStaff.Sotr == KatSotr.NRec ));
+
+Function  GetFileName: string;
+{
+  result := 'Staff';
+}
+
+Procedure LoadRecord;
+{
+  mtStaff.NRec  := comp(part[1]);
+  mtStaff.Node  := comp(part[2]);
+  mtStaff.Sotr  := comp(part[3]);
+  mtStaff.Post  := comp(part[4]);
+  mtStaff.Group := comp(part[5]);
+  mtStaff.Password := part[6];
+  mtStaff.Contract := StrToDate(part[8], 'YYYYMMDD');
+  mtStaff.TaxDeduct := byte(part[9]);
+  insert current mtStaff;
+}
+
+Procedure SaveRecord;
+{
+  DoSet('',
+              check(string(mtStaff.NRec))
+      + ';' + check(string(mtStaff.Node))
+      + ';' + check(string(mtStaff.Sotr))
+      + ';' + check(string(mtStaff.Post))
+      + ';' + check(string(mtStaff.Group))
+      + ';' + check(mtStaff.Password)
+      + ';' + check(KatSotr.Name)
+      + ';' + check(DateToStr(mtStaff.Contract, 'YYYYMMDD'))
+      + ';' + check(string(mtStaff.TaxDeduct)));
+}
+
+Procedure SaveAll;
+{
+  HttpClear;
+
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfBreak + vfConfirm, 'Выгрузка таблицы ' +
+                                    GetFileName + ' в буфер...', RecordsInTable(#mtStaff));
+  _loop mtStaff
+  {
+    if not NextVisual
+      break;
+    SaveRecord;
+  }
+  StopVisual;
+}
+
+End.

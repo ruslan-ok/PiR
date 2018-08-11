@@ -1,0 +1,65 @@
+#include MT.vih
+#include Structure.vih
+
+Interface Structure 'Иерархическая структура' ('',, sci14Esc);
+  Show at(,, 60, 20);
+
+Create view
+var
+  cNode: comp;
+as select
+  case(mtStruct.Mode; 1: mtGroup.Name, 2: KatSotr.FIO; '???') (FieldName = StructName),
+  *
+from
+  mtStaff,
+  mtGroup,
+  mtStruct,
+  mtStruct SubStruct,
+  KatSotr
+where ((
+  cNode         == mtStruct.Node  and
+  mtStruct.NRec == SubStruct.Node and
+  mtStruct.Rec  == mtStaff.NRec   and
+  mtStruct.Rec  == mtGroup.NRec   and
+  mtStaff.Sotr  == KatSotr.NRec
+))
+;
+
+Tree trStruct ('',, sci14EscTree);
+  Table mtStruct;
+Fields
+  StructName  ''#3'Наименование элемента': [15], Protect;
+End;
+
+TableEvent
+  Table mtStruct;
+
+cmTreeTop:
+  cNode := 0;
+
+cmTreeUp:
+  cNode := mtStruct.Node;
+
+cmTreeDown:
+  cNode := mtStruct.NRec;
+
+cmTreeNodeType:
+{
+  var yType: byte; // лист или папка (открытая или закрытая)
+  yType := ntfText;
+  if (isValid(#mtStruct))
+    if (isValid(#SubStruct))
+      if (TreeNodeIsOpen(trStruct))
+        yType := ntfOpen;
+      else
+        yType := ntfClose;
+
+  TreeSetNodeType(trStruct, yType);
+}
+
+cmTreeNeedOwner:
+  TreeJumpToRecord(trStruct, mtStruct.Node);
+
+End;
+
+End.

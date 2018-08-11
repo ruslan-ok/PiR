@@ -1,0 +1,10 @@
+/*
+#include BaseDB.vih
+
+VipInterface StatistDB(BaseDB) licensed(free);
+  public:
+    Function  IBaseDB.GetFileName: string;
+    Procedure IBaseDB.LoadRecord;
+    Procedure IBaseDB.SaveAll;
+End;
+*/

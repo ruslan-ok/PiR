@@ -1,0 +1,201 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из xml
+//------------------------------------------------------------------------------
+
+private procedure LoadPeriods(_e: IDomNode);
+{
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Period': mtPeriods.Load(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+private procedure LoadDeparts(_e: IDomNode);
+{
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Depart':  mtDepart.Load(_e.FndNode);
+        'rok:DepHist': mtDepHist.Load(_e.FndNode);
+        'rok:Post':    mtPost.Load(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+private procedure LoadPersPer(_e: IDomNode);
+{
+  mtPersPer.Load(_e);
+  mtPersPer.Person := mtPerson.Login;
+  update current mtPersPer;
+
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      SetVisualHeader(DateToStr(mtPersPer.Period, 'MM.YYYY') + ' ' + mtPerson.FIO);
+
+      case _e.FndNode.Name of
+
+        'rok:DebtIn':
+        {
+          if (mtDebtIn.Load(_e.FndNode))
+          {
+            mtDebtIn.Person := mtPerson.Login;
+            mtDebtIn.Period := mtPersPer.Period;
+            update current mtDebtIn;
+          }
+        }
+
+        'rok:Nachisl':
+        {
+          if (mtNachisl.Load(_e.FndNode))
+          {
+            mtNachisl.Person := mtPerson.Login;
+            mtNachisl.Period := mtPersPer.Period;
+            update current mtNachisl;
+          }
+        }
+
+        'rok:Payment':
+        {
+          if (mtPayment.Load(_e.FndNode))
+          {
+            mtPayment.Person := mtPerson.Login;
+            mtPayment.Period := mtPersPer.Period;
+            update current mtPayment;
+          }
+        }
+
+        'rok:DebtOut':
+        {
+          if (mtDebtOut.Load(_e.FndNode))
+          {
+            mtDebtOut.Person := mtPerson.Login;
+            mtDebtOut.Period := mtPersPer.Period;
+            update current mtDebtOut;
+          }
+        }
+
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+private procedure LoadOnePerson(_e: IDomNode);
+{
+  mtPerson.Load(_e);
+
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      SetVisualHeader(mtPerson.FIO);
+
+      case _e.FndNode.Name of
+
+        'rok:Appoint':
+        {
+          mtAppoint.Load(_e.FndNode);
+          mtAppoint.Person := mtPerson.Login;
+          update current mtAppoint;
+        }
+
+        'rok:PersPer':
+          LoadPersPer(_e.FndNode);
+
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+private procedure LoadPersons(_e: IDomNode);
+{
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Person': LoadOnePerson(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+private procedure DoImportXml;
+{
+  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
+  SetVisualTitle('Загрузка из ' + sXmlFile);
+  var doc: DomDoc new;
+  doc.Load(sXmlFile);
+
+  if (doc.RootNode <> NullRef)
+  {
+    mtPeriods.Clear;
+    mtDepart.Clear;
+    mtDepHist.Clear;
+    mtPost.Clear;
+    mtPerson.Clear;
+    mtAppoint.Clear;
+    mtPersPer.Clear;
+    mtDebtIn.Clear;
+    mtNachisl.Clear;
+    mtPayment.Clear;
+    mtDebtOut.Clear;
+
+    _try
+    {
+      if doc.RootNode.GetFirstNode
+        do
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          case doc.RootNode.FndNode.Name of
+            'rok:Periods': LoadPeriods(doc.RootNode.FndNode);
+            'rok:Departs': LoadDeparts(doc.RootNode.FndNode);
+            'rok:Persons': LoadPersons(doc.RootNode.FndNode);
+          end;
+        }
+        while (doc.RootNode.GetNextNode);
+    }
+    _except
+      on exUserBreaked:
+      {
+      }
+    _finally
+    {
+    }
+  }
+  doc.Free;
+  StopVisual;
+  BuildTree;
+  SaveMyDsk(sXmlFile, 'WageView_sXmlFile');
+  GetFirst mtPeriods;
+  if TreeGetFirst(trFilling)
+  {
+    do
+      TreeOpenNode(trFilling);
+    while TreeGetNext(trFilling) and (TreeLevel(trFilling) > 0);
+    TreeGetFirst(trFilling);
+  }
+}

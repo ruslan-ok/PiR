@@ -1,0 +1,79 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования должности
+//------------------------------------------------------------------------------
+
+Window wnPost 'Должность';
+  show at(,, 80, 5);
+
+Screen scPost ('',, sci178Esc);
+  table mtPost;
+Fields
+  mtPost.Code (''): noprotect;
+  mtPost.Name (''): noprotect;
+<<
+
+   `Код`          .@@@@@@@@@@@@
+   `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+TableEvent
+  table mtPost;
+
+cmInsertRecord:
+  insert current mtPost;
+
+cmUpdateRecord:
+  update current mtPost;
+
+cmDeleteRecord:
+  if (message('Удалить должность?', Confirmation + YesNo) = cmYes)
+    delete current mtPost;
+
+end;
+
+
+Window wnPickPost 'Выбор должности' ('',, sci1EnEsc) DoAccept;
+  show at(,, 60, 15);
+
+Browse brPost;
+  table mtPost;
+Fields
+  mtPost.Code 'Код':          [20], protect;
+  mtPost.Name 'Наименование': [40], protect;
+End;
+
+End;
+
+WindowEvent wnPickPost;
+
+cmInit:
+{
+  PushPos(#mtPost);
+  ResetBounds(#mtPost);
+
+  var cGoto: comp;
+  cGoto := 0;
+  if isValid(#mtAppoint)
+    cGoto := mtAppoint.Post;
+
+  if (GetFirst mtPost where (( cGoto == mtPost.NRec )) = tsOk)
+    RescanPanel(#mtPost);
+}
+
+cmDefault:
+{
+  set mtAppoint.Post := mtPost.NRec;
+}
+
+cmDone:
+{
+  SetBounds(#mtPost);
+  PopPos(#mtPost);
+}
+
+End;

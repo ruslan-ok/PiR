@@ -1,0 +1,19 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Проект
+//------------------------------------------------------------------------------
+
+#statusline "stat"
+#include pir32prj.inc end;
+#include glovars.inc
+
+#include All.vih
+
+#make "v1\*.vip"
+#make "v1\Catalogs\*.vip"
+#make "v1\Database\*.vip"
+#make "v1\Operations\*.vip"
+
+#make "v2\*.vip"
+#make "v2\TblObjects\*.vip"

@@ -1,0 +1,134 @@
+#include MoneyDB.vih
+#include MT.vih
+
+Interface MoneyDB;
+
+Create view as select * from mtMoney;
+
+Function  GetFileName: string;
+{
+  result := 'Money';
+}
+
+Procedure LoadRecord;
+{
+  var i: byte;
+  i := 1;
+  mtMoney.NRec             := 0;
+  mtMoney.Year             := 2000+byte(part[i++]);
+  mtMoney.Month            := byte(part[i++]);
+  mtMoney.Sotr             := comp(part[i++]);
+  mtMoney.TabNmb           := part[i++];
+  mtMoney.Npp              := part[i++];
+  mtMoney.FIO              := part[i++];
+  mtMoney.SalaryUE         := double(part[i++]);
+  mtMoney.DaysPlan         := double(part[i++]);
+  mtMoney.DaysFact         := double(part[i++]);
+  mtMoney.DepBonusUE       := double(part[i++]);
+  mtMoney.DepBonusRB       := double(part[i++]);
+  mtMoney.DepBonusComment  := part[i++];
+  mtMoney.GovBonusUE       := double(part[i++]);
+  mtMoney.GovBonusRB       := double(part[i++]);
+  mtMoney.GovBonusComment  := part[i++];
+  mtMoney.PrBisnesUE       := double(part[i++]);
+  mtMoney.PrBisnesRB       := double(part[i++]);
+  mtMoney.PrBisnesComment  := part[i++];
+  mtMoney.LadderFromLastRB := double(part[i++]);
+  mtMoney.LadderFromLastUE := double(part[i++]);
+  mtMoney.CreditedCleanUE  := double(part[i++]);
+  mtMoney.DeliveryCleanUE  := double(part[i++]);
+  mtMoney.PrepaymentRB     := double(part[i++]);
+  mtMoney.PrepaymentUE     := double(part[i++]);
+  mtMoney.PaymBetwinUE     := double(part[i++]);
+  mtMoney.PaymBetwinRB     := double(part[i++]);
+  mtMoney.PaymBetwinExch   := double(part[i++]);
+  mtMoney.SecPartUE        := double(part[i++]);
+  mtMoney.SecPartRB        := double(part[i++]);
+  mtMoney.TransferedRB     := double(part[i++]);
+  mtMoney.LadderToNextRB   := double(part[i++]);
+  mtMoney.Transfered2RB    := double(part[i++]);
+  mtMoney.FixedSalaryRB    := double(part[i++]);
+  mtMoney.CompensUE        := double(part[i++]);
+  mtMoney.CompensRB        := double(part[i++]);
+  mtMoney.TotOtlozhUE      := double(part[i++]);
+  mtMoney.VyplOtlozhUE     := double(part[i++]);
+  mtMoney.VyplOtlozhRB     := double(part[i++]);
+
+  insert current mtMoney;
+}
+
+Function EmptyZero(_value: double): string;
+{
+  if (_value = 0)
+    result := '';
+  else
+    result := string(_value);
+}
+
+Function EmptyZero4(_value: double): string;
+{
+  if (_value = 0)
+    result := '';
+  else
+    result := DoubleToStr(_value, '6666666666666666.9999');
+}
+
+Procedure SaveRecord;
+{
+  DoSet('',
+              check(string(mtMoney.Year-2000))
+      + ';' + check(string(mtMoney.Month))
+      + ';' + check(string(mtMoney.Sotr))
+      + ';' + check(       mtMoney.TabNmb)
+      + ';' + check(       mtMoney.Npp)
+      + ';' + check(       mtMoney.FIO)
+      + ';' + check(EmptyZero(mtMoney.SalaryUE))
+      + ';' + check(EmptyZero(mtMoney.DaysPlan))
+      + ';' + check(EmptyZero(mtMoney.DaysFact))
+      + ';' + check(EmptyZero(mtMoney.DepBonusUE))
+      + ';' + check(EmptyZero(mtMoney.DepBonusRB))
+      + ';' + check(       mtMoney.DepBonusComment)
+      + ';' + check(EmptyZero(mtMoney.GovBonusUE))
+      + ';' + check(EmptyZero(mtMoney.GovBonusRB))
+      + ';' + check(       mtMoney.GovBonusComment)
+      + ';' + check(EmptyZero(mtMoney.PrBisnesUE))
+      + ';' + check(EmptyZero(mtMoney.PrBisnesRB))
+      + ';' + check(       mtMoney.PrBisnesComment)
+      + ';' + check(EmptyZero(mtMoney.LadderFromLastRB))
+      + ';' + check(EmptyZero(mtMoney.LadderFromLastUE))
+      + ';' + check(EmptyZero(mtMoney.CreditedCleanUE))
+      + ';' + check(EmptyZero(mtMoney.DeliveryCleanUE))
+      + ';' + check(EmptyZero(mtMoney.PrepaymentRB))
+      + ';' + check(EmptyZero(mtMoney.PrepaymentUE))
+      + ';' + check(EmptyZero(mtMoney.PaymBetwinUE))
+      + ';' + check(EmptyZero(mtMoney.PaymBetwinRB))
+      + ';' + check(EmptyZero4(mtMoney.PaymBetwinExch))
+      + ';' + check(EmptyZero(mtMoney.SecPartUE))
+      + ';' + check(EmptyZero(mtMoney.SecPartRB))
+      + ';' + check(EmptyZero(mtMoney.TransferedRB))
+      + ';' + check(EmptyZero(mtMoney.LadderToNextRB))
+      + ';' + check(EmptyZero(mtMoney.Transfered2RB))
+      + ';' + check(EmptyZero(mtMoney.FixedSalaryRB))
+      + ';' + check(EmptyZero(mtMoney.CompensUE))
+      + ';' + check(EmptyZero(mtMoney.CompensRB))
+      + ';' + check(EmptyZero(mtMoney.TotOtlozhUE))
+      + ';' + check(EmptyZero(mtMoney.VyplOtlozhUE))
+      + ';' + check(EmptyZero(mtMoney.VyplOtlozhRB)));
+}
+
+Procedure SaveAll;
+{
+  HttpClear;
+
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfBreak + vfConfirm, 'Выгрузка таблицы ' +
+                                    GetFileName + ' в буфер...', RecordsInTable(#mtMoney));
+  _loop mtMoney
+  {
+    if not NextVisual
+      break;
+    SaveRecord;
+  }
+  StopVisual;
+}
+
+End.

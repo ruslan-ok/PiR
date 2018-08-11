@@ -1,0 +1,202 @@
+!set type tDescr = string [20];
+
+Const
+  cgiStartDate = date(01, 01, 2013);
+End;
+
+Table struct mtGroup
+(
+  NRec: comp,
+  Node: comp,
+  Code: string,
+  Name: string
+)
+With index
+(
+  mtGroup01 = NRec (unique, surrogate),
+  mtGroup02 = Node + Code,
+  mtGroup03 = Node + Name
+);
+
+// deprecated
+Table struct mtStaff
+(
+  NRec:  comp,
+  Node:  comp,
+  Sotr:  comp,
+  Post:  comp,
+  Group: comp,
+  Password: string,
+  Contract: date,
+  TaxDeduct: byte
+)
+With index
+(
+  mtStaff01 = NRec (unique, surrogate),
+  mtStaff02 = Node,
+  mtStaff03 = Sotr,
+  mtStaff04 = Group,
+  mtStaff05 = Contract
+);
+
+Table struct mtStruct
+(
+  NRec:  comp,
+  Node:  comp,
+  Mode:  word,
+  Rec:   comp,
+  Err: array[1..20] of longint,
+  Law: array[1..20] of longint,
+  Hung: array[1..20] of longint,
+  Norm: array[1..20] of longint
+)
+With index
+(
+  mtStruct01 = NRec (unique, surrogate),
+  mtStruct02 = Node,
+  mtStruct03 = Mode + Rec
+);
+
+Table struct mtPir
+(
+  Period:    date,
+  StateCode: string [20],
+  TypeCode:  string [20],
+  Sotr:      comp,
+  Quantity:  longint
+)
+With index
+(
+  mtPir01 = Sotr + Period + StateCode + TypeCode,
+  mtPir02 = Period
+);
+
+Table struct mtPirNumb
+(
+  Period: date,
+  Numb:   string [15],
+  sState: string [20],
+  sType:  string [20],
+  Sotr:   comp
+)
+With index
+(
+  mtPirNumb01 = Sotr + Period,
+  mtPirNumb02 = Period + Numb
+);
+
+Table struct mtStateType
+(
+  StateCode: string [20],
+  TypeCode:  string [20],
+  Value:     word
+)
+With index
+(
+  mtStateType01 = StateCode + TypeCode,
+  mtStateType02 = Value
+);
+
+Table struct mtDateList
+(
+  Period: date
+)
+With index
+(
+  mtDateList01 = Period
+);
+
+Table struct mtDateList2
+(
+  Period: date
+)
+With index
+(
+  mtDateList201 = Period
+);
+
+Table struct mtPeriod
+(
+  Year:          word            "Год",
+  Month:         byte            "Месяц",
+  Prepayment:    date            "Дата перечисления аванса",
+  SecPart:       date            "Дата перечисления зарплаты",
+  ThirdPart:     date            "Дата перечисления 2 части зарплаты",
+  PrepayExch:    decimal(20, 10) "Курс для аванса",
+  SecPartExch:   decimal(20, 10) "Курс для зарплаты",
+  ThirdPartExch: decimal(20, 10) "Курс для 2 части зарплаты",
+  OkladExch:     decimal(20, 10) "Курс оклада",
+  OtlozhExch:    decimal(20, 10) "Курс выплаты отложенных",
+  TaxDeduct:     decimal(20, 10) "Сумма налогового вычета"
+)
+With index
+(
+  mtPeriod01 = Year + Month
+);
+                                                 
+Table struct mtMoney
+(
+  NRec:            comp            "ID",
+  Year:            word            "Год",
+  Month:           byte            "Месяц",
+  Sotr:            comp            "Сотрудник",
+  TabNmb:          string          "Табельный номер",
+  Npp:             string          "Номер по порядку",
+  FIO:             string          "ФИО",
+
+  SalaryUE:        decimal(10, 0)  "Оклад",
+  DaysPlan:        decimal(10, 2)  "Рабочих дней в месяце по графику",
+  DaysFact:        decimal(10, 2)  "Фактически отработано, дней",
+  DepBonusUE:      decimal(10, 2)  "Премия отдела, у.е.",
+  DepBonusRB:      decimal(20, 0)  "Премия отдела, руб.",
+  DepBonusComment: string          "Пояснения по премии отдела",
+  GovBonusUE:      decimal(10, 2)  "Премия Управления, у.е.",
+  GovBonusRB:      decimal(20, 0)  "Премия Управления, руб.",
+  GovBonusComment: string          "Пояснения по премии Управления",
+  PrBisnesUE:      decimal(10, 2)  "Проектный бизнес, у.е.",
+  PrBisnesRB:      decimal(20, 0)  "Проектный бизнес, руб.",
+  PrBisnesComment: string          "Пояснения по проектному бизнесу",
+  LadderFromLastRB:decimal(20, 0)  "Зачет с прошлого месяца, руб.",
+  LadderFromLastUE:decimal(10, 2)  "Зачет с прошлого месяца, у.е.",
+  CreditedCleanUE: decimal(10, 2)  "Начислено чистые, у.е.",
+  DeliveryCleanUE: decimal(10, 2)  "К выдаче чистые + вх. остаток, у.е.",
+  PrepaymentRB:    decimal(20, 0)  "Аванс, руб.",
+  PrepaymentUE:    decimal(10, 2)  "Аванс, у.е.",
+  PaymBetwinUE:    decimal(10, 2)  "Межрасчетные выплаты, у.е.", // отпуска, алименты, льготы и пр.
+  PaymBetwinRB:    decimal(20, 0)  "Межрасчетные выплаты, руб.", // отпуска, алименты, льготы и пр.
+  PaymBetwinExch:  decimal(20, 10) "Курс для межрасчета",
+  SecPartUE:       decimal(10, 2)  "Зарплата, у.е.",
+  SecPartRB:       decimal(20, 0)  "Зарплата, руб.",
+  TransferedRB:    decimal(20, 0)  "Перечислено, руб.",
+  LadderToNextRB:  decimal(20, 0)  "Зачет на следующий месяц, руб.",
+  Transfered2RB:   decimal(20, 0)  "Перечислено 2 часть, руб.",
+  FixedSalaryRB:   decimal(20, 0)  "Замороженный оклад в рублях",
+  CompensUE:       decimal(10, 2)  "Компенсационная выплата, у.е.",
+  CompensRB:       decimal(20, 0)  "Компенсационная выплата, руб.",
+  TotOtlozhUE:     decimal(10, 2)  "Итого накоплено, у.е.",
+  VyplOtlozhUE:    decimal(10, 2)  "Выплата накопленных, у.е.",
+  VyplOtlozhRB:    decimal(20, 0)  "Выплата накопленных, руб.",
+  TaxDeductKol:    decimal(20, 0)  "Льгота по подоходному налогу, количество",
+  TaxDeductRB:     decimal(20, 2)  "Льгота по подоходному налогу, BYN",
+  TaxDeductUE:     decimal(20, 2)  "Льгота по подоходному налогу, USD"
+)
+With index
+(
+  mtMoney01 = Sotr + Year (desc) + Month (desc),
+  mtMoney02 = NRec (unique, surrogate)
+);
+
+Table struct mtDescr
+(
+  NRec:            comp            "ID",
+  Year:            word            "Год",
+  Month:           byte            "Месяц",
+  Sotr:            comp            "Сотрудник",
+  Choice:          byte            "ID показателя",
+  Value:           string          "Описание значения"
+)
+With index
+(
+  mtDescr01 = Sotr + Year (desc) + Month (desc),
+  mtDescr02 = NRec (unique, surrogate)
+);

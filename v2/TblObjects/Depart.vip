@@ -1,0 +1,88 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект подразделений
+//------------------------------------------------------------------------------
+
+Interface Depart;
+
+// Подразделения
+Table struct mtDepart
+(
+  NRec: comp,
+  Code: s50,
+  Name: s100
+)
+With index
+(
+  DepId  = NRec (surrogate),
+  ByCode = Code,
+  ByName = Name
+);
+
+Create view from mtDepart, mtDepart mtDepart2;
+
+property NRec: comp absolute mtDepart.NRec;
+property Code: s50  absolute mtDepart.Code;
+property Name: s100 absolute mtDepart.Name;
+
+index DepId  auto;
+index ByCode auto;
+index ByName auto;
+
+function IModify.doInsert: word;
+{
+  result := insert current mtDepart;
+}
+
+function IModify.doUpdate: word;
+{
+  result := update current mtDepart;
+}
+
+function IModify.doDelete: word;
+{
+  result := delete current mtDepart;
+}
+
+implementation IModify.doFlush  abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtDepart;
+}
+
+public procedure Clear;
+{
+  delete all mtDepart2;
+}
+
+public function Load(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtDepart);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:NRec': NRec := comp(_e.FndAttr.Value);
+        'rok:Code': Code := _e.FndAttr.Value;
+        'rok:Name': Name := _e.FndAttr.Value;
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtDepart;
+  result := true;
+}
+
+public function Save(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Depart');
+  xnode.AddAttr('rok:NRec=' + string(NRec,0,0));
+  xnode.AddAttr('rok:Code=' + Code);
+  xnode.AddAttr('rok:Name=' + Name);
+  result := xnode;
+}
+
+end.

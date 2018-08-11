@@ -1,0 +1,2548 @@
+#include VipDebug.vih
+
+#include MT.vih
+#include Depart_.vih
+#include GroupsDB.vih
+#include StaffDB.vih
+#include StructBuilder.vih
+#include MoneyDB.vih
+#include PeriodDB.vih
+#include Marker.vih
+#include Query.vih
+#include Duration.vih
+#include ProjFunc.vih
+#include Wage.vih
+
+.Form 'CheckRate'
+.NameInList 'Контроль курсовой разницы'
+.{
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ @@@@@@@@@@@@@@@@@@@
+.}
+.endform
+
+Interface Depart_ 'Отдел разработки "Управление персоналом"' ('',, sci14EscTree);
+  Show at(,,, 30);
+
+var
+  bSelected: boolean;
+  deb: IVipDebug;
+  pMarker: IMarker(marker) new;
+
+Table struct mtImport
+(
+  Npp: word,
+  Fld: array[1..50] of string
+)
+With index
+(
+  mtImport01 = Npp
+);
+
+Table struct mtAssoc
+(
+  Npp: byte,
+  Fld: byte,
+  Tmp: comp
+)
+With index
+(
+  mtAssoc01 = Npp,
+  mtAssoc02 = Fld
+);
+
+table struct mtProj
+(
+  NRec:    comp,
+  Staff:   string,
+  Year:    word,
+  Month:   word,
+  USD:     double,
+  RBR:     double,
+  Comment: string
+)
+with index
+(
+  mtProj1 = NRec (surrogate),
+  mtProj2 = Year + Month + Staff
+);
+
+Table struct mtOwertime
+(
+  NRec:      comp,
+  Staff:     string,
+  Npp:       longint,
+  tProj:     array[1..4] of Time,
+  tOwertime: Time,
+  tTimeOff:  Time,
+  tTotal:    Time,
+  Comment:   string
+)
+with index
+(
+  mtOwertime1 = NRec (surrogate),
+  mtOwertime2 = Npp
+);
+/*
+Table struct mtSheet
+(
+  Num: longint,
+  Year: word,
+  Month: byte,
+  Name: string
+)
+with index
+(
+  mtSheet01 = Num
+);
+
+Table struct mtColumn
+(
+  Sheet: longint,
+  Col: longint,
+  Name1: string,
+  Name2: string,
+  cSpCol: comp
+)
+with index
+(
+  mtColumn01 = Sheet + Col,
+  mtColumn02 = cSpCol
+);
+
+Table struct mtRow
+(
+  Sheet: longint,
+  Row: longint,
+  Name: string
+)
+with index
+(
+  mtRow01 = Sheet + Row
+);
+*/
+Table struct mtRawData
+(
+  Sheet: longint,
+  Row: longint,
+  Col: longint,
+  Value: string
+)
+with index
+(
+  mtRawData01 = Sheet + Row + Col
+);
+
+Table struct mtColTitle
+(
+  Num: longint,
+  Name: string
+)
+with index
+(
+  mtColTitle01 = Num,
+  mtColTitle02 = Name
+);
+
+Table struct mtSpCol
+(
+  NRec: comp,
+  Col: longint,
+  Num: longint,
+  Name: string
+)
+with index
+(
+  mtSpCol01 = NRec (surrogate),
+  mtSpCol02 = Col + Num,
+  mtSpCol03 = Col + Name
+);
+
+/*
+Table struct mtPerData
+(
+  Sheet: longint,
+  PlanDays: word,
+  AvansDate: date,
+  SalaryDate: date,
+  InterDate: date,
+  AvansRate: double,
+  SalaryRate: double,
+  InterRate: double
+)
+with index
+(
+  mtPerData01 = Sheet
+);
+*/
+
+
+#include Duration.var
+#include ProjFunc.var
+
+Create view
+var
+  wMode: word;
+  cNode: comp;
+  FileName: string;
+  /*Param1,*/ wYear, wDaysPlan: word;
+  wMonth: byte;
+  dPrepayment, dSecPart, dThirdPart: date;
+  fPrepayExch, fSecPartExch, fThirdPartExch, fOkladExch, fOtlozhExch, fTaxDeduct: double;
+  sPath: string;
+  wSend: word;
+  bSend: boolean;
+  wSendet: word;
+  wDebug: word;
+  wRepMonth: word;
+  wRepYear: word;
+  bDialogOk: boolean;
+  dRepBeg, dRepEnd: date;
+  cOtgul: comp;
+As select
+  case(mtStruct.Mode; 1: mtGroup.Name, 2: KatSotr.FIO; '???') (FieldName = StructName),
+  case(mtStruct.Mode; 1: '', 2: KatSotr.EMail; '???') (FieldName = SotrEMail),
+  if(isValid(tnmtMoney), if(mtMoney.Month = 1, mtMoney.Year-1, mtMoney.Year), 0) (FieldName = PrevYear),
+  if(isValid(tnmtMoney), if(mtMoney.Month = 1, 12, mtMoney.Month-1), 0) (FieldName = PrevMonth),
+  *
+From
+  mtStaff,
+  mtGroup,
+  mtStruct,
+  mtStruct SubStruct,
+  KatSotr,
+  KatPost,
+  mtMoney,
+  mtMoney mtM112014,
+  mtMoney mtMoneyPrev,
+  mtMoney mtMoney2,
+  mtImport,
+  mtAssoc,
+  mtPeriod,
+  mtPeriod mtPeriodPrev,
+  mtProj (mtProj2),
+  mtOwertime,
+  WorkDays,
+  DayWork,
+  TekPl,
+  PlanTask,
+  //mtSheet,
+  //mtColumn,
+  //mtRow,
+  mtRawData,
+  mtColTitle,
+  mtSpCol//,
+  //mtPerData,
+  //mtStaff mtStaff2
+
+Where ((
+  cNode            == mtStruct.Node      and
+  mtStruct.NRec    == SubStruct.Node     and
+  mtStruct.Rec     == mtStaff.NRec       and (mtStruct.Mode = 2) and
+  mtStruct.Rec     == mtGroup.NRec       and (mtStruct.Mode = 1) and
+  mtStaff.Sotr     == KatSotr.NRec       and
+  KatSotr.cKatPost == KatPost.NRec       and
+  mtStaff.NRec     == mtMoney.Sotr       and (mtStruct.Mode = 2) and
+  mtMoney.Year     == mtPeriod.Year      and
+  mtMoney.Month    == mtPeriod.Month     and
+  mtStaff.NRec     == mtM112014.Sotr     and
+  2014             == mtM112014.Year     and
+  11               == mtM112014.Month    and
+  mtStaff.NRec     == mtMoneyPrev.Sotr   and
+  PrevYear         == mtMoneyPrev.Year   and
+  PrevMonth        == mtMoneyPrev.Month  and
+  PrevYear         == mtPeriodPrev.Year  and
+  PrevMonth        == mtPeriodPrev.Month and
+  mtColTitle.Num   == mtSpCol.Col
+))
+
+Condition SotrOnly = (mtStruct.Mode = 2) and (KatSotr.FIO[1] <> '_');
+
+Parameters
+  wMode; // 0 - хранение данных в файлах
+         // 1 - чтение из файлов, запись на сервере
+         // 2 - чтение с сервера, запись в файлы
+         // 3 - хранение данных на сервере
+
+var oGroups: GroupsDB;
+var oStaff: StaffDB;
+var oBuilder: StructBuilder;
+var oMoney: MoneyDB;
+var oPeriod: PeriodDB;
+
+File f;
+
+function GetContractTerm: word;
+{
+  result := 0;
+  if (mtStaff.Contract <> ZeroDate)
+    if (To_Days(mtStaff.Contract) < To_Days(Cur_Date))
+      result := ColorErrorRec;
+    else
+      if (To_Days(Sub_Date(mtStaff.Contract, Cur_Date)) < 60)
+        result := ColorNeed;
+}
+
+function CurPeriod: longint;
+{
+  result := mtPeriod.Year * 100 + mtPeriod.Month;
+}
+
+#include PrnFunc.vpp
+
+
+/*
+// Премия Управления задана в рублях
+function GovBonusInRB: boolean;
+{
+  result := ((mtMoney.GovBonusUE = 0) and (mtPeriod.SecPartExch <> 0) and (mtMoney.GovBonusRB <> 0));
+}
+*/
+
+Tree trDepart;
+  Show at(,, 31, 21);
+  Table mtStruct;
+  recMarker = pMarker {mtStruct.NRec};
+Fields
+  StructName ''#3'Наименование элемента' ('Наименование элемента иерархической структуры'): [20];
+  mtStaff.Contract ''#3'Контракт': [12], {font = {backcolor = GetContractTerm;}};
+End;
+
+Screen scEmpty;
+  Show at(32,,, 21);
+<<
+>>
+End;
+
+Screen scMeta;
+  Show at(32,,, 21);
+  Table mtMoney;
+Fields
+  SotrEMail: Protect;
+  mtStaff.Password: Protect;
+  mtMoney.Month: Protect;
+  mtMoney.Year: Protect;
+  KatPost.Name: Protect;
+  mtMoney.DaysPlan: [4.1,'\1p[|-]366.8'], NoProtect;
+  mtMoney.DaysFact: [4.1,'\1p[|-]366.8'], NoProtect;
+  mtStaff.Contract: NoProtect;
+  // Оклад
+  UE(R01):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R01): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R01):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtStaff.TaxDeduct: NoProtect;
+  // Выплата отложенной части
+  UE(R06):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R06): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R06):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  if(mtMoney.VyplOtlozhUE = 0 or mtPeriod.SecPartExch = 0, 0,
+     mtMoney.VyplOtlozhRB*0.91 - mtMoney.VyplOtlozhUE*mtPeriod.SecPartExch): [12.2,'\2p[|-]36`666`666`666.88'], Skip;
+  // Премия отдела
+  UE(R02):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R02): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R02):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtMoney.DepBonusComment: NoProtect;
+  // Премия Управления
+  UE(R03):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R03): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R03):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtMoney.GovBonusComment: NoProtect;
+  // Проектный бизнес
+  UE(R04):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R04): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R04):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtMoney.PrBisnesComment: NoProtect;
+  // Зачет с прошлого месяца
+  UE(R08):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R08): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R08):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  // К выдаче
+  UE(R09):   [8.0, '\0p[|-]366`666'],        Protect, {Font = {Bold = true; }};
+  RB(R09):   [13.2,'\2p[|-]366`666`666.88'], Protect, {Font = {Bold = true; }};
+  // Аванс
+  UE(R10):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R10): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R10):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtPeriod.Prepayment: Protect;
+  // Межрасчетные выплаты
+  UE(R11):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R11): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R11):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtMoney.PaymBetwinExch ('Индивидуальный курс для текущей межрасчетной выплаты'): [11.4,'\4p[|-]366`666.8888'], NoProtect;
+  // Перечислено
+  UE(R13):   [8.0, '\0p[|-]366`666'],        Protect;
+  Rate(R13): [11.4,'\4p[|-]366`666.8888'],   Protect;
+  RB(R13):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+  mtPeriod.SecPart: Protect;
+  // Выдано
+  UE(R16):   [8.0, '\0p[|-]366`666'],        Protect, {Font = {Bold = true; BackColor = if(Abs(UE(R16) + UE(R15) - UE(R09)) < 1, 0, ColorError);}};
+  RB(R16):   [13.2,'\2p[|-]366`666`666.88'], Protect, {Font = {Bold = true;}};
+  // Долг за расчетный месяц
+  UE(R17):   [8.0, '\0p[|-]366`666'],        Protect;
+  // Зачет на следующий месяц
+  RB(R15):   [13.2,'\2p[|-]366`666`666.88'], Protect;
+Buttons
+  cmValue10;
+<<
+
+  `Адрес:`.@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  `Пароль:`.@@@@@@@@@@@@@@@@@@@@@@@
+  `Месяц:`.@@@@@@@@ `Год:`.@@@@@@@@      `Должность:`.@@@@@@@@@@@@@@@@@@@@@@@
+   `План:`.@@@@@@@@`Факт:`.@@@@@@@@    `Контракт по:`.@@@@@@@@@@@@@
+                         в у.е.       курс         в руб.
+  `Оклад`             .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ `Вычетов`.@@@@@@@
+  `Выплата отложенных`.@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@
+  `Премия отдела`     .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@
+  `Премия Управления` .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@
+  `Проектный бизнес`  .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@
+  `С прошл.месяца`    .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@
+  `К выдаче`          .@@@@@@@@@@              .@@@@@@@@@@@@@
+  `Аванс`             .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@
+  `Межрасчет`         .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@
+  `Зарплата`          .@@@@@@@@@@ .@@@@@@@@@@@ .@@@@@@@@@@@@@ .@@@@@@@@@@@
+  `Выдано`            .@@@@@@@@@@              .@@@@@@@@@@@@@
+  `На след.месяц`     .@@@@@@@@@@ <. Курсы .>  .@@@@@@@@@@@@@
+>>
+End;
+
+Browse brMoney ('',, sci178Esc);
+  Show at(, 22,,);
+  Table mtMoney;
+Fields
+  mtMoney.Year         ''#3'Год': [5];
+  mtMoney.Month        ''#3'Месяц': [5];
+  mtMoney.SalaryUE     ''#3'Оклад' ('Оклад'): [5, '\0p[|-]36`666`666`666`666'];
+  mtMoney.DaysFact     ''#3'Дней' ('Фактически отработано дней'): [6.1, '\1p[|-]36`666.8'];
+  mtMoney.DepBonusUE   ''#3'Премия отдела' ('Премия отдела'): [8.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.GovBonusUE   ''#3'Премия Управления' ('Премия Управления'): [8.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PrBisnesUE   ''#3'Проектный бизнес' ('Проектный бизнес'): [8.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PrepaymentRB ''#3'Аванс' ('Аванс'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PaymBetwinRB ''#3'Межрасчет' ('Межрасчетные выплаты'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.TransferedRB + mtMoney.Transfered2RB
+                       ''#3'Перечислено' ('Перечислено'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PrepaymentRB + mtMoney.PaymBetwinRB + mtMoney.TransferedRB + mtMoney.Transfered2RB
+                       ''#3'Доход' ('Итого перечислено за месяц'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+End;
+
+TableEvent
+  Table mtStruct;
+
+cmTreeTop:
+  cNode := 0;
+
+cmTreeUp:
+  cNode := mtStruct.Node;
+
+cmTreeDown:
+  cNode := mtStruct.NRec;
+
+cmTreeNodeType:
+{
+  var yType: byte; // лист или папка (открытая или закрытая)
+  yType := ntfText;
+  if (isValid(#mtStruct) and isValid(#SubStruct))
+    if (TreeNodeIsOpen(trDepart))
+      yType := ntfOpen;
+    else
+      yType := ntfClose;
+
+  TreeSetNodeType(trDepart, yType);
+}
+
+cmTreeNeedOwner:
+  TreeJumpToRecord(trDepart, mtStruct.Node);
+
+cmPositionChanged:
+  if (GetFirst mtMoney = tsOk) {}
+
+End;
+
+TableEvent
+  Table mtPeriod;
+
+cmInsertRecord: insert current mtPeriod;
+cmUpdateRecord: update current mtPeriod;
+
+end;
+
+TableEvent
+  Table mtMoney;
+
+cmCheckField:
+  if (CurField = #mtStaff.Contract) or (CurField = #mtStaff.TaxDeduct)
+    if isValid(#mtStaff)
+      update current mtStaff;
+
+cmInsertRecord: insert current mtMoney;
+cmUpdateRecord: update current mtMoney;
+cmDeleteRecord:
+  if (message('Удалить?', Confirmation + YesNo) = cmYes)
+    delete current mtMoney;
+
+end;
+
+Function InsertSt(_Node: comp; _Mode: word; _Rec: comp): comp;
+{
+  ClearBuffer(#mtStruct);
+  mtStruct.Node := _Node;
+  mtStruct.Mode := _Mode;
+  mtStruct.Rec  := _Rec;
+  insert current mtStruct;
+  result := mtStruct.NRec;
+}
+
+Procedure ScanStaff(_Group, _NodeSt: comp);
+{
+  _loop mtStaff where (( _Group == mtStaff.Group ))
+    InsertSt(_NodeSt, 2, mtStaff.NRec);
+}
+
+Procedure ScanGroup(_NodeGr, _NodeSt: comp);
+{
+  PushPos(#mtGroup);
+  var PrevNode, NewNode: comp;
+  PrevNode := cNode;
+
+  cNode := _NodeGr;
+  _loop mtGroup where (( cNode == mtGroup.Node ))
+  {
+    NewNode := InsertSt(_NodeSt, 1, mtGroup.NRec);
+    ScanStaff(mtGroup.NRec, NewNode);
+    ScanGroup(mtGroup.NRec, NewNode);
+  }
+
+  cNode := PrevNode;
+  PopPos(#mtGroup);
+}
+
+Function ColumnNameByNum(_Npp: byte): string; forward;
+
+Procedure ParseString(s: string; _npp: byte);
+{
+  ClearBuffer(#mtImport);
+  mtImport.Npp := _npp;
+
+  var i, p: byte;
+  i := 0;
+
+  p := Pos(';', s);
+  if (p = 0)
+  {
+    i++;
+    mtImport.Fld[i] := s;
+  }
+  else
+  {
+    while (p > 0) and (i < 50)
+    {
+      i++;
+      mtImport.Fld[i] := SubStr(s, 1, p-1);
+      s := SubStr(s, p+1, Length(s)-p);
+      p := Pos(';', s);
+      if (_npp = 1)
+      {
+        ClearBuffer(#mtAssoc);
+        mtAssoc.Npp := i;
+        var j: byte;
+        for (j := 1; j <= 50; j++)
+          if (ColumnNameByNum(j) = ''#3 + mtImport.Fld[i])
+          {
+            mtAssoc.Fld := j;
+            break;
+          }
+        insert current mtAssoc;
+      }
+    }
+    i++;
+    mtImport.Fld[i] := s;
+
+    if (_npp = 1)
+    {
+      ClearBuffer(#mtAssoc);
+      mtAssoc.Npp := i;
+      var j: byte;
+      for (j := 1; j <= 50; j++)
+        if (ColumnNameByNum(j) = ''#3 + mtImport.Fld[i])
+        {
+          mtAssoc.Fld := j;
+          break;
+        }
+      insert current mtAssoc;
+    }
+  }
+  insert current mtImport;
+}
+
+Procedure SetImportColumnTitle; forward;
+
+Procedure DoImport;
+{
+  delete all mtImport;
+  delete all mtAssoc;
+  var curnpp: byte;
+  curnpp := 1;
+
+  _try
+  {
+    f.OpenFile(FileName, stOpen);
+
+    while (not f.EOF)
+    {
+      var s: string;
+      f.ReadLn(s);
+
+      if (Replace(s, ';', '') = '')
+        break;
+
+      ParseString(Ansi2Oem(s), curnpp++);
+    }
+  }
+  _except
+    on ExFileNotFound:
+    {
+    };
+  _finally
+    f.Close;
+
+  if (GetFirst mtImport = tsOk)
+  {
+  }
+  RereadRecord(#mtImport);
+
+  _loop mtAssoc
+    SetImportColumnTitle;
+}
+
+#include ExportNew.vpp
+#include ImportNew.vpp // DoImportNew
+
+Function GetDescr: string;
+{
+  result := '';
+
+  if (mtAssoc.Npp >= 1) and (mtAssoc.Npp <= 50)
+  {
+    PushPos(#mtImport);
+    if GetFirst mtImport = tsOk
+      result := mtImport.Fld[mtAssoc.Npp];
+    PopPos(#mtImport);
+  }
+}
+
+Function GetFieldByNum(_Npp: byte): integer;
+{
+  result := #mtImport.Fld[01];
+
+  case _Npp of
+    01: result := #mtImport.Fld[01];
+    02: result := #mtImport.Fld[02];
+    03: result := #mtImport.Fld[03];
+    04: result := #mtImport.Fld[04];
+    05: result := #mtImport.Fld[05];
+    06: result := #mtImport.Fld[06];
+    07: result := #mtImport.Fld[07];
+    08: result := #mtImport.Fld[08];
+    09: result := #mtImport.Fld[09];
+    10: result := #mtImport.Fld[10];
+    11: result := #mtImport.Fld[11];
+    12: result := #mtImport.Fld[12];
+    13: result := #mtImport.Fld[13];
+    14: result := #mtImport.Fld[14];
+    15: result := #mtImport.Fld[15];
+    16: result := #mtImport.Fld[16];
+    17: result := #mtImport.Fld[17];
+    18: result := #mtImport.Fld[18];
+    19: result := #mtImport.Fld[19];
+    20: result := #mtImport.Fld[20];
+    21: result := #mtImport.Fld[21];
+    22: result := #mtImport.Fld[22];
+    23: result := #mtImport.Fld[23];
+    24: result := #mtImport.Fld[24];
+    25: result := #mtImport.Fld[25];
+    26: result := #mtImport.Fld[26];
+    27: result := #mtImport.Fld[27];
+    29: result := #mtImport.Fld[29];
+    30: result := #mtImport.Fld[30];
+    31: result := #mtImport.Fld[31];
+    32: result := #mtImport.Fld[32];
+    33: result := #mtImport.Fld[33];
+    34: result := #mtImport.Fld[34];
+    35: result := #mtImport.Fld[35];
+  end;
+}
+
+Function ColumnNameByNum(_Npp: byte): string;
+{
+  result := '';
+  case _Npp of
+    01: result := 'таб. №';
+    02: result := '№';
+    03: result := 'ФИО';
+    04: result := 'Оклад';
+    05: result := 'План, дн.';
+    06: result := 'Факт, дн';
+    07: result := 'ПО, у.е.';
+    08: result := 'ПО, руб.';
+    09: result := 'ПО, коммент';
+    10: result := 'ПУ, у.е.';
+    11: result := 'ПУ, руб.';
+    12: result := 'ПУ, коммент';
+    13: result := 'ПБ, у.е.';
+    14: result := 'ПБ, руб.';
+    15: result := 'ПБ, коммент';
+    16: result := 'С прошл., руб.';
+    17: result := 'С прошл., у.е.';
+    18: result := 'Начислено, у.е.';
+    19: result := 'К выдаче, у.е.';
+    20: result := 'Ав, руб.';
+    21: result := 'Ав, у.е.';
+    22: result := 'МВ, руб.';
+    23: result := 'МВ, курс';
+    24: result := 'МВ, у.е.';
+    25: result := 'ЗП, у.е.';
+    26: result := 'ЗП, руб.';
+    27: result := 'Переч. ЗП, руб.';
+    28: result := 'На след., руб.';
+    29: result := 'ЗП 2 ч., р.';
+    30: result := 'Заморож. оклад, руб.';
+    31: result := 'Комп., у.е.';
+    32: result := 'Комп., руб.';
+    33: result := 'Итого отлож., у.е.';
+    34: result := 'Отлож., у.е.';
+    35: result := 'Отлож., руб.';
+  end;
+
+  result := ''#3 + result;
+}
+
+Function GetValue(_ColumnName: string): string;
+{
+  result := '';
+
+  var col, i: byte;
+  col := 0;
+
+  for (i := 1; i <= 50; i++)
+    if (ColumnNameByNum(i) = (''#3 + _ColumnName))
+    {
+      col := i;
+      break;
+    }
+
+  if (col > 0)
+    if (GetFirst mtAssoc where (( col == mtAssoc.Fld )) = tsOk)
+      result := mtImport.Fld[mtAssoc.Npp];
+}
+
+Function GetSumm(_ColumnName: string): string;
+{
+  result := Replace(Replace(GetValue(_ColumnName), ' ', ''), ',', '.');
+}
+
+Procedure DoSave;
+{
+  if (wMonth < 1) or (wMonth > 12)
+  {
+    message('Некорректно задан месяц');
+    SelectField(#wMonth);
+    exit;
+  }
+
+  if (wYear < 1995) or (wYear > 2050)
+  {
+    message('Некорректно задан год');
+    SelectField(#wYear);
+    exit;
+  }
+
+  var bNew: boolean;
+  bNew := false;
+  if (GetFirst mtPeriod where (( wYear  == mtPeriod.Year and
+                                 wMonth == mtPeriod.Month )) <> tsOk)
+  {
+    ClearBuffer(#mtPeriod);
+    bNew := true;
+  }
+
+  mtPeriod.Year          := wYear;
+  mtPeriod.Month         := wMonth;
+  mtPeriod.Prepayment    := dPrepayment;
+  mtPeriod.PrepayExch    := fPrepayExch;
+  mtPeriod.SecPart       := dSecPart;
+  mtPeriod.SecPartExch   := fSecPartExch;
+  mtPeriod.ThirdPart     := dThirdPart;
+  mtPeriod.ThirdPartExch := fThirdPartExch;
+  mtPeriod.OkladExch     := fOkladExch;
+  mtPeriod.OtlozhExch    := fOtlozhExch;
+  mtPeriod.TaxDeduct     := fTaxDeduct;
+
+  if (bNew)
+    insert current mtPeriod;
+  else
+    update current mtPeriod;
+
+  var res1, res2: byte;
+  res1 := res2 := 0;
+
+  _loop mtImport
+  {
+    if (mtImport.Npp = 1) /*and (Param1 = 1)*/
+      continue;
+
+    var FIO, Fam: string;
+    Fam := FIO := GetValue('ФИО');
+
+    var p: byte;
+    p := Pos(' ', FIO);
+
+    if (p > 0)
+      Fam := SubStr(FIO, 1, p-1);
+
+    var cSotr: comp;
+    cSotr := 0;
+
+    _loop KatSotr where (( Fam == KatSotr.Name1 (NoIndex) ))
+    {
+      if (GetFirst mtStaff where (( KatSotr.NRec == mtStaff.Sotr )) = tsOk)
+      {
+        cSotr := mtStaff.NRec;
+        break;
+      }
+    }
+
+    if (cSotr = 0)
+    {
+      res1++;
+      message('Не найден: ' + FIO);
+    }
+    else
+    {
+      res2++;
+
+      var bFnd: boolean;
+      bFnd := true;
+
+      if (GetFirst mtMoney where (( wYear  == mtMoney.Year and
+                                    wMonth == mtMoney.Month and
+                                    cSotr  == mtMoney.Sotr )) <> tsOk)
+      {
+        bFnd := false;
+        ClearBuffer(#mtMoney);
+        mtMoney.Year  := wYear;
+        mtMoney.Month := wMonth;
+        mtMoney.Sotr  := cSotr;
+      }
+
+      mtMoney.TabNmb           := GetValue('таб. №');
+      mtMoney.Npp              := GetValue('№');
+      mtMoney.FIO              := GetValue('ФИО');
+      mtMoney.SalaryUE         := double(GetSumm('Оклад'));
+      mtMoney.DaysPlan         := double(wDaysPlan);
+      mtMoney.DaysFact         := double(GetSumm('Факт, дн'));
+      mtMoney.DepBonusUE       := double(GetSumm('ПО, у.е.'));
+      mtMoney.DepBonusRB       := double(GetSumm('ПО, руб.'));
+      mtMoney.DepBonusComment  := GetValue('ПО, коммент');
+      mtMoney.GovBonusUE       := double(GetSumm('ПУ, у.е.'));
+      mtMoney.GovBonusRB       := double(GetSumm('ПУ, руб.'));
+      mtMoney.GovBonusComment  := GetValue('ПУ, коммент');
+      mtMoney.PrBisnesUE       := double(GetSumm('ПБ, у.е.'));
+      mtMoney.PrBisnesRB       := double(GetSumm('ПБ, руб.'));
+      mtMoney.PrBisnesComment  := GetValue('ПБ, коммент');
+      mtMoney.LadderFromLastRB := double(GetSumm('С прошл., руб.'));
+      mtMoney.LadderFromLastUE := double(GetSumm('С прошл., у.е.'));
+      mtMoney.CreditedCleanUE  := double(GetSumm('Начислено, у.е.'));
+      if (mtMoney.CreditedCleanUE = 0)
+        mtMoney.CreditedCleanUE := mtMoney.SalaryUE / mtMoney.DaysPlan * mtMoney.DaysFact +
+                                   mtMoney.DepBonusUE +
+                                   if(mtMoney.GovBonusUE <> 0, mtMoney.GovBonusUE, if(mtPeriod.SecPartExch = 0, 0, Round(mtMoney.GovBonusRB*0.91 / mtPeriod.SecPartExch))) +
+                                   if(mtMoney.PrBisnesUE <> 0, mtMoney.PrBisnesUE, if(mtPeriod.SecPartExch = 0, 0, Round(mtMoney.PrBisnesRB*0.91 / mtPeriod.SecPartExch)));
+      mtMoney.DeliveryCleanUE  := double(GetSumm('К выдаче, у.е.'));
+      if (mtMoney.DeliveryCleanUE = 0)
+        mtMoney.DeliveryCleanUE := mtMoney.CreditedCleanUE + if(mtMoney.LadderFromLastUE <> 0, mtMoney.LadderFromLastUE,
+                                     Round(mtMoney.LadderFromLastRB / mtPeriod.PrepayExch));
+      mtMoney.PrepaymentRB     := double(GetSumm('Ав, руб.'));
+      mtMoney.PrepaymentUE     := double(GetSumm('Ав, у.е.'));
+      mtMoney.PaymBetwinUE     := double(GetSumm('МВ, у.е.'));
+      mtMoney.PaymBetwinRB     := double(GetSumm('МВ, руб.'));
+      mtMoney.PaymBetwinExch   := double(GetSumm('МВ, курс'));
+      mtMoney.SecPartUE        := double(GetSumm('ЗП, у.е.'));
+      mtMoney.SecPartRB        := double(GetSumm('ЗП, руб.'));
+      mtMoney.TransferedRB     := double(GetSumm('Переч. ЗП, руб.'));
+      mtMoney.LadderToNextRB   := double(GetSumm('На след., руб.'));
+      mtMoney.Transfered2RB    := double(GetSumm('ЗП 2 ч., р.'));
+      if (mtMoney.SecPartRB = 0)
+        mtMoney.SecPartRB := mtMoney.TransferedRB + mtMoney.Transfered2RB + mtMoney.LadderToNextRB;
+      mtMoney.FixedSalaryRB    := double(GetSumm('Заморож. оклад, руб.'));
+      mtMoney.CompensUE        := double(GetSumm('Комп., у.е.'));
+      mtMoney.CompensRB        := double(GetSumm('Комп., руб.'));
+      mtMoney.TotOtlozhUE      := double(GetSumm('Итого отлож., у.е.'));
+      mtMoney.VyplOtlozhUE     := double(GetSumm('Отлож., у.е.'));
+      mtMoney.VyplOtlozhRB     := double(GetSumm('Отлож., руб.'));
+
+      if bFnd
+        update current mtMoney;
+      else
+        insert current mtMoney;
+    }
+  }
+
+  RereadRecord(#mtMoney);
+
+  message('Успешно: ' + string(res2) + ''#13 +
+          'Не найдено: ' + string(res1));
+}
+
+Window wnSend 'Параметры отправки писем';
+  Show at(,, 60, 10);
+
+Screen scSend;
+Fields
+  sPath ('',, sci13Esc): NoProtect;
+  wSend ('',, sci13Esc): NoProtect;
+  wDebug ('',, sci13Esc): NoProtect;
+Buttons
+  cmValue6, default,, 'Отправить по почте',, sci1Esc;
+  cmCancel,,, '',, sci1Esc;
+<<
+
+    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+    (.) сформировать именной html-файл`  [.] с отладкой`
+    (.) сформировать именной архив`
+    (.) отправить на мой адрес`
+    (.) отправить получателям`
+
+    <.   Отправить   .>    <.   Отмена    .>
+>>
+End;
+End;
+
+WindowEvent wnSend;
+
+cmInit:
+{
+  if (pMarker.Count > 0)
+    SetWindowTitle(wnSend, 'Параметры отправки писем помеченным');
+  else
+    SetWindowTitle(wnSend, 'Параметры отправки писем сотруднику ' + KatSotr.FIO);
+
+  bSend := false;
+  if (not ReadMyDsk(sPath, 'Depart_sPath', false))
+    sPath := 'D:\';
+
+  if (not ReadMyDsk(wSend, 'Depart_wSend', false))
+    wSend := 0;
+}
+
+cmValue6:
+{
+  bSend := true;
+  SaveMyDsk(sPath, 'Depart_sPath');
+  SaveMyDsk(wSend, 'Depart_wSend');
+  CloseWindow(wnSend);
+}
+
+End;
+
+
+File f;
+
+//function PrintTotals: boolean;
+//{
+//  result := true;
+//
+//  if (CurPeriod = 201402) or (CurPeriod = 201407) or ((CurPeriod > 201502) and (CurPeriod < 201506))
+//    result := false;
+//}
+
+Procedure SendThis;
+{
+  deb.u('SendThis');
+  if (sPath[length(sPath)] <> '\')
+    sPath += '\';
+
+  var sName: string; // имя файла, включающее отчетный период и ФИО сотрудника
+  sName := string(mtMoney.Year) + '.' + if(mtMoney.Month < 10, '0', '') + string(mtMoney.Month) + '_' +
+           SubStr(SotrEMail, 1, pos('@', SotrEMail)-1);
+
+  f.OpenFile(sPath + sName + '.html', stCreate);
+
+  f.WriteLn('<!DOCTYPE HTML>');
+  f.WriteLn('<HTML>');
+  f.WriteLn('<HEAD>');
+  f.WriteLn(Oem2Ansi('<TITLE>ОРУП Атл. Информация о расчете и выплате зарплаты</TITLE>'));
+  f.WriteLn('<META http-equiv="Content-Type" content="text/html; charset=windows-1251">');
+  f.WriteLn('</HEAD>');
+  f.WriteLn('<BODY>');
+  //f.WriteLn(Oem2Ansi('Корпорация Галактика, отдел разработки "Управление персоналом на платформе Атлантис".<br>'));
+  f.WriteLn(Oem2Ansi('Информация о расчете и выплате зарплаты сотрудника<br>'));
+  f.WriteLn(Oem2Ansi('<strong>' + KatSotr.FIO + '</strong>' + // таб. № ' + mtMoney.TabNmb +
+                     ' за период <strong>' + DateToStr(date(1, mtMoney.Month, mtMoney.Year), 'month YYYY</strong> г.') + '<p>'));
+
+  f.WriteLn('<table width="300" frame="border" border=0 style="font-size: 10pt;">');
+  f.WriteLn('<tr align="right">');
+  f.WriteLn(Oem2Ansi('    <td width="280">По графику рабочих дней в месяце:</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="20">' + string(mtMoney.DaysPlan) + '</td>'));
+  f.WriteLn('</tr>');
+  f.WriteLn('<tr align="right">');
+  f.WriteLn(Oem2Ansi('    <td width="280">' + if(mtMoney.DaysPlan = mtMoney.DaysFact, '', '<strong>') +
+                                              'Фактически отработано дней:' +
+                                              if(mtMoney.DaysPlan = mtMoney.DaysFact, '', '</strong>') + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="20">' + if(mtMoney.DaysPlan = mtMoney.DaysFact, '', '<strong>') +
+                                             string(mtMoney.DaysFact) +
+                                             if(mtMoney.DaysPlan = mtMoney.DaysFact, '', '</strong>') +'</td>'));
+  f.WriteLn('</tr>');
+  f.WriteLn('</table><p>');
+
+  f.WriteLn('<table width="650" frame="border" border=0 style="font-family: arial; font-size: 10pt;" cellspacing="5" cellpadding="5%">');
+  f.WriteLn('<tr align="center">');
+  f.WriteLn(Oem2Ansi('    <td width="210" align="right"></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="90"  align="right"><strong>у.е.</strong></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="50"  align="right"><strong>курс</strong></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="100" align="right"><strong>руб.</strong></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+  f.WriteLn('</tr>');
+
+  var row: byte;
+  row := 1;
+  while (row <= MaxRows)
+  {
+    deb.w('while (row <= MaxRows) row = ' + string(row) + ', MaxRows = ' + string(MaxRows));
+    if NeedPrint(row)
+    {
+      f.WriteLn('<tr align="center">');
+      f.WriteLn(Oem2Ansi('<td width="190" align="right">' + PrintCell(row, 1) + '</td>'));
+      f.WriteLn(Oem2Ansi('<td width="90"  align="right">' + PrintCell(row, 2) + '</td>'));
+      f.WriteLn(Oem2Ansi('<td width="50"  align="right">' + PrintCell(row, 3) + '</td>'));
+      f.WriteLn(Oem2Ansi('<td width="100" align="right">' + PrintCell(row, 4) + '</td>'));
+      f.WriteLn(Oem2Ansi('<td width="200" align="left">'  + PrintCell(row, 5) + '</td>'));
+      f.WriteLn('</tr>');
+    }
+    row++;
+  }
+
+
+/*
+
+  // Оклад
+  // -------------------------------------------------------
+  f.WriteLn('<tr align="center">');
+  f.WriteLn(Oem2Ansi('    <td width="190" align="right">Оклад</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + DoubleToStr(mtMoney.SalaryUE, '[|-]366 666') + '</td>'));
+  if ((mtMoney.Year * 100 + mtMoney.Month) = 201503)
+  {
+    if (GetFirst mtM112014 <> tsOk)
+    {
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right"></td>'));
+    }
+    else
+    {
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right">10 830</td>'));
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtM112014.SalaryUE*10830, '[|-]36 666 666 666') + '</td>'));
+    }
+  }
+  else
+    if ((mtMoney.Year * 100 + mtMoney.Month) >= 201506)
+    {
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + DoubleToStr(mtPeriod.OkladExch, '[|-]36 666 666') + '</td>'));
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.SalaryUE*mtPeriod.OkladExch, '[|-]36 666 666 666') + '</td>'));
+    }
+    else
+    {
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right"></td>'));
+    }
+  f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+  f.WriteLn('</tr>');
+
+  // Премия отдела
+  // -------------------------------------------------------
+  if (mtMoney.DepBonusUE <> 0) or (mtMoney.DepBonusRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Премия отдела</td>'));
+    //if (mtPeriod.Year <> 2014) or (mtPeriod.Month <> 2)
+    if ((mtPeriod.Year <> 2014) or ((mtPeriod.Month <> 2) and (mtPeriod.Month <> 7)))
+      f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if(mtMoney.DepBonusUE = 0, '', DoubleToStr(mtMoney.DepBonusUE, '[|-]366 666')) + '</td>'));
+    else
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    //f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + DoubleToStr(mtMoney.DepBonusRB/mtMoney.DepBonusUE, '[|-]36 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.DepBonusRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left">' + mtMoney.DepBonusComment + '</td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Премия Управления
+  // -------------------------------------------------------
+  if (mtMoney.GovBonusUE <> 0) or (mtMoney.GovBonusRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Премия Управления</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + PrnGovBonusUE + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + PrnGovBonusCurs + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + PrnGovBonusRB + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left">'  + mtMoney.GovBonusComment + '</td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Проектный бизнес
+  // -------------------------------------------------------
+  if (mtMoney.PrBisnesUE <> 0) or (mtMoney.PrBisnesRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Проектный бизнес</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if(mtMoney.PrBisnesUE = 0, '', DoubleToStr(mtMoney.PrBisnesUE, '[|-]366 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + DoubleToStr(mtPeriod.SecPartExch, '[|-]36 666 666') + '</td>'));
+    //f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.PrBisnesRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left">' + mtMoney.PrBisnesComment + '</td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Компенсация разницы курсов
+  // -------------------------------------------------------
+  if (mtMoney.CompensUE <> 0) or (mtMoney.CompensRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Компенсация разницы курсов</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if(mtMoney.CompensUE = 0, '', DoubleToStr(mtMoney.CompensUE, '[|-]366 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.CompensRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Выплата отложенной части
+  // -------------------------------------------------------
+  if (mtMoney.VyplOtlozhUE <> 0) or (mtMoney.VyplOtlozhRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Выплата отложенной части</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if(mtMoney.VyplOtlozhUE = 0, '', DoubleToStr(mtMoney.VyplOtlozhUE, '[|-]366 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    //f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + DoubleToStr((mtMoney.VyplOtlozhRB*0.91)/mtMoney.VyplOtlozhUE, '[|-]36 666 666') + '</td>'));
+    if (mtMoney.VyplOtlozhRB = 0)
+      f.WriteLn(Oem2Ansi('    <td width="100" align="left"></td>'));
+    else
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.VyplOtlozhRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Зачет с прошлого месяца
+  // -------------------------------------------------------
+  if (mtMoney.LadderFromLastUE <> 0) or (mtMoney.LadderFromLastRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Зачет с прошлого месяца</td>'));
+    if (mtMoney.LadderFromLastUE <> 0)
+    {
+      f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + DoubleToStr(mtMoney.LadderFromLastUE, '[|-]366 666') + '</td>'));
+
+      if (mtMoney.LadderFromLastRB <> 0)
+        f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + DoubleToStr(mtMoney.LadderFromLastRB/mtMoney.LadderFromLastUE, '[|-]36 666 666') + '</td>'));
+      else
+        f.WriteLn(Oem2Ansi('    <td width="50" align="right"></td>'));
+    }
+    else
+    {
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    }
+
+    if (mtMoney.LadderFromLastRB <> 0)
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.LadderFromLastRB, '[|-]36 666 666 666') + '</td>'));
+    else
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right"></td>'));
+
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+
+  if PrintTotals
+  {
+    // Начислено
+    // -------------------------------------------------------
+    if (mtMoney.CreditedCleanUE <> 0)
+    {
+      f.WriteLn('<tr align="center">');
+      f.WriteLn(Oem2Ansi('    <td width="190" align="right">Начислено</td>'));
+      f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + DoubleToStr(mtMoney.CreditedCleanUE, '[|-]366 666') + '</td>'));
+      f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+      f.WriteLn(Oem2Ansi('    <td width="100" align="right"></td>'));
+      f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+      f.WriteLn('</tr>');
+    }
+    // К выдаче
+    // -------------------------------------------------------
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">К выдаче</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + DoubleToStr(mtMoney.DeliveryCleanUE, '[|-]366 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+  var fPrepaymentUE, fSecPartUE, fTransferedUE, fTransfered2UE: double;
+  fPrepaymentUE := if(mtMoney.PrepaymentUE = 0, Round(mtMoney.PrepaymentRB / mtPeriod.PrepayExch), mtMoney.PrepaymentUE);
+
+  fTransferedUE := 0;
+  if (mtPeriod.SecPartExch <> 0)
+    fTransferedUE := Round(mtMoney.TransferedRB / mtPeriod.SecPartExch);
+
+  fTransfered2UE := 0;
+  if (mtPeriod.ThirdPartExch <> 0)
+    fTransfered2UE := Round(mtMoney.Transfered2RB / mtPeriod.ThirdPartExch);
+
+  // Межрасчетные выплаты
+  // -------------------------------------------------------
+  if (mtMoney.PaymBetwinRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">' + PrnPaymBetwinLabel + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + PrnPaymBetwinUE + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + PrnPaymBetwinCurs + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + PrnPaymBetwinRB + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Аванс
+  // -------------------------------------------------------
+  if (mtMoney.PrepaymentRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Аванс</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if(fPrepaymentUE = 0, '', DoubleToStr(fPrepaymentUE, '[|-]366 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + if(mtPeriod.PrepayExch = 0, '', DoubleToStr(mtPeriod.PrepayExch, '[|-]36 666 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.PrepaymentRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left">перечисление ' + DateToStr(mtPeriod.Prepayment, 'DD.MM.YYYY') + '</td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // К доплате
+  // -------------------------------------------------------
+  fSecPartUE := if(mtMoney.SecPartUE <> 0, mtMoney.SecPartUE,
+                   mtMoney.DeliveryCleanUE - fPrepaymentUE - CalcPaymBetwinUE);
+  if ((mtPeriod.Year <> 2014) or ((mtPeriod.Month <> 2) and (mtPeriod.Month <> 7))) and (fSecPartUE <> mtMoney.DeliveryCleanUE)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">К доплате</td>'));
+
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + DoubleToStr(fSecPartUE, '[|-]366 666') + '</td>'));
+    //f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + DoubleToStr(mtPeriod.SecPartExch, '[|-]36 666 666') + '</td>'));
+    //f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.SecPartRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Перечислено
+  // -------------------------------------------------------
+  f.WriteLn('<tr align="center">');
+  f.WriteLn(Oem2Ansi('    <td width="190" align="right">Перечислено</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if((fTransferedUE = 0) or (not PrintTotals), '', DoubleToStr(fTransferedUE, '[|-]366 666')) + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + if((mtPeriod.SecPartExch = 0) or (not PrintTotals), '', DoubleToStr(mtPeriod.SecPartExch, '[|-]366 666')) + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.TransferedRB, '[|-]36 666 666 666') + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="200" align="left">перечисление ' + DateToStr(mtPeriod.SecPart, 'DD.MM.YYYY') + '</td>'));
+  f.WriteLn('</tr>');
+
+  // 2 часть
+  // -------------------------------------------------------
+  if (mtMoney.Transfered2RB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">2 часть</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right">' + if(fTransfered2UE = 0, '', DoubleToStr(fTransfered2UE, '[|-]366 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right">' + if(mtPeriod.ThirdPartExch = 0, '', DoubleToStr(mtPeriod.ThirdPartExch, '[|-]366 666')) + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.Transfered2RB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left">перечисление ' + DateToStr(mtPeriod.ThirdPart, 'DD.MM.YYYY') + '</td>'));
+    f.WriteLn('</tr>');
+  }
+
+  // Зачет на следующий месяц
+  // -------------------------------------------------------
+  if (mtMoney.LadderToNextRB <> 0)
+  {
+    f.WriteLn('<tr align="center">');
+    f.WriteLn(Oem2Ansi('    <td width="190" align="right">Зачет на следующий месяц</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="90"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="50"  align="right"></td>'));
+    f.WriteLn(Oem2Ansi('    <td width="100" align="right">' + DoubleToStr(mtMoney.LadderToNextRB, '[|-]36 666 666 666') + '</td>'));
+    f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+    f.WriteLn('</tr>');
+  }
+*/
+
+
+  f.WriteLn('</table>');
+  f.WriteLn(' </BODY>');
+  f.WriteLn(' </HTML>');
+  f.Close;
+
+  if (wSend = 0)
+  {
+    deb.o;
+    exit;
+  }
+
+  // ===================== АРХИВАЦИЯ ==========================
+  var retCode, aErrorCode: integer;
+  retCode := ExecProgram('c:\Program files\7-Zip\7z.exe', 'a ' + sPath + sName + '.7z -p' + mtStaff.Password +
+                         ' -mhe ' + sPath + sName + '.html', 'архивация', pfSilent, aErrorCode);
+
+  if (retCode <> 0) or (aErrorCode <> 0)
+  {
+    message('Архивация для отправки сотруднику ' + KatSotr.FIO + ' за период ' + string(wMonth) + '.' + string(wYear) + ':'#13 +
+            'retCode = ' + string(retCode) + ', aErrorCode = ' + string(aErrorCode));
+    deb.o;
+    exit;
+  }
+
+  if (wSend = 1)
+  {
+    deb.o;
+    exit;
+  }
+
+  // ===================== ОТПРАВКА ==========================
+  f.OpenFile('letter.html', stCreate);
+  f.WriteLn('<!DOCTYPE HTML>');
+  f.WriteLn('<HTML>');
+  f.WriteLn('<HEAD>');
+  f.WriteLn('<TITLE>Информация о расчете и выплате зарплаты</TITLE>');
+  f.WriteLn('<META http-equiv="Content-Type" content="text/html; charset=windows-1251">');
+  f.WriteLn('</HEAD>');
+  f.WriteLn('<BODY>');
+  f.WriteLn('Во вложенном файле - информация о расчете и выплате зарплаты за <strong>' + DateToStr(date(1, mtMoney.Month, mtMoney.Year), 'month YYYY') + '</strong> г.<br>');
+  f.WriteLn('Для открытия архива необходимо ввести персональный пароль, отправленный ранее отдельным письмом.<p>');
+  f.WriteLn('Напоминаем, что на основании трудового договора, заработная плата не подлежит разглашению и открытому обсуждению.<br>');
+  f.WriteLn('Любые вопросы по суммам в расчетном листке следует выяснять через начальника отдела.<br><br>');
+  f.WriteLn('Окуневич Руслан Васильевич<br>');
+  f.WriteLn('Начальник ОРУП АТЛ департамента "Управление персоналом"<br>');
+  f.WriteLn('Корпорация Галактика<br>');
+  f.WriteLn('+375(17)294-9999');
+  f.WriteLn(' </BODY>');
+  f.WriteLn(' </HTML>');
+
+  if (wDebug = 0)
+  {
+    var bError: boolean;
+    bError := true;
+
+    var sTo, sCc: string;
+    if (wSend = 2)
+    {
+      sTo := 'Ruslan.Okunevich@galaktika.by';
+      sCc := '';
+    }
+    else
+    {
+      sTo := SotrEMail;
+      sCc := 'Ruslan.Okunevich@galaktika.by';
+    }
+
+    if SetCurMailEncodingTable(AMAIL_1251)         // устанавливаем кодировку
+      if CreateMail(sTo, sCc, 'Информация о расчете и выплате зарплаты за ' +  // создаем письмо
+                                   DateToStr(date(1, mtMoney.Month, mtMoney.Year), 'month YYYY г.'))
+        if SetBody(f.Handle, 3)                    // тело письма
+          if AddAttachFrom(sPath + sName + '.7z')  // прикрепляемый файл
+            if SendMail                            // отправка письма
+              bError := false;
+    if bError
+      message(GetMailErrorString);
+    else
+      wSendet++;
+  }
+
+  f.Close;
+  deb.o;
+}
+
+Procedure DoSend;
+{
+  RunWindowModal(wnSend);
+  if (not bSend)
+    exit;
+
+  wSendet := 0;
+  /*wMonth := Month(Cur_Date);
+  if (wMonth = 1)
+    wMonth := 12;
+  else
+    wMonth--;
+
+  wYear := Year(Cur_Date);
+  if (Month(Cur_Date) = 1)
+    wYear := wYear - 1;
+  */
+  if (pMarker.Count = 0)
+  {
+    if (mtStruct.Mode = 2)
+      if (GetFirst mtMoney where (( mtStruct.Rec == mtMoney.Sotr and
+                                    wYear        == mtMoney.Year and
+                                    wMonth       == mtMoney.Month )) = tsOk)
+      {
+        SendThis;
+      }
+
+    if (wSendet > 0)
+      message('Отправлено писем: ' + string(wSendet));
+    exit;
+  }
+
+  PushPos(#mtStruct);
+  SubBounds(tbRMmtStruct1);
+  AddBounds(tbRMmtStruct2);
+
+  StartNewVisual(vtIndicatorVisual, vfBreak + vfConfirm + vfTimer, 'Формирование расчетных листков', pMarker.Count);
+
+  _loop pMarker
+  {
+    if (not NextVisual)
+      break;
+
+    if (GetFirst mtStruct where (( pMarker.pNRec == mtStruct.NRec )) = tsOk )
+      if (mtStruct.Mode = 2)
+        if (GetFirst mtMoney where (( mtStruct.Rec == mtMoney.Sotr and
+                                      wYear        == mtMoney.Year and
+                                      wMonth       == mtMoney.Month )) = tsOk)
+        {
+          SendThis;
+        }
+  }
+
+  StopVisual;
+
+  SubBounds(tbRMmtStruct2);
+  AddBounds(tbRMmtStruct1);
+  PopPos(#mtStruct);
+
+  if (wSendet > 0)
+    message('Отправлено писем: ' + string(wSendet));
+}
+
+
+
+
+Window wnAssociate 'Сопоставление полей';
+  Show at (,, 25, 30);
+
+Browse brAssoc ('',, sci1Esc);
+  Table mtAssoc;
+Fields
+  mtAssoc.Npp ''#3'№':       [2],  Protect;
+  GetDescr()  ''#3'Коммент': [10], Protect;
+  mtAssoc.Fld ''#3'Поле':    [10], [List '?',
+                                         'таб. №',
+                                         '№',
+                                         'ФИО',
+                                         'Оклад',
+                                         'План, дн.',
+                                         'Факт, дн',
+                                         'ПО, у.е.',
+                                         'ПО, руб.',
+                                         'ПО, коммент',
+                                         'ПУ, у.е.',
+                                         'ПУ, руб.',
+                                         'ПУ, коммент',
+                                         'ПБ, у.е.',
+                                         'ПБ, руб.',
+                                         'ПБ, коммент',
+                                         'С прошл., руб.',
+                                         'С прошл., у.е.',
+                                         'Начислено, у.е.',
+                                         'К выдаче, у.е.',
+                                         'Ав, руб.',
+                                         'Ав, у.е.',
+                                         'МВ, руб.',
+                                         'МВ, курс',
+                                         'МВ, у.е.',
+                                         'ЗП, у.е.',
+                                         'ЗП, руб.',
+                                         'Переч. ЗП, руб.',
+                                         'На след., руб.',
+                                         'ЗП 2 ч., р.',
+                                         'Заморож. оклад, руб.',
+                                         'Комп., у.е.',
+                                         'Комп., руб.',
+                                         'Итого отлож., у.е.',
+                                         'Отлож., у.е.',
+                                         'Отлож., руб.'], Protect;
+End;
+
+End;
+
+WindowEvent wnAssociate;
+
+cmDone:
+{
+  UpdateTable;
+  _loop mtAssoc
+    SetImportColumnTitle;
+}
+
+End;
+
+
+TableEvent
+  Table mtAssoc;
+
+cmUpdateRecord: update current mtAssoc;
+
+End;
+
+
+Window wnImport 'Импорт расчета';
+
+Screen scImport;
+  Show at (,,, 10);
+  Table mtPeriod;
+Fields
+  FileName ('',, sci13Esc): NoProtect;
+//  Param1 ('',, sci1Esc): NoProtect;
+  wMonth ('',, sci1Esc): NoProtect;
+  wYear ('',, sci1Esc): NoProtect;
+  wDaysPlan ('',, sci1Esc): NoProtect;
+  dPrepayment: NoProtect;
+  fPrepayExch: [10.4,'\4p[|-]366`666.8888'], NoProtect;
+  fOkladExch: [10.4,'\4p[|-]366`666.8888'], NoProtect;
+  dSecPart: NoProtect;
+  fSecPartExch: [10.4,'\4p[|-]366`666.8888'], NoProtect;
+  fOtlozhExch: [10.4,'\4p[|-]366`666.8888'], NoProtect;
+  dThirdPart: NoProtect;
+  fThirdPartExch: [10.4,'\4p[|-]366`666.8888'], NoProtect;
+  fTaxDeduct: [10.2,'\2p[|-]366`666.88'], NoProtect;
+Buttons
+  cmValue3, default,, 'Прочитать данные из файла',, sci1Esc;
+  cmValue20,,, 'Прочитать данные из файла',, sci1Esc;
+  cmValue5,,, 'Сохранить данные в базе',, sci1Esc;
+<<
+  `Файл с расчетом зарплаты:`
+   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+              <.    Загрузить     .>              <. Загрузить по-новому .>
+
+                                                  `Месяц:`.@@@@@ `Год:`.@@@@@@   `Дней:`.@@@@@@@@@@@@
+                                                        Дата           Курс                   Курс
+              <.    Сохранить     .>       `Аванс:`.@@@@@@@@@@@@ .@@@@@@@@@@@@ `Оклад:` .@@@@@@@@@@@@
+                                        `Зарплата:`.@@@@@@@@@@@@ .@@@@@@@@@@@@ `Отлож.:`.@@@@@@@@@@@@
+                                         `2 часть:`.@@@@@@@@@@@@ .@@@@@@@@@@@@ `Вычет:` .@@@@@@@@@@@@
+>>
+End;
+
+Browse brImport;
+  Show at (, 11,,);
+  Table mtImport;
+Fields
+  mtImport.Fld[01] ''#3'01': [10], Protect;
+  mtImport.Fld[02] ''#3'02': [10], Protect;
+  mtImport.Fld[03] ''#3'03': [10], Protect;
+  mtImport.Fld[04] ''#3'04': [10], Protect;
+  mtImport.Fld[05] ''#3'05': [10], Protect;
+  mtImport.Fld[06] ''#3'06': [10], Protect;
+  mtImport.Fld[07] ''#3'07': [10], Protect;
+  mtImport.Fld[08] ''#3'08': [10], Protect;
+  mtImport.Fld[09] ''#3'09': [10], Protect;
+  mtImport.Fld[10] ''#3'10': [10], Protect;
+  mtImport.Fld[11] ''#3'11': [10], Protect;
+  mtImport.Fld[12] ''#3'12': [10], Protect;
+  mtImport.Fld[13] ''#3'13': [10], Protect;
+  mtImport.Fld[14] ''#3'14': [10], Protect;
+  mtImport.Fld[15] ''#3'15': [10], Protect;
+  mtImport.Fld[16] ''#3'16': [10], Protect;
+  mtImport.Fld[17] ''#3'17': [10], Protect;
+  mtImport.Fld[18] ''#3'18': [10], Protect;
+  mtImport.Fld[19] ''#3'19': [10], Protect;
+  mtImport.Fld[20] ''#3'20': [10], Protect;
+  mtImport.Fld[21] ''#3'21': [10], Protect;
+  mtImport.Fld[22] ''#3'22': [10], Protect;
+  mtImport.Fld[23] ''#3'23': [10], Protect;
+  mtImport.Fld[24] ''#3'24': [10], Protect;
+  mtImport.Fld[25] ''#3'25': [10], Protect;
+  mtImport.Fld[26] ''#3'26': [10], Protect;
+  mtImport.Fld[27] ''#3'27': [10], Protect;
+  mtImport.Fld[28] ''#3'28': [10], Protect;
+  mtImport.Fld[29] ''#3'29': [10], Protect;
+  mtImport.Fld[30] ''#3'30': [10], Protect;
+  mtImport.Fld[31] ''#3'31': [10], Protect;
+  mtImport.Fld[32] ''#3'32': [10], Protect;
+  mtImport.Fld[33] ''#3'33': [10], Protect;
+  mtImport.Fld[34] ''#3'34': [10], Protect;
+  mtImport.Fld[35] ''#3'35': [10], Protect;
+End;
+End;
+
+procedure GetOtherFields;
+{
+  if (GetFirst mtPeriod where (( wYear  == mtPeriod.Year and
+                                 wMonth == mtPeriod.Month )) = tsOk)
+  {
+    dPrepayment    := mtPeriod.Prepayment;
+    fPrepayExch    := mtPeriod.PrepayExch;
+    dSecPart       := mtPeriod.SecPart;
+    fSecPartExch   := mtPeriod.SecPartExch;
+    dThirdPart     := mtPeriod.ThirdPart;
+    fThirdPartExch := mtPeriod.ThirdPartExch;
+    fOkladExch     := mtPeriod.OkladExch;
+    fOtlozhExch    := mtPeriod.OtlozhExch;
+    fTaxDeduct     := mtPeriod.TaxDeduct;
+    RedrawPanel(CurTable);
+  }
+}
+
+WindowEvent wnImport;
+
+cmInit:
+{
+  if not ReadMyDsk(FileName, 'ORUP_FileName', false)
+    set FileName := '';
+
+//  if not ReadMyDsk(Param1, 'ORUP_Param1', false)
+//    set Param1 := 1;
+
+  if not ReadMyDsk(wMonth, 'ORUP_wMonth', false)
+  {
+    set wMonth := Month(Cur_Date);
+    if (wMonth = 1)
+      set wMonth := 12;
+  }
+
+  if not ReadMyDsk(wYear, 'ORUP_wYear', false)
+  {
+    set wYear := Year(Cur_Date);
+    if (Month(Cur_Date) = 1)
+      set wYear := wYear - 1;
+  }
+
+  wDaysPlan := 21;
+  ReadMyDsk(wDaysPlan, 'ORUP_wDaysPlan', false);
+
+  GetOtherFields;
+}
+
+cmCheckField:
+  case CurField of
+    #wYear, #wMonth: GetOtherFields;
+  end;
+
+cmDone:
+{
+  SaveMyDsk(FileName,  'ORUP_FileName');
+//  SaveMyDsk(Param1,    'ORUP_Param1');
+  SaveMyDsk(wMonth,    'ORUP_wMonth');
+  SaveMyDsk(wYear,     'ORUP_wYear');
+  SaveMyDsk(wDaysPlan, 'ORUP_wDaysPlan');
+}
+
+cmValue3:
+  DoImport;
+
+//cmValue20:
+//  DoImportNew;
+
+cmValue4:
+  RunWindowModal(wnAssociate);
+
+cmValue5:
+  DoSave;
+
+cmPick:
+  if (CurField = #FileName)
+    set FileName :=  GetFileName('*.xlsx', 'Выбор файла с распечатками расчетов');
+
+End;
+
+Procedure SetImportColumnTitle;
+{
+  SetColumnTitle(brImport, GetFieldByNum(mtAssoc.Npp), ColumnNameByNum(mtAssoc.Fld));
+}
+
+// Генерация псевдослучайного кода
+// (C) copyright C_Common\vip\CommonRandom.vip
+
+var LastRandomCntr: comp; // счетчик псевдослучайной последовательности
+
+const
+  Symbols: string = 'ABCDEFGHIGHKLMNOPQRSTUWVXYZ0123456789'; // массив букв и цифр
+end;
+
+// функция генерации следующего числа псевдослучайной последовательности
+// результат - случайное число от 0 до Range-1
+function NextRandomNumber(Range: longInt): byte;
+{
+  LastRandomCntr := 1664525 * LastRandomCntr + 1013904223 - ((1664525 * LastRandomCntr + 1013904223) / 2147483647) * 2147483647 + _ToSec100(Cur_Time_NoAQA);
+  result := byte(abs(LastRandomCntr - (LastRandomCntr/Range) * Range));
+}
+
+// функция генерации случайной последовательности букв и цифр длиною CodeLength
+function NextRandomCode(CodeLength: longInt): string;
+{
+  var SymbolNum: longInt;
+
+  result := '';
+
+  for(SymbolNum := 1; SymbolNum <= CodeLength; SymbolNum++)
+    result += Symbols[NextRandomNumber(Length(Symbols)) + 1];
+}
+
+// Вывод всех данных в общую таблицу
+Procedure Print_01;
+{
+  _try
+  {
+    f.OpenFile('D:\Work\Сотрудники\ПиР\Src\Rep\Total.csv', stCreate);
+
+    f.WriteLn(Oem2Ansi('Год')
+      + ';' + Oem2Ansi('Месяц')
+      + ';' + Oem2Ansi('ФИО')
+      + ';' + Oem2Ansi('Должность')
+      + ';' + Oem2Ansi('Оклад')
+      + ';' + Oem2Ansi('Контракт')
+      + ';' + Oem2Ansi('ПрОтдУЕ')
+      + ';' + Oem2Ansi('ПрОтдРуб')
+      + ';' + Oem2Ansi('ПрОтдТекст')
+      + ';' + Oem2Ansi('ПрУпрУЕ')
+      + ';' + Oem2Ansi('ПрУпрРуб')
+      + ';' + Oem2Ansi('ПрУпрТекст')
+      + ';' + Oem2Ansi('ПрБизУЕ')
+      + ';' + Oem2Ansi('ПрБизРуб')
+      + ';' + Oem2Ansi('ПрБизТекст')
+      + ';' + Oem2Ansi('Аванс')
+      + ';' + Oem2Ansi('Межрасчет')
+      + ';' + Oem2Ansi('Зарплата'));
+
+    PushPos(#mtStaff);
+    PushPos(#mtMoney);
+    ResetBounds(#mtMoney);
+
+    //_loop mtStaff
+    //{
+      _loop mtMoney
+      {
+        if (GetFirst mtStaff where (( mtMoney.Sotr == mtStaff.NRec )) <> tsOk)
+          continue;
+
+          f.WriteLn(string(mtMoney.Year)
+            + ';' + string(mtMoney.Month)
+            + ';' + Oem2Ansi(KatSotr.FIO)
+            + ';' + Oem2Ansi(KatPost.Name)
+            + ';' + DoubleToStr(mtMoney.SalaryUE, '66666')
+            + ';' + if(mtStaff.Contract = ZeroDate, '', string(mtStaff.Contract))
+            + ';' + DoubleToStr(mtMoney.DepBonusUE, '66666')
+            + ';' + DoubleToStr(mtMoney.DepBonusRB, '666666666')
+            + ';' + Oem2Ansi(mtMoney.DepBonusComment)
+            + ';' + DoubleToStr(mtMoney.GovBonusUE, '66666')
+            + ';' + DoubleToStr(mtMoney.GovBonusRB, '666666666')
+            + ';' + Oem2Ansi(mtMoney.GovBonusComment)
+            + ';' + DoubleToStr(mtMoney.PrBisnesUE, '66666')
+            + ';' + DoubleToStr(mtMoney.PrBisnesRB, '666666666')
+            + ';' + Oem2Ansi(mtMoney.PrBisnesComment)
+            + ';' + DoubleToStr(mtMoney.PrepaymentRB, '666666666')
+            + ';' + DoubleToStr(mtMoney.PaymBetwinRB, '666666666')
+            + ';' + DoubleToStr(mtMoney.SecPartRB, '666666666'));
+      }
+    //}
+    SetBounds(#mtMoney);
+    PopPos(#mtMoney);
+    PopPos(#mtStaff);
+  }
+  _finally
+  {
+    f.Close;
+    message('D:\Work\Сотрудники\ПиР\Src\Rep\Total.csv', Information);
+  }
+}
+
+// Для построения диаграмм
+Procedure Print_02;
+{
+  var FileName: string;
+  FileName := 'D:\Work\Сотрудники\ПиР\Src\Rep\Diagram_' + KatSotr.Name + '.csv';
+
+  _try
+  {
+    f.OpenFile(FileName, stCreate);
+
+    var s: string;
+
+    PushPos(#mtMoney);
+
+    s := '';
+    _loop backward mtMoney
+      s += ';' + Oem2Ansi(DateToStr(date(1, mtMoney.Month, mtMoney.Year), 'Month YY'));
+    f.WriteLn(s);
+
+    s := Oem2Ansi('Оклад');
+    _loop backward mtMoney
+      s += ';' + Replace(string(mtMoney.SalaryUE), '.', ',');
+    f.WriteLn(s);
+
+    s := Oem2Ansi('Премия отдела');
+    _loop backward mtMoney
+      s += ';' + Replace(string(mtMoney.DepBonusUE), '.', ',');
+    f.WriteLn(s);
+
+    s := Oem2Ansi('Премия Управления');
+    _loop backward mtMoney
+      s += ';' + Replace(string(mtMoney.GovBonusUE), '.', ',');
+    f.WriteLn(s);
+
+    s := Oem2Ansi('Проектный бизнес');
+    _loop backward mtMoney
+      s += ';' + Replace(string(mtMoney.PrBisnesUE), '.', ',');
+    f.WriteLn(s);
+
+    PopPos(#mtMoney);
+  }
+  _finally
+  {
+    f.Close;
+    var aDosCode, aErrorCode: integer;
+    aDosCode := ExecProgram('Start', FileName, 'Построение диаграммы', pfDontWait, aErrorCode);
+    if (aDosCode <> 0)
+      message('Программа не запустилась: DosCode = ' + string(aDosCode) + ', Error = ' + string(aErrorCode), mfError);
+//    else
+//      if (aErrorCode <> 0)
+//        message('Файл не открылся: DosCode = ' + string(aDosCode) + ', Error = ' + string(aErrorCode), mfError);
+  }
+}
+
+procedure KillDublicat;
+{
+  PushPos(#mtStaff);
+  PushPos(#mtMoney);
+  ResetBounds(#mtStaff);
+
+  var lTotal, lUnique, lSame, lDiff, lMark: longint;
+  lTotal := lUnique := lSame := lDiff := 0;
+  lMark := InitMarker('', 8, 100, 10, false);
+
+  var wYear: word;
+  var wMonth: byte;
+  for (wYear := 2013; wYear <= 2016; wYear++)
+    for (wMonth := 1; wMonth <= 12; wMonth++)
+    {
+      _loop mtStaff
+      {
+        var bFirst: boolean;
+        bFirst := true;
+        var aMoney: type$mtMoney;
+
+        _loop mtMoney where (( mtStaff.NRec == mtMoney.Sotr and
+                               wYear        == mtMoney.Year and
+                               wMonth       == mtMoney.Month ))
+        {
+          lTotal++;
+          if (bFirst)
+          {
+            aMoney := mtMoney.buffer;
+            bFirst := false;
+            lUnique++;
+          }
+          else
+          {
+            aMoney.NRec := mtMoney.NRec;
+
+            if (aMoney = mtMoney.buffer)
+            {
+              lSame++;
+              InsertMarker(lMark, mtMoney.NRec);
+            }
+            else
+            {
+              lDiff++;
+              //message('Different: ' + string(wMonth) + '.' + string(wYear) + ' ' + KatSotr.FIO);
+            }
+          }
+        }
+      }
+    }
+  SetBounds(#mtStaff);
+  PopPos(#mtMoney);
+  PopPos(#mtStaff);
+  if (message('Всего записей: ' + string(lTotal) + ''#13 +
+              'Из них уникальных: ' + string(lUnique) + ''#13 +
+              'Одинаковые дубликаты: = ' + string(lSame) + ''#13 +
+              'Отличающиеся дубликаты: = ' + string(lDiff) + ''#13#13 +
+              'Удалить одинаковые дубликаты?', Confirmation + YesNo) = cmYes)
+  {
+    var i: longint;
+    var cRec: comp;
+
+    for (i := 0; i < GetMarkerCount(lMark); i++)
+      if (GetMarker(lMark, i, cRec))
+        delete mtMoney where (( cRec == mtMoney.NRec ));
+  }
+  DoneMarker(lMark, '');
+}
+
+Form frm('CheckRate.out','CheckRate');
+
+procedure RepCheckRate;
+{
+  if (not isValid(#mtMoney))
+  {
+    message('Надо спозиционироваться на запись за отчетный месяц', Information);
+    exit;
+  }
+
+  var wYear: word;
+  var wMonth: byte;
+  wYear := mtMoney.Year;
+  wMonth := mtMoney.Month;
+
+  PushPos(#mtStaff);
+  PushPos(#mtMoney);
+  ResetBounds(#mtStaff);
+
+  var lQnt, lOk: longint = 0;
+
+  _loop mtStaff
+  {
+    lQnt++;
+    if (GetFirst mtMoney where (( mtStaff.NRec == mtMoney.Sotr and
+                                  wYear        == mtMoney.Year and
+                                  wMonth       == mtMoney.Month )) = tsOk)
+    {
+      var fIncome, fPayments, fRest1, fRest2: double = 0;
+      fIncome := UE(R07) + UE(R21);
+      fPayments := UE(R10) + UE(R11);
+      fRest1 := Round((fIncome - fPayments) * Rate(R01), 2) + RB(R08); // К выплате
+      fRest1 := fRest1 - RB(R13) - RB(R14); // Минус перечислено и минус 2 часть, т.е. расчетный остаток на след. месяц
+      fRest1 := fRest1 - RB(R15); // Несовпадение расчетного и из распечатки остатка на следующий месяц
+      fRest2 := RB(R15) - RB(R17); // Зачет на следующий месяц (из распечатки) - Долг за расчетный месяц (расчетное значение)
+
+      //fRest1 := RB(R09) - RB(R16); // К выдаче - Выдано
+      //if (Abs(fRest1) > 0.01)
+      //  fRest2 := RB(R15) - RB(R17); // Зачет на следующий месяц (из распечатки) - Долг за расчетный месяц (расчетное значение)
+
+      if (Abs(fRest1) <= 0.01) or (Abs(fRest2) <= 0.01)
+        lOk++;
+      else
+      {
+        frm.Write(StructName);
+        frm.Write('D1 ' + string(fRest1) + ', D2 ' + string(fRest2));
+        //frm.Write(if (Abs(fRest2) > 0.01, 'Долг ' + string(fRest2), 'Выплата ' + string(fRest1)));
+      }
+    }
+  }
+
+  //frm.Write('Итого корректных ' + string(lOk) + ', некорректных ' + string(lQnt - lOk));
+
+  SetBounds(#mtStaff);
+  PopPos(#mtMoney);
+  PopPos(#mtStaff);
+  frm.ShowFile;
+}
+
+function GetPrevIncomingRB: double;
+{
+  result := 0;
+
+  if (GetFirst mtMoneyPrev = tsOk)
+    result := mtMoneyPrev.LadderToNextRB;
+}
+
+function GetPrevSalary: double;
+{
+  result := 0;
+
+  if (GetFirst mtMoneyPrev = tsOk)
+    result := mtMoneyPrev.SalaryUE / mtMoneyPrev.DaysPlan * mtMoneyPrev.DaysFact;
+}
+
+DataStream dsProjectsPay
+(
+  table mtProj
+  (
+    [Staff]   mtProj.Staff;
+    [Year]    mtProj.Year;
+    [Month]   mtProj.Month;
+    [Usd]     mtProj.USD;
+    [Rub]     mtProj.RBR;
+    [Comment] mtProj.Comment;
+  );
+)
+end;
+
+DataStream dsReportBySotr
+(
+  [FIO] KatSotr.FIO;
+
+  table mtMoney
+  (
+    [Year]             mtMoney.Year;                   // Год
+    [Month]            mtMoney.Month;                  // Месяц
+    [DaysPlan]         mtMoney.DaysPlan;               // Дней по плану
+    [DaysFact]         mtMoney.DaysFact;               // Дней фактически
+    [Salary]           UE(R01);                        // Оклад
+    [Salary_Check]     GetPrevSalary;                  // Оклад за прошлый месяц
+    [DepBonus]         UE(R02);                        // Премия отдела
+    [GovBonus]         UE(R03);                        // Премия Управления
+    [PrBisnes]         UE(R04);                        // Проектный бизнес
+    [OthBonus]         UE(R05) + UE(R06);              // Другие премии
+                                                       // Начислено
+    [Accrued]          UE(R07);
+    [TaxDeductKol]     if(mtMoney.TaxDeductKol = 0, mtStaff.TaxDeduct, mtMoney.TaxDeductKol);  // Льгота по подоходному налогу, количество
+    [TaxDeductRB]      RB(R21);                        // Льгота по подоходному налогу, BYN
+    [TaxDeductUE]      UE(R21);                        // Льгота по подоходному налогу, USD
+    [IncomingRB]       RB(R08);                        // Вх. остаток, BYN
+    [IncomingRB_Check] GetPrevIncomingRB;              // Вх. остаток - контроль с распечаткой, BYN
+    [IncomingUE]       UE(R08);                        // Вх. остаток, USD
+    [ToIssue]          UE(R09);                        // К выдаче
+    [PrepaymentRB]     RB(R10);                        // Аванс, BYN
+    [PrepaymentEx]     if(RB(R10) = 0, 0, Rate(R10));  // Аванс, курс
+    [PrepaymentUE]     UE(R10);                        // Аванс, USD
+    [PaymBetwinRB]     RB(R11);                        // Отпуск, BYN
+    [PaymBetwinEx]     if(RB(R11) = 0, 0, Rate(R11));  // Отпуск, курс
+    [PaymBetwinUE]     UE(R11);                        // Отпуск, USD
+    [SecPartRB]        RB(R13);                        // Выплата, BYN
+    [SecPartEx]        if(RB(R13) = 0, 0, Rate(R13));  // Выплата, курс
+    [SecPartUE]        UE(R13);                        // Выплата, USD
+    [ThrdPartRB]       RB(R14);                        // Выплата 2-й части, BYN
+    [ThrdPartEx]       if(RB(R14) = 0, 0, Rate(R14));  // Выплата 2-й части, курс
+    [ThrdPartUE]       UE(R14);                        // Выплата 2-й части, USD
+    [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
+    [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
+    [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN
+    [OutgoingUE]       UE(R09) - UE(R16);              // Исх. остаток, USD
+    [OutgoingUE_Check] UE(R15);                        // Исх. остаток - контроль с распечаткой, USD
+    [OutgoingUE_Delta] UE(R09) - UE(R16) - UE(R15);
+  );
+)
+end;
+
+DataStream dsReportByMonth
+(
+  table mtStruct
+  (
+    [Year]             mtMoney.Year;                   // Год
+    [Month]            mtMoney.Month;                  // Месяц
+    [FIO]              StructName;                     // Сотрудник
+    [DaysPlan]         mtMoney.DaysPlan;               // Дней по плану
+    [DaysFact]         mtMoney.DaysFact;               // Дней фактически
+    [Salary]           UE(R01);                        // Оклад
+    [Salary_Check]     GetPrevSalary;                  // Оклад за прошлый месяц
+    [DepBonus]         UE(R02);                        // Премия отдела
+    [GovBonus]         UE(R03);                        // Премия Управления
+    [PrBisnes]         UE(R04);                        // Проектный бизнес
+    [OthBonus]         UE(R05) + UE(R06);              // Другие премии
+                                                       // Начислено
+    [Accrued]          UE(R07);
+    [TaxDeductKol]     if(mtMoney.TaxDeductKol = 0, mtStaff.TaxDeduct, mtMoney.TaxDeductKol);  // Льгота по подоходному налогу, количество
+    [TaxDeductRB]      RB(R21);                        // Льгота по подоходному налогу, BYN
+    [TaxDeductUE]      UE(R21);                        // Льгота по подоходному налогу, USD
+    [IncomingRB]       RB(R08);                        // Вх. остаток, BYN
+    [IncomingRB_Check] GetPrevIncomingRB;              // Вх. остаток - контроль с распечаткой, BYN
+    [IncomingUE]       UE(R08);                        // Вх. остаток, USD
+    [ToIssue]          UE(R09);                        // К выдаче
+    [PrepaymentRB]     RB(R10);                        // Аванс, BYN
+    [PrepaymentEx]     if(RB(R10) = 0, 0, Rate(R10));  // Аванс, курс
+    [PrepaymentUE]     UE(R10);                        // Аванс, USD
+    [PaymBetwinRB]     RB(R11);                        // Отпуск, BYN
+    [PaymBetwinEx]     if(RB(R11) = 0, 0, Rate(R11));  // Отпуск, курс
+    [PaymBetwinUE]     UE(R11);                        // Отпуск, USD
+    [SecPartRB]        RB(R13);                        // Выплата, BYN
+    [SecPartEx]        if(RB(R13) = 0, 0, Rate(R13));  // Выплата, курс
+    [SecPartUE]        UE(R13);                        // Выплата, USD
+    [ThrdPartRB]       RB(R14);                        // Выплата 2-й части, BYN
+    [ThrdPartEx]       if(RB(R14) = 0, 0, Rate(R14));  // Выплата 2-й части, курс
+    [ThrdPartUE]       UE(R14);                        // Выплата 2-й части, USD
+    [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
+    [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
+    [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN
+    [OutgoingUE]       UE(R09) - UE(R16);              // Исх. остаток, USD
+    [OutgoingUE_Check] UE(R15);                        // Исх. остаток - контроль с распечаткой, USD
+    [OutgoingUE_Delta] UE(R09) - UE(R16) - UE(R15);
+  );
+)
+end;
+
+procedure RepProjectsPay;
+{
+  delete all mtProj;
+  StartNewVisual(vtRotateVisual, vfTimer, 'Выборка данных...', 1);
+  PushPos(#mtStaff);
+  PushPos(#mtMoney);
+  ResetBounds(#mtStaff);
+
+  var bOk: boolean;
+  bOk := true;
+
+  _loop mtStaff
+  {
+    if (not bOk)
+      break;
+
+    _loop mtMoney where (( mtStaff.NRec == mtMoney.Sotr ))
+    {
+      if (not NextVisual)
+      {
+        bOk := false;
+        break;
+      }
+
+      if (RB(R04) <> 0)
+      {
+        ClearBuffer(#mtProj);
+        mtProj.Staff := KatSotr.FIO;
+        mtProj.Year  := mtMoney.Year;
+        mtProj.Month := mtMoney.Month;
+        mtProj.USD   := UE(R04);
+        mtProj.RBR   := RB(R04);
+        mtProj.Comment := GetComment(R04);
+        insert current mtProj;
+      }
+    }
+  }
+
+  SetBounds(#mtStaff);
+  PopPos(#mtMoney);
+  PopPos(#mtStaff);
+
+  StopVisual;
+  RunFReport(dsProjectsPay, '', false);
+}
+
+procedure ReportBySotr;
+{
+  PushPos(#mtMoney);
+  RunFReport(dsReportBySotr, '', false);
+  PopPos(#mtMoney);
+}
+
+procedure ReportByMonth;
+{
+  PushPos(#mtMoney);
+  PushPos(#mtStruct);
+  ResetBounds(#mtStruct);
+  PushCondition(tcSotrOnly);
+//  ReportByMonth_New;
+  RunFReport(dsReportByMonth, '', false);
+  PopCondition(tcSotrOnly);
+  SetBounds(#mtStruct);
+  PopPos(#mtStruct);
+  PopPos(#mtMoney);
+}
+
+Window wnSelPeriod 'Период отчета' DoAccept;
+  show at (,, 50, 6);
+
+Screen scPeriod;
+Fields
+  wRepMonth: NoProtect;
+  wRepYear: NoProtect;
+Buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+       `Месяц` .@@@@  `Год` .@@@@@@@
+
+   <. Сформировать .>   <.     Отмена     .>
+>>
+End;
+
+End;
+
+WindowEvent wnSelPeriod;
+
+cmInit:
+{
+  wRepMonth := Month(Cur_Date);
+  wRepYear  := Year(Cur_Date);
+  bDialogOk := false;
+}
+
+cmOk:
+{
+  bDialogOk := true;
+  CloseWindow(wnSelPeriod);
+}
+
+End;
+
+function MyTimeToStr(_value: time; _format: string): string;
+{
+  #__UnUsed__(_format)
+  result := '';
+
+  if (_value = ZeroTime)
+    exit;
+
+  var h, m: byte;
+  h := Hour(_value);
+  m := Minute(_value);
+  var f: double;
+  f := round(h + m/60, 2);
+  result := string(f);
+}
+
+Window wnOwertime 'Сверхурочные';
+  show at (,, 100, 25);
+
+Browse rbOwertime;
+  table mtOwertime;
+Fields
+  mtOwertime.Staff 'ФИО': [80], Protect;
+  MyTimeToStr(mtOwertime.tOwertime, 'HH:MM') 'Сверхурочные': [10], Protect;
+  MyTimeToStr(mtOwertime.tProj[1], 'HH:MM') 'ЭМ':  [10], Protect;
+  MyTimeToStr(mtOwertime.tProj[2], 'HH:MM') 'МО':  [10], Protect;
+  MyTimeToStr(mtOwertime.tProj[3], 'HH:MM') 'ТН':  [10], Protect;
+  MyTimeToStr(mtOwertime.tProj[4], 'HH:MM') 'Др.': [10], Protect;
+  MyTimeToStr(mtOwertime.tTimeoff, 'HH:MM') 'Отгулы': [10], Protect;
+  MyTimeToStr(mtOwertime.tTotal, 'HH:MM') 'Итого': [10], Protect;
+End;
+
+End;
+
+
+var m_lQueryStr: longint;
+var m_query: IQuery;
+var m_Row: IResultRow;
+
+procedure InitQuery;
+{
+  m_lQueryStr := 0;
+  sqlAddStr(m_lQueryStr, 'select Sum(case');
+  sqlAddStr(m_lQueryStr, '           when Tekpl.cPlanTask = #comp(' + string(coGetTune('SpecialWork.Obed')) + ') then 0');
+  sqlAddStr(m_lQueryStr, '           else T_TOSEC100(DayWork.DayHours)');
+  sqlAddStr(m_lQueryStr, '           end) SUMDayHours,');
+  sqlAddStr(m_lQueryStr, '       Sum(case');
+  sqlAddStr(m_lQueryStr, '           when PlanTask.ResWord[1] = 3 then T_TOSEC100(DayWork.DayHours)'); //3 - константа, обозначающая командировку в поле "табельный учет" в работе
+  sqlAddStr(m_lQueryStr, '           else 0');
+  sqlAddStr(m_lQueryStr, '           end) SumBusinesTrip,');
+  sqlAddStr(m_lQueryStr, '       Sum(case');
+  sqlAddStr(m_lQueryStr, '           when Tekpl.cPlanTask = #comp(' + string(coGetTune('SpecialWork.Obed')) + ') then T_TOSEC100(DayWork.DayHours)');
+  sqlAddStr(m_lQueryStr, '           else 0');
+  sqlAddStr(m_lQueryStr, '           end) SUMDayHoursObed,');
+  sqlAddStr(m_lQueryStr, '       Sum(case');
+  sqlAddStr(m_lQueryStr, '           when Tekpl.cPlanTask = #comp(' + string(coGetTune('SpecialWork.Otgul')) + ') then T_TOSEC100(DayWork.DayHours)');
+  sqlAddStr(m_lQueryStr, '           when Tekpl.cPlanTask = #comp(' + string(coGetTune('SpecialWork.Vacation')) + ') then T_TOSEC100(DayWork.DayHours)');
+  sqlAddStr(m_lQueryStr, '           when Tekpl.cPlanTask = #comp(' + string(coGetTune('SpecialWork.AdminVacation')) + ') then T_TOSEC100(DayWork.DayHours)');
+  sqlAddStr(m_lQueryStr, '           when Tekpl.cPlanTask = #comp(' + string(coGetTune('SpecialWork.ExecutionDute')) + ') then T_TOSEC100(DayWork.DayHours)');
+  sqlAddStr(m_lQueryStr, '           else 0');
+  sqlAddStr(m_lQueryStr, '           end) SUMDayHoursSpec');
+  sqlAddStr(m_lQueryStr, 'from DayWork join Tekpl On (DayWork.cTekpl = Tekpl.Nrec) join PlanTask On (TekPl.cPlanTask = PlanTask.Nrec)');
+  sqlAddStr(m_lQueryStr, 'where DayWork.cKatSotr = :cRecKatSotr and DayWork.DayDate = :dDate');
+
+  m_query := queryManager.createQuery(m_lQueryStr);
+}
+
+function GetDataDayHours(cSotr: comp; dDate: date; sNameField: string): time;
+{
+  result := ZeroTime;
+
+  m_query.setParam('cRecKatSotr', cSotr);
+  m_query.setParam('dDate', dDate);
+  if (m_query.execute.ErrorCode = tsOk)
+    if (m_query.fetch.ErrorCode = tsOk)
+    {
+      m_Row := m_query.row;
+      result := From_Sec100(m_Row.val(sNameField));
+    }
+}
+
+
+Const
+  cgProj_None  = 0;
+  cgProj_EM    = 1;
+  cgProj_MO    = 2;
+  cgProj_TK    = 3;
+  cgProj_Other = 4;
+End;
+
+procedure ReportOwertime;
+{
+  RunWindowModal(wnSelPeriod);
+  if (not bDialogOk)
+    exit;
+
+  PushPos(#mtStruct);
+  ResetBounds(#mtStruct);
+  PushCondition(tcSotrOnly);
+
+  delete all mtOwertime;
+  var lNpp: longint = 0;
+
+  dRepBeg := date(1, wRepMonth, wRepYear);
+  dRepEnd := date(Last_Day(dRepBeg), wRepMonth, wRepYear);
+  cOtgul := coGetTune('SpecialWork.Otgul');
+
+  InitQuery;
+
+  StartNewVisual(vtIndicatorVisual, vfBreak + vfConfirm + vfTimer, 'Формирование отчета', RecordsInTable(#mtStruct));
+
+  _loop mtStruct
+  {
+    if (not NextVisual)
+      break;
+
+    ClearBuffer(#mtOwertime);
+    mtOwertime.Staff := StructName;
+    mtOwertime.Npp := lNpp++;
+
+    _loop WorkDays where (( KatSotr.FilialNo == WorkDays.wOffice   and
+                            dRepBeg         <<= WorkDays.DayDate   and
+                            dRepEnd         >>= WorkDays.DayDate (NoIndex) ))
+    {
+      var tWorkHours, tManufZatr, tOwer: time = ZeroTime;
+
+      // Длительность рабочего дня
+      if (WorkDays.DayOff <> cgCdDayOff)
+        tWorkHours := oDuration.GetSotrDayDurationTime(KatSotr.Nrec, WorkDays.DayDate);
+
+      // Производственные затраты
+      tManufZatr := GetDataDayHours(KatSotr.NRec, WorkDays.DayDate, 'SUMDayHours');
+
+      // Сверхурочные за день
+      if (tManufZatr > tWorkHours)
+        tOwer /*mtOwertime.tOwer[day]*/ := Sub_Time(tManufZatr, tWorkHours);
+
+      // Сверхурочные за месяц
+      mtOwertime.tOwertime := Add_Time(mtOwertime.tOwertime, tOwer /*mtOwertime.tOwer[day]*/);
+      //day++;
+
+      var wProj: word = cgProj_None; // Проект. Сверхурочные будут отнесены на последний проект, на который списывалось время в течение дня
+
+      _loop DayWork where (( WorkDays.DayDate == DayWork.DayDate    and
+                             KatSotr.NRec     == DayWork.cKatSotr ))
+      {
+        if (GetFirst TekPl where (( DayWork.cTekPl == TekPl.NRec )) = tsOk)
+          if (GetFirst PlanTask where (( TekPl.cPlanTask == PlanTask.NRec )) = tsOk)
+          {
+            var sProj: string;
+            sProj := oProjFunc.LongProjectName(PlanTask.cGrpTask);
+
+
+            if (pos('ERP - директивные (в интересах ПНР) \ Энергомаш \', sProj) = 1)
+              wProj := cgProj_EM;
+
+            if (pos('ERP - директивные (в интересах ПНР) \ ЕРЦ \', sProj) = 1)
+              wProj := cgProj_MO;
+
+            if (pos('ТН ТК \', sProj) = 1)
+              wProj := cgProj_TK;
+
+            if (wProj = cgProj_None) and (sProj <> '')
+              wProj := cgProj_Other;
+
+            // Отгулы за день с накоплением за месяц
+            if (PlanTask.NRec = cOtgul)
+              mtOwertime.tTimeOff := Add_Time(mtOwertime.tTimeOff, DayWork.DayHours);
+          }
+      }
+
+      if (wProj <> cgProj_None) and (tOwer <> ZeroTime) // Учитываем только если была переработка и работа по проекту
+        mtOwertime.tProj[wProj] := Add_Time(mtOwertime.tProj[wProj], tOwer);
+    }
+
+    // Всего сверхурочных за месяц
+    if (mtOwertime.tOwertime > mtOwertime.tTimeOff)
+      mtOwertime.tTotal := Sub_Time(mtOwertime.tOwertime, mtOwertime.tTimeOff);
+
+    insert current mtOwertime;
+  }
+
+  StopVisual;
+
+  PopCondition(tcSotrOnly);
+  SetBounds(#mtStruct);
+  PopPos(#mtStruct);
+
+  if (GetFirst mtOwertime = tsOk) {}
+  RunWindow(wnOwertime);
+}
+
+
+
+Window wnRates 'Корректировка курсов';
+  show at(,, 50, 10);
+
+Screen scRates;
+  Table mtPeriod;
+Fields
+  mtPeriod.Year: Protect;
+  mtPeriod.Month: Protect;
+  mtPeriod.PrepayExch: [11.4,'\4p[|-]366`666.8888'];
+  mtPeriod.SecPartExch: [11.4,'\4p[|-]366`666.8888'];
+<<
+
+   `Год` .@@@@@@@@@  `Месяц` .@@@@@@@@@
+
+   `Курс аванса`   .@@@@@@@@@@@@@@@@@@@
+   `Курс зарплаты` .@@@@@@@@@@@@@@@@@@@
+>>
+end;
+
+end;
+
+
+HandleEvent
+
+cmInit:
+{
+  StartNewVisual(vtRotateVisual, vfTimer, 'Загрузка данных...', 1);
+  oGroups.Load(wMode);
+  oStaff.Load(wMode);
+  oMoney.Load(wMode);
+  oPeriod.Load(wMode);
+  delete all mtStruct;
+  RereadRecord;
+  ScanStaff(0, 0);
+  ScanGroup(0, 0);
+  pMarker.Caption := (' Отмечено [%d] записей.'); // для заголовка
+  GetFirst mtStruct;
+  TreeGetFirst(trDepart);
+  StopVisual;
+  PutCommand(cmShowAll);
+  wDebug := 0;
+}
+
+cmDone:
+{
+  oGroups.Save;
+  oStaff.Save;
+  oMoney.Save;
+  oPeriod.Save;
+}
+
+cmEdit:
+{
+  if (CurField = #StructName)
+    case mtStruct.Mode of
+      1: RunInterface('Groups', mtStruct.Rec);
+      2: RunInterface('Staff',  mtStruct.Rec);
+    end;
+}
+
+cmHotKeys:
+  PutCommand(RunMenu('mnDepart'));
+
+cmExp:
+  RunWindowModal(wnExport);
+
+cmImp:
+  RunWindowModal(wnImport);
+
+cmAccording:
+{
+  if (not isValid(#mtMoney))
+  {
+    message('Не определен период');
+    exit;
+  }
+
+  wMonth := mtMoney.Month;
+  wYear := mtMoney.Year;
+
+  if ((Month(Cur_Date) = 1) and ((wMonth <> 12) or (wYear <> (Year(Cur_Date)-1)))) or
+     ((Month(Cur_Date) > 1) and ((wMonth <> (Month(Cur_Date)-1)) or (wYear <> Year(Cur_Date))))
+  {
+    if (message('Подозрение на попытку отправки расчетников за предыдущий период - ' + DateToStr(date(1, mtMoney.Month, mtMoney.Year), 'month YYYY') + ' г.'#13#13 +
+                'Отменить операцию?', Confirmation + YesNo) = cmYes)
+      exit;
+  }
+
+  if (pMarker.Count = 0) and (mtStruct.Mode <> 2)
+  {
+    message('Нет помеченных сотрудников');
+    exit;
+  }
+
+  DoSend;
+}
+
+// Раскрыть все ветки
+cmShowAll:
+{
+  var sav_NRec: comp;
+  sav_NRec := mtStruct.NRec;
+
+  if TreeGetFirst(trDepart)
+    do
+      TreeOpenNode(trDepart);
+    while TreeGetNext(trDepart);
+
+  TreeJumpToRecord(trDepart, sav_NRec);
+
+  RescanPanel(#mtStruct);
+}
+
+// Свернуть все ветки
+cmHideAll:
+{
+  TreeCloseAllOpenedNode(trDepart);
+  RescanPanel(#mtStruct);
+}
+
+cmIdle:
+  if (mtStruct.Mode = 1)
+    SetFormat(scEmpty);
+  else
+    SetFormat(scMeta);
+
+cmValue7:
+  if (mtStruct.Mode <> 2)
+    message('Генерация пароля возможна только по отдельному сотруднику.', Information);
+  else
+    if (message('Генерировать пароль для сотрудника ' + KatSotr.FIO + '?', Confirmation + YesNo) = cmYes)
+      update current mtStaff
+        set mtStaff.Password := NextRandomCode(20);
+
+cmPrintDoc:
+  Print_01;
+
+cmPlansNo:
+  Print_02;
+
+cmValue1:
+  KillDublicat;
+
+cmValue2:
+  RepCheckRate;
+
+cmValue8:
+  RepProjectsPay;
+
+cmValue9:
+  ReportBySotr;
+
+cmValue10:
+  RunWindowModal(wnRates);
+
+cmValue11:
+  ReportByMonth;
+
+cmValue12:
+  ReportOwertime;
+
+//cmValue15:
+//  message('PersCount = ' + string(sal.PersCount));
+
+End;
+End.
+
+mnDepart Menu
+{
+  - 'Test', cmValue15, '',, '',, sci1Esc;
+  - 'Экспорт', cmExp, 'Экспорт',, 'Alt+O', kbAltO, sci1Esc,,,, bmpExpDoc;
+  - 'Импорт', cmImp, 'Импорт',, 'Alt+I', kbAltI, sci1Esc;
+  - 'Пароль', cmValue7, 'Генерация пароля',, '',, sci1Esc;
+  - 'Отправить', cmAccording, 'Отправить по почте',, 'Alt+S',  kbAltS,  sci1Esc;
+  -------------;
+  - 'Раскрыть все ветки', cmShowAll, 'Разворачивает все дерево',, 'Ctrl+''+''', kbCtrlGrayPlus , sci1Esc;
+  - 'Свернуть все ветки', cmHideAll, 'Сворачивает все дерево'  ,, 'Ctrl+''-''', kbCtrlGrayMinus, sci1Esc;
+  -------------;
+  - 'Общий отчет', cmPrintDoc,  'Выгрузка в файл',,    'Ctrl+P', kbCtrlP, sci1Esc;
+  - 'Диаграмма', cmPlansNo, 'Построение диаграммы',, 'Alt+P', kbAltP, sci1Esc;
+  - 'Контроль расчета', cmValue2,  'Отчет для проверки корректности конвертации сумм по курсу',,,, sci1Esc;
+  - 'Проектный бизнес', cmValue8,  'Отчет о выплатах за проекты',,,, sci1Esc;
+  - 'Отчет по сотруднику', cmValue9, 'Контрольный отчет по сотруднику за период',,,, sci1Esc;
+  - 'Отчет по всем за месяц', cmValue11, 'Контрольный отчет по всем сотрудникам за выбранный месяц',,,, sci1Esc;
+  - 'Сверхурочные', cmValue12, 'Сверхурочные',,,, sci1Esc;
+  -------------;
+  - 'Удалить дубликаты', cmValue1,  'Удалить дубликаты',,,, sci1Esc;
+}

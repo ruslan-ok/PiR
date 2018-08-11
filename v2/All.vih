@@ -1,0 +1,280 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Объектные интерфейсы
+//------------------------------------------------------------------------------
+
+ObjInterface IDomDoc; forward;
+
+Const
+
+  cgNetBYN = 1;
+  cgTaxBYN = 2;
+  cgNetUSD = 3;
+  cgTaxUSD = 4;
+
+End;
+
+#doc
+Обёртка для функций обработки XML-DOMDocument
+#end
+ObjInterface IDomNodeAttr;
+  property Name: string read; // #docl Имя свойства
+  property Value: string read; // #docl Значение свойства
+end;
+
+#doc
+Обёртка для функций обработки XML-DOMDocument
+#end
+ObjInterface IDomNode;
+  property doc: IDomDoc read write; // #docl Общий для всех узлов интерфейс документа
+  property id: TPtr read write; // #docl Адрес указателя на XMLDOMNode
+
+  property Name: string read; // #docl Имя узла
+  property FndNode: IDomNode read; // #docl Очередной подчиненный узел (см. GetFirstNode/GetNextNode)
+  property FndAttr: IDomNodeAttr read; // #docl Очередной подчиненный узел (см. GetFirstNode/GetNextNode)
+
+  function AddNode(_name: string; _xmlns: string = ''): IDomNode; // #docl Добавляет новый узел к текущему узлу
+  procedure AddAttr(_attr: string); // #docl Добавляет атрибут текущему узлу
+  function AddTextNode(_name, _value: string): IDomNode; // #docl Добавляет к текущему узлу новый узел с текстовым содержимым
+  function GetFirstNode: boolean; // #docl Позиционирование на первый подчиненный узел
+  function GetNextNode: boolean; // #docl Позиционирование на следующий подчиненный узел
+  function GetFirstAttr: boolean; // #docl Позиционирование на первый атрибут узла
+  function GetNextAttr: boolean; // #docl Позиционирование на следующий атрибут узла
+end;
+
+#doc
+Обёртка для функций обработки XML-DOMDocument
+#end
+ObjInterface IDomDoc(IDomNode);
+  property RootNode: IDomNode read; // #docl Корневой узел документа
+  property ns: string; // #docl Текущее пространство имен
+
+  procedure CreateEmpty; // #docl Инициализация документа
+  procedure CreateXmlDoc; // #docl Инициализация нового xml-документа с добавлением стандартной инструкции обработки
+  function Load(_file: string): boolean; // #docl Загружает документ из файла
+  function Save(_file: string): boolean; // #docl Сохраняет документ в файл
+  procedure Free; // #docl Освобождение ссылок перед уничтожением документа
+  procedure SetNS(_ns, _value: string);
+end;
+
+private ObjInterface ISerializable;
+  procedure Clear;
+  function Load(_e: IDomNode): boolean;
+  function Save(_e: IDomNode): IDomNode;
+end;
+
+ObjInterface IPeriods(ISerializable);
+  property dBeg: date;
+  property PlanDays: byte;
+  property AvansDate: date;
+  property PaymentDate: date;
+  property AvansRate: double;
+  property PaymentRate: double;
+
+  index Sort = dBeg (desc);
+
+  function PlanDaysPrev: byte;
+end;
+
+ObjInterface IDepHist(ISerializable);
+  property NRec:   comp;
+  property dBeg:   date;
+  property dEnd:   date;
+  property Node:   comp;
+  property Sort:   s50;
+  property Depart: comp;
+
+  index DhId   = NRec (unique);
+  index ByNode = Node, dBeg;
+end;
+
+ObjInterface IDepart(ISerializable);
+  property NRec: comp;
+  property Code: s50;
+  property Name: s100;
+
+  index DepId  = NRec (unique);
+  index ByCode = Code;
+  index ByName = Name;
+end;
+
+ObjInterface IPost(ISerializable);
+  property NRec: comp;
+  property Code: s50;
+  property Name: s100;
+
+  index PostId = NRec (unique);
+  index ByCode = Code;
+  index ByName = Name;
+end;
+
+ObjInterface IPerson(ISerializable);
+  property NRec:   comp;
+  property Login:  s50;
+  property FIO:    s100;
+  property EMail:  s100;
+  property Passw:  s50;
+  property Sort:   longint;
+
+  index PersId  = NRec (unique);
+  index ByLogin = Login;
+  index ByFIO   = FIO;
+end;
+
+ObjInterface IAppoint(ISerializable);
+  property dBeg:   date;
+  property dEnd:   date;
+  property Depart: comp;
+  property Person: s50;
+  property Post:   comp;
+  property Salary: double;
+  property Currency: s10;
+  property TabNum: s50;
+  property TaxDed: double;
+
+  index ByDepart = Depart, dBeg;
+  index ByPerson = Person, dBeg;
+  index ByPeriod = dBeg;
+
+  function prSalary(_per: date): double;
+end;
+
+ObjInterface IPersPer(ISerializable);
+  property Person:     s50;
+  property Period:     date;
+  property FactDays:   byte;
+
+  index ByPerson = Person, Period;
+
+  function FactDaysPrev: byte;
+end;
+
+ObjInterface IPayment(ISerializable);
+  property Person: s50;
+  property Period: date;
+  property Payed:  date;
+  property Sort:   word;
+  property Title:  s100;
+  property Value:  double;
+  property TaxCur: byte;
+  property Rate:   double;
+  property Info:   string;
+  property NetBYN: double read;
+  property TaxBYN: double read;
+  property NetUSD: double read;
+  property TaxUSD: double read;
+  property Error:  string read;
+
+  index Sorted = Person, Period, Sort;
+
+  function GetValue(_pers: s50; _period: date; _title: s100; _NeededTaxCur: byte): double;
+  function GetRate(_pers: s50; _period: date; _title: s100): double;
+  function GetInfo(_pers: s50; _period: date; _title: s100): string;
+  function GetPayed(_pers: s50; _period: date; _title: s100): date;
+end;
+
+
+
+
+
+
+VipInterface DomNode
+  implements
+    IDomNode,
+    IDomNodeAttr
+  licensed(free);
+public:
+  constructor Init;
+  destructor Done;
+end;
+
+VipInterface DomDoc(DomNode)
+  implements IDomDoc
+  licensed(free);
+public:
+  constructor Init;
+  destructor Done;
+end;
+
+#include IModify.vih
+
+VipInterface Periods
+  implements IModify, IPeriods
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface DepHist
+  implements IModify, IDepHist
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface Depart
+  implements IModify, IDepart
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface Post
+  implements IModify, IPost
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface Person
+  implements IModify, IPerson
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface Appoint
+  implements IModify, IAppoint
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface PersPer
+  implements IModify, IPersPer
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface Payment
+  implements IModify, IPayment
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface DebtIn(Payment)
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface Nachisl(Payment)
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+VipInterface DebtOut(Payment)
+  licensed(free);
+public:
+  constructor Init;
+end;
+
+
+
+
+VipInterface WageView
+  licensed(free);

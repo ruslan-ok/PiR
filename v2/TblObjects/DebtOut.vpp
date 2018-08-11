@@ -1,0 +1,64 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования исходящего остатка
+//------------------------------------------------------------------------------
+
+Window wnDebtOut 'Исходящий остаток';
+  show at(,, 80, 13);
+
+Screen scDebtOut ('',, sci178Esc);
+  table mtDebtOut;
+Fields
+  mtStruct.Name: skip;
+  mtDebtOut.Period: ['MM.YYYY'], skip;
+  mtDebtOut.Sort   (''): noprotect;
+  mtDebtOut.Title  (''): noprotect;
+  mtDebtOut.Payed  (''): noprotect;
+  mtDebtOut.Value  (''): noprotect;
+  mtDebtOut.TaxCur (''): [list 'BYN без налогов',
+                               'BYN с налогами',
+                               'USD без налогов',
+                               'USD с налогами'], protect;
+  mtDebtOut.NetBYN: skip;
+  mtDebtOut.TaxBYN: skip;
+  mtDebtOut.Rate:   skip;
+  mtDebtOut.NetUSD: skip;
+  mtDebtOut.TaxUSD: skip;
+  mtDebtOut.Info:   noprotect;
+  mtDebtOut.Error:  skip;
+<<
+
+   `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Период`       .@@@@@@@@@@@@              `Номер п/п`    .@@@@@@@@@@@@
+   `Название`     .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Дата выплаты` .@@@@@@@@@@@@
+   `Сумма`        .@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                   без налогов   с налогами
+   `Сумма в BYN`  .@@@@@@@@@@@@ .@@@@@@@@@@@@
+   `Курс`         .@@@@@@@@@@@@
+   `Сумма в USD`  .@@@@@@@@@@@@ .@@@@@@@@@@@@
+   `Комментарий`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+TableEvent
+  table mtDebtOut;
+
+cmSetDefault:
+  mtDebtOut.Title := GetSumTitle(R15);
+
+cmInsertRecord:
+  insert current mtDebtOut;
+
+cmUpdateRecord:
+  update current mtDebtOut;
+
+cmDeleteRecord:
+  if (message('Удалить исходящий остаток?', Confirmation + YesNo) = cmYes)
+    delete current mtDebtOut;
+
+end;

@@ -1,0 +1,121 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект назначений сотрудников
+//------------------------------------------------------------------------------
+
+Interface Appoint;
+
+// Назначение
+Table struct mtAppoint
+(
+  Depart: comp,
+  Person: s50,
+  Post:   comp,
+  dBeg:   date,
+  dEnd:   date,
+  Salary: double,
+  Currency: s10,
+  TabNum: s50,
+  TaxDed: double
+)
+With index
+(
+  ByDepart = Depart + dBeg,
+  ByPerson = Person + dBeg,
+  ByPeriod = dBeg
+);
+
+Create view from mtAppoint, mtAppoint mtAppoint2;
+
+property Depart: comp   absolute mtAppoint.Depart;
+property Person: s50    absolute mtAppoint.Person;
+property Post:   comp   absolute mtAppoint.Post;
+property dBeg:   date   absolute mtAppoint.dBeg;
+property dEnd:   date   absolute mtAppoint.dEnd;
+property Salary: double absolute mtAppoint.Salary;
+property Currency: s10  absolute mtAppoint.Currency;
+property TabNum: s50    absolute mtAppoint.TabNum;
+property TaxDed: double absolute mtAppoint.TaxDed;
+
+index ByDepart auto;
+index ByPerson auto;
+index ByPeriod auto;
+
+public function prSalary(_per: date): double;
+{
+  result := 0;
+
+  var PrevPer: date = Sub_Months(_per, 1);
+
+  if (GetFirst mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and
+                                  ((PrevPer >= mtAppoint2.dBeg) and ((mtAppoint2.dEnd = ZeroDate) or (mtAppoint2.dEnd > PrevPer))) )) = tsOk)
+    result := mtAppoint2.Salary;
+}
+
+function IModify.doInsert : word;
+{
+  result := insert current mtAppoint;
+}
+
+function IModify.doUpdate : word;
+{
+  result := update current mtAppoint;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtAppoint;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtAppoint;
+}
+
+public procedure Clear;
+{
+  delete all mtAppoint2;
+}
+
+public function Load(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtAppoint);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:Depart': Depart := comp(_e.FndAttr.Value);
+        'rok:Post':   Post   := comp(_e.FndAttr.Value);
+        'rok:dBeg':   dBeg   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:dEnd':   dEnd   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Salary': Salary := double(_e.FndAttr.Value);
+        'rok:Currency': Currency := _e.FndAttr.Value;
+        'rok:TabNum': TabNum := _e.FndAttr.Value;
+        'rok:TaxDed': TaxDed := double(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtAppoint;
+  result := true;
+}
+
+public function Save(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Appoint');
+  xnode.AddAttr('rok:Depart=' + string(Depart,0,0));
+  xnode.AddAttr('rok:Post='   + string(Post,0,0));
+  xnode.AddAttr('rok:dBeg='   + string(dBeg));
+  xnode.AddAttr('rok:dEnd='   + string(dEnd));
+  xnode.AddAttr('rok:Salary=' + DoubleToStr(Salary, '\2p[|-]3666666666666~99'));
+  xnode.AddAttr('rok:Currency=' + Currency);
+  xnode.AddAttr('rok:TabNum=' + TabNum);
+  xnode.AddAttr('rok:TaxDed=' + DoubleToStr(TaxDed, '\2p[|-]3666~99'));
+  result := xnode;
+}
+
+end.

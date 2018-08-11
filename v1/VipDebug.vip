@@ -1,0 +1,376 @@
+//------------------------------------------------------------------------------
+//                                                      (c) корпорация Галактика
+// Галактика 5.8 - Общая функциональность
+// Запись отладочной/профилировочной информации в файл
+//------------------------------------------------------------------------------
+
+#include VipDebug.vih  
+
+#doc
+#Doc_Internal
+Реализация методов для отладки - запись отладочных сообщений в файл.
+#end
+Interface IVipDebug 'Отладка - запись отладочных сообщений в файл'
+// ----------------------------------------------------------------------------
+Const
+  SUCCESS = 0;
+End;
+
+// ----------------------------------------------------------------------------
+Table Struct TmpTime "Стек для времени входа в функцию"
+(
+  Name  : string "Имя функции",
+  tStart : time "Время входа в функцию"
+)
+With Index
+(
+  TmpTime01 = tStart
+);
+
+!--------------------------------------------------------------------------
+Table STRUCT mtCalls "Вызовы функций"
+(
+  Name  : string "Имя функции",
+  tStart: time   "Время начала работы функции",
+  wCount: word   "Счетчик количества итеративных вызовов"
+)
+With index
+(
+  mtCalls01 = Name 
+);
+
+!--------------------------------------------------------------------------
+Table STRUCT mtProfile "Функции для профилировки"
+(
+  Name  : string "Имя функции",
+  wCalls: word   "Количество нерекурсивных вызовов",
+  tWork : time   "Время работы функции"
+)
+With index
+(
+  mtProfile01 = tWork,
+  mtProfile02 = Name 
+);
+
+// ----------------------------------------------------------------------------
+Create view as select * from TmpTime, mtCalls, mtProfile;
+
+Var
+  vwIndent : word;
+  lastFunc : string;
+  logName  : string;
+  vbShowCalls: boolean;
+
+File TheFile;
+
+// ----------------------------------------------------------------------------
+Function _logCreate(name: string): integer; forward;
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог строку mess
+Function logWrite(mess: string): integer;
+{
+  logWrite := SUCCESS;
+  _try
+  {
+    if (logName = '')
+      _logCreate('Vip');
+    TheFile.OpenFile(logName, stOpen);
+    TheFile.seek(TheFile.GetSize);
+    var i: word;
+    var s: string;
+    s := '';
+
+    if (vwIndent < 0) or (vwIndent > 40)
+      vwIndent := 40;
+
+    for(i := 0; i < vwIndent; i++)
+      s := s + ' ';
+    TheFile.writeLn(s + mess);
+  }
+  _except
+    on ExFileNotFound:
+    {
+      TheFile.OpenFile(logName, stCreate);
+      _Retry;
+    }
+    on ExFile:
+      message('Исключение ExFile', 0);
+  _finally
+  {
+    TheFile.Close;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Открыть новый лог-файл. NAME - имя, которое будет использоваться для лога
+Function logCreate(name: string): integer;
+{
+  logCreate := SUCCESS;
+  vwIndent  := 1;
+  logName   := name + 'Debug.log';
+  DeleteFile(logName);
+  logWrite('Лог начат   ' + dateToStr(cur_Date, 'DD/MM/YYYY') + '      в   ' +
+           TimeToStr(cur_Time, 'HH:MM:SS'));
+  logWrite('===============================================================');
+}
+
+// ----------------------------------------------------------------------------
+Function _logCreate(name: string): integer;
+{
+  _logCreate := logCreate(name);
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Показать лог-файл
+Function logShow: integer;
+{
+  logShow := SUCCESS;
+  processText(logName, vfDefault or vfEscable, 'Отладочная информация.');
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о входе в функцию func
+Procedure logPush(func, param: string);
+{
+  lastFunc := func;
+  if (vbShowCalls and (pos('!', func) <> 1))
+    logWrite('- ' + func + param);
+  vwIndent       := vwIndent + 1;
+  TmpTime.tStart := Cur_Time;
+  TmpTime.Name   := func;
+  PushPos(#TmpTime);
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции
+Procedure logPop;
+{
+  if (vwIndent > 0)
+    vwIndent := vwIndent - 1;
+  else
+    logWrite('!!! pop on vwIndent = 0 !!! ' + lastFunc);
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог атрибуты маркера
+Function logTraceMarker(markName: string; markId: longint): integer;
+{
+  logTraceMarker := SUCCESS;
+  var vlMark: longint;
+  logWrite('Трассировка маркера "' + markName + '"');
+  
+  if (markId = 0)
+    vlMark := initMarker(markName, 8, 100, 10);
+  else
+    vlMark := markId;
+  
+  if (vlMark = 0)
+  {
+    logWrite('  Ошибка инициализации');
+    exit;
+  }
+  logWrite('  Идентификатор маркера: ' + string(vlMark, 0, 0));
+  logWrite('  Количество элементов: ' + string(getMarkerCount(vlMark)));
+  logWrite('  Значения первых десяти элементов:');
+  var vcValue: comp;
+  var i: longint;
+  for(i := 0; (i < 10) and (i < getMarkerCount(vlMark)); i++)
+    if getMarker(vlMark, i, vcValue)
+      logWrite('    ' + string(i) + ': ' + string(vcValue, 0, 0));
+  logWrite('');
+  doneMarker(vlMark, '');
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Краткая форма для процедуры logPush
+Procedure u(func: string);
+{
+  logPush(func, '');
+}
+
+// ----------------------------------------------------------------------------
+Function sTime: string;
+{
+  PopPos(#TmpTime);
+  sTime := TimeToStr(Sub_Time(Cur_Time, TmpTime.tStart), 'HH:MM:SS:SSS');
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Краткая форма для процедуры logPop
+Procedure o;
+{
+  logWrite('= (' + sTime + ') ');
+  logPop;
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Краткая форма для функции logWrite
+Function w(mess: string): integer;
+{
+  w := logWrite(mess);
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог строку mess и число af
+Function wf(mess: string; af: double): integer;
+{
+  wf := w(mess + ', ' + string(af));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог строк as1, as2 и чисел af1, af2
+Function w2f(as1: string; af1: double; as2: string; af2: double): integer;
+{
+  w2f := w(as1 + ', ' + string(af1) + ', ' + as2 + ', ' + string(af2));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - строку mess
+Procedure r(mess: string);
+{
+  logWrite('= (' + sTime + ') ' + mess);
+  logPop;
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - число acRes типа comp
+Procedure rc(acRes: comp);
+{
+  r(string(acRes, 0, 0));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - число awRes типа word
+Procedure rw(awRes: word);
+{
+  r(string(awRes));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - число aiRes типа integer
+Procedure ri(aiRes: integer);
+{
+  r(string(aiRes));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - значение abRes типа boolean
+Procedure rb(abRes: boolean);
+{
+  r(string(abRes));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - число afRes типа double
+Procedure rf(afRes: double);
+{
+  r(string(afRes));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Записать в лог информацию о выходе из функции и дополнительно - число alRes типа longint
+Procedure rl(alRes: longint);
+{
+  r(string(alRes, 0, 0));
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Начать профилировку
+Procedure ProfileStart(abShowCalls: boolean);
+{
+  vbShowCalls := abShowCalls;
+  delete all mtCalls;
+  delete all mtProfile;
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Закончить профилировку
+Procedure ProfileStop;
+{
+  vbShowCalls := true;
+  w('===============================================================');
+  w('Результаты профилировки:');
+  w('');
+  w('---------------------------------------------------------------');
+  w('    Время    | Вызовов |   Функция');
+  w('---------------------------------------------------------------');
+
+  _loop mtProfile ordered by tWork
+    w(TimeToStr(mtProfile.tWork, 'HH:MM:SS:SSS') + ' | ' + LPad(string(mtProfile.wCalls), 9) + ' | ' + mtProfile.Name);
+
+  w('---------------------------------------------------------------');
+  logShow;
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Начало работы функции (c профилировкой)
+Procedure pu(func, param : string);
+{
+  logPush(func, param);
+  if (GetFirst mtCalls where (( func == mtCalls.Name )) = tsOk)
+  {
+    mtCalls.wCount++;
+    update current mtCalls;
+  }
+  else
+  {
+    ClearBuffer(#mtCalls);
+    mtCalls.Name   := func;
+    mtCalls.wCount := 1;
+    mtCalls.tStart := Cur_Time;
+    insert current mtCalls;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// [PUBLIC] Окончание работы функции (c профилировкой)
+Procedure po;
+{
+  var sRes: string;
+  sRes := '= (' + sTime + ') ';
+  
+  if (vbShowCalls)
+    logWrite(sRes);
+  logPop;
+  
+  if (GetFirst mtCalls where (( TmpTime.Name == mtCalls.Name )) = tsOk)
+  {
+    if (mtCalls.wCount > 1)
+    {
+      mtCalls.wCount--;
+      update current mtCalls;
+    }
+    else
+    {
+      var tFun: time;
+      tFun := Sub_Time(Cur_Time, mtCalls.tStart);
+      if (GetFirst mtProfile where (( mtCalls.Name == mtProfile.Name )) = tsOk)
+      {
+        mtProfile.tWork := Add_Time(mtProfile.tWork, tFun);
+        mtProfile.wCalls++;
+        update current mtProfile;
+      }
+      else
+      {
+        ClearBuffer(#mtProfile);
+        mtProfile.Name   := mtCalls.Name;
+        mtProfile.wCalls := 1;
+        mtProfile.tWork  := tFun;
+        insert current mtProfile;
+      }
+      delete current mtCalls;
+    }
+  }
+}
+
+
+// ----------------------------------------------------------------------------
+HandleEvent // Interface
+
+cmOnVipLoad:
+  vbShowCalls := true;
+
+End;
+
+End.

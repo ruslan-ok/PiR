@@ -1,0 +1,367 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Функции для отчетов
+//------------------------------------------------------------------------------
+
+Const
+  R01 = 01; // Оклад
+  R02 = 02; // Премия отдела
+  R03 = 03; // Премия Управления
+  R04 = 04; // Проектный бизнес
+  R05 = 05; // Компенсация разницы курсов
+  R06 = 06; // Выплата отложенной части
+  R07 = 08; // Начислено
+  R21 = 07; // Льгота по подоходному налогу
+  R08 = 09; // Зачет с прошлого месяца
+  R09 = 10; // К выдаче
+  R10 = 11; // Аванс
+  R11 = 12; // Межрасчетные выплаты
+  R12 = 13; // К доплате
+  R13 = 14; // Перечислено
+  R14 = 15; // 2 часть
+  R16 = 16; // Выдано
+  R15 = 17; // Зачет на следующий месяц
+  R17 = 18; // Долг за расчетный месяц
+  R20 = 19; // Долг за предыдущие месяцы
+  R18 = 20; // Выплата отложенной части
+  R19 = 21; // Долг
+
+  MaxRows = 21;
+end;
+
+private function GetSumTitle(_row: byte): string;
+{
+  result := '';
+
+  case _row of
+    R01: result := 'Повременная оплата (оклад)';
+    R02: result := mtNachisl.Title; // 'Премия отдела';
+//    R03: result := 'Премия Управления';
+//    R04: result := if(mtPeriods.dBeg = date(1, 10, 2016), 'Выплата отложенной части', 'Проектный бизнес');
+//    R05: result := 'Компенсация разницы курсов';
+//    R06: result := 'Выплата отложенной части';
+    R21: result := 'Льгота по подоходному налогу';
+    R07: result := 'Начислено';
+    R08: result := 'Зачет с прошлого месяца';
+    R09: result := 'К выдаче';
+    R10: result := mtPayment.Title; // 'Аванс';
+//    R11: result := 'Межрасчетные выплаты (отпускные)';
+    R12: result := 'К доплате';
+//    R13: result := 'Перечислено';
+//    R14: result := '2 часть';
+    R16: result := 'Выдано';
+    R15: result := 'Зачет на следующий месяц';
+    R17: result := 'Долг за расчетный месяц';
+    R20: result := 'Долг за предыдущие месяцы';
+    R18: result := 'Выплата отложенной части';
+    R19: result := 'Долг';
+  end;
+}
+
+function GetComment(_row: byte): string;
+{
+  result := '';
+
+  case _row of
+    R02, R03, R04, R05, R06:
+      result := mtNachisl.GetInfo(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row));
+
+    R10, /*R11,*/ R13, R14:
+    {
+      var dPayed: date;
+      dPayed := mtPayment.GetPayed(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row));
+      if (dPayed <> ZeroDate)
+        result := 'перечисление ' + DateToStr(dPayed, 'DD.MM.YYYY');
+    }
+
+  end;
+}
+
+// Льгота по подоходному налогу
+// С 1 января 2017 года размеры стандартных налоговых вычетов составляют:
+// 93 бел.руб. в месяц - для граждан с низким налогооблагаемым доходом (меньше 563 бел.руб. в месяц);
+// 27 бел.руб. в месяц - на ребенка до 18 лет и (или) каждого иждивенца (на находящуюся в декрете жену, на обучающихся детей старше 18 лет);
+// 52 бел.руб. в месяц - на двоих и больше детей до 18 лет;
+// 52 бел.руб. в месяц - на ребенка до 18 лет и (или) каждого иждивенца для одиноких родителей, приемных родителей, опекунов и попечителей;
+// 131 бел.руб. в месяц - для отдельных категорий граждан.
+function GetTaxDeduct: double;
+{
+  if (mtAppoint.TaxDed = 0)
+  {
+    result := 0;
+    exit;
+  }
+
+  var fTaxDeduct: double;
+
+  if (mtPeriods.dBeg < date(1, 1, 2017))
+    if (mtAppoint.TaxDed = 1)
+      fTaxDeduct := 24;
+    else
+      fTaxDeduct := 46;
+  else
+    if (mtAppoint.TaxDed = 1)
+      fTaxDeduct := 27;
+    else
+      fTaxDeduct := 52;
+
+  result := Round(fTaxDeduct * mtAppoint.TaxDed * 0.09, 2); // 2.43, 9.36, 14.04, 18.72
+}
+
+private function Rate(_row: byte): double; forward;
+private function RB(_row: byte): double; forward;
+
+private function UE(_row: byte): double;
+{
+  result := 0;
+
+  case _row of
+
+    R01: result := if(mtAppoint.Currency = 'USD', mtAppoint.Salary / mtPeriods.PlanDays * mtPersPer.FactDays, RB(R01) / Rate(R01)); // Оклад
+
+    R02, R03, R04, R05, R06:
+      result := mtNachisl.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row), cgNetUSD);
+
+    R07:
+    { // Начислено
+      result := UE(R01);
+      _loop mtNachisl
+        result += mtNachisl.NetUSD;
+    }
+
+    R08: result := mtDebtIn.NetUSD; // Зачет с прошлого месяца
+    R09: result := UE(R07) + UE(R08) + UE(R21); // К выдаче
+
+    R10, R11, R13, R14:
+      result := mtPayment.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row), cgNetUSD);
+
+    R15: result := mtDebtOut.NetUSD; // Зачет на следующий месяц
+
+    R16:
+    { // Выдано
+      result := 0;
+      _loop mtPayment
+        result += mtPayment.NetUSD;
+    }
+
+    R17: result := UE(R09) - UE(R16); // Долг за расчетный месяц
+
+    R21: result := Round(RB(_row) / Rate(_row), 2); // Льгота по подоходному налогу
+
+  end;
+}
+
+private function Rate(_row: byte): double;
+{
+  result := 0;
+
+  case _row of
+
+    R01: result := mtPeriods.PaymentRate; // Оклад
+
+    R02, R03, R04, R05, R06:
+      result := mtNachisl.GetRate(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row));
+
+    R08: result := mtDebtIn.Rate; // Зачет с прошлого месяца
+
+    R10, R11, R13, R14:
+      result := mtPayment.GetRate(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row));
+
+    R21: // Льгота по подоходному налогу
+      result := mtPeriods.PaymentRate;
+
+  end;
+}
+
+private function RB(_row: byte): double;
+{
+  result := 0;
+
+  case _row of
+
+    R01: result := if(mtAppoint.Currency = 'BYN', mtAppoint.Salary / mtPeriods.PlanDays * mtPersPer.FactDays, UE(R01) * Rate(R01)); // Оклад
+
+    R02, R03, R04, R05, R06:
+      result := mtNachisl.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row), cgNetBYN);
+
+    R07:
+    { // Начислено
+      result := RB(R01);
+      _loop mtNachisl
+        result += mtNachisl.NetBYN;
+    }
+
+    R08: result := mtDebtIn.NetBYN; // Зачет с прошлого месяца
+    R09: result := RB(R07) + RB(R08) + RB(R21); // К выдаче
+
+    R10, R11, R13, R14:
+      result := mtPayment.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumTitle(_row), cgNetBYN);
+
+    R15: result := mtDebtOut.NetBYN; // Зачет на следующий месяц
+
+    R16:
+    { // Выдано
+      result := 0;
+      _loop mtPayment
+        result += mtPayment.NetBYN;
+    }
+
+    R17: result := RB(R09) - RB(R16); // Долг за расчетный месяц
+    R21: result := GetTaxDeduct; //Round(mtStaff.TaxDeduct * mtPeriod.TaxDeduct * 0.09, 2); // Льгота по подоходному налогу
+
+  end;
+}
+
+function GetPrevSalary: double;
+{
+  result := mtAppoint.prSalary(mtPeriods.dBeg);
+}
+
+function IsVisible(_row, _col, _debug: byte): boolean;
+{
+  var s: array[1..50] of string;
+
+  if (_debug = 1)
+  { // Отладочный вариант
+    s[R01] := '1    '; // Оклад
+    s[R02] := '1    '; // Премия отдела
+    s[R03] := '1    '; // Премия Управления
+    s[R04] := '1    '; // Проектный бизнес
+    s[R05] := '1    '; // Компенсация разницы курс
+    s[R06] := '1    '; // Выплата отложенной части
+    s[R21] := '1 1 1'; // Льгота по подоходному налогу
+    s[R07] := '1    '; // Начислено
+    s[R08] := '1 1 1'; // Зачет с прошлого месяца
+    s[R09] := '1    '; // К выдаче
+    s[R10] := '1 1 1'; // Аванс
+    s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
+    s[R12] := '     '; // К доплате
+    s[R13] := '1 1 1'; // Перечислено
+    s[R14] := '1 1 1'; // 2 часть
+    s[R16] := '1   1'; // Выдано
+    s[R15] := '1   1'; // Зачет на следующий месяц
+    s[R17] := '1   1'; // Долг за расчетный месяц
+    s[R20] := '1    '; // Долг за предыдущие месяцы
+    s[R18] := '     '; // Выплата отложенной части
+    s[R19] := '     '; // Долг
+  }
+  else
+  {
+    s[R01] := '1    '; // Оклад
+    s[R02] := '1    '; // Премия отдела
+    s[R03] := '1    '; // Премия Управления
+    s[R04] := '1    '; // Проектный бизнес
+    s[R05] := '1    '; // Компенсация разницы курс
+    s[R06] := '1    '; // Выплата отложенной части
+    s[R21] := '1 1 1'; // Льгота по подоходному налогу
+    s[R07] := '1    '; // Начислено
+    s[R08] := '1 1 1'; // Зачет с прошлого месяца
+    s[R09] := '1    '; // К выдаче
+    s[R10] := '1 1 1'; // Аванс
+    s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
+    s[R12] := '     '; // К доплате
+    s[R13] := '1 1 1'; // Перечислено
+    s[R14] := '1 1 1'; // 2 часть
+    s[R16] := '1   1'; // Выдано
+    s[R15] := '1 1 1'; // Зачет на следующий месяц
+    s[R17] := '     '; // Долг за расчетный месяц
+    s[R20] := '     '; // Долг за предыдущие месяцы
+    s[R18] := '     '; // Выплата отложенной части
+    s[R19] := '     '; // Долг
+  }
+  result := false;
+
+  if (_row < 1) or (_row > 50)
+  {
+    message('IsVisible(_row = ' + string(_row) + ', _col = ' + string(_col) +
+                           ') _row not valid');
+    exit;
+  }
+  case _col of
+
+    2: if (length(s[_row]) >= 1)
+         result := (s[_row][1] = '1');
+
+    3: if (length(s[_row]) >= 3)
+         result := (s[_row][3] = '1');
+
+    4: if (length(s[_row]) >= 5)
+         result := (s[_row][5] = '1');
+
+  end;
+}
+
+function NeedPrint(_row, _debug: byte): boolean;
+{
+  result := (IsVisible(_row, 2, _debug) and (UE(_row) <> 0)) or (IsVisible(_row, 4, _debug) and (RB(_row) <> 0));
+  if (result and (_debug = 0) and (Abs(RB(_row)) = 0.01) and ((_row = R08) or (_row = R15)))
+    result := false; // В режиме без отладки не показываем копеешные зачеты с прошлого и на следующий месяц
+}
+
+function PrintFormatted(_row, _col, _debug: byte): string;
+{
+  result := '';
+
+  if IsVisible(_row, _col, _debug)
+  {
+    var value: double;
+    value := 0;
+    case _row of
+      R02:
+        case _col of
+          2: value := mtNachisl.NetUSD;
+          3: value := mtNachisl.Rate;
+          4: value := mtNachisl.NetBYN;
+        end;
+      R10:
+        case _col of
+          2: value := mtPayment.NetUSD;
+          3: value := mtPayment.Rate;
+          4: value := mtPayment.NetBYN;
+        end;
+    else
+      case _col of
+        2: value := UE(_row);
+        3: value := Rate(_row);
+        4: value := RB(_row);
+      end;
+    end;
+
+    var format: string;
+    format := '[|-]366 666 666 666';
+    case _col of
+      2: format := '\2p[|-]366 666 666 666.88';
+      3: format := '\4p[|-]366 666.8888';
+      4: format := '\2p[|-]366 666 666 666.88';
+    end;
+
+    if (Abs(value) >= 0.01)
+      result := DoubleToStr(value, format);
+  }
+}
+
+function IsBold(_row: byte): boolean;
+{
+  result := (_row = R09) or (_row = R16);
+}
+
+function PrintCell(_row, _col, _debug: byte): string;
+{
+  result := '';
+
+  if IsBold(_row)
+    result := '<strong>';
+
+  case _col of
+
+    1:    result += GetSumTitle(_row);
+    2..4: result += PrintFormatted(_row, _col, _debug);
+    5:    result += GetComment(_row);
+
+  end;
+
+  if IsBold(_row)
+    result += '</strong>';
+}
+

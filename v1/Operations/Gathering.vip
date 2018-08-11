@@ -1,0 +1,412 @@
+#include Gathering.vih
+#include MT.vih
+#include Query.vih
+#include GroupsDB.vih
+#include StaffDB.vih
+#include PirDB.vih
+#include PirNumbDB.vih
+#include StateType.vih
+#include WorkWithBuffer.vih // GetBufferLib
+//#include VipDebug.vih
+
+Interface Gathering 'Параметры сбора статистических данных' Gray, EscClose;
+  Show at(,, 60, 7);
+
+var wMode: word;
+//var deb: IVipDebug;
+
+Parameters
+  wMode; // 0 - хранение данных в файлах
+         // 1 - чтение из файлов, запись на сервере
+         // 2 - чтение с сервера, запись в файлы
+         // 3 - хранение данных на сервере
+
+Table struct mtTmp
+(
+  Numb:   string [15],
+  sState: string [20],
+  sType:  string [20]
+)
+With index
+(
+  mtTmp01 = Numb
+);
+
+Table struct mtNorm
+(
+  NRec: comp,
+  Numb: s15,
+  Sotr: comp,
+  sVers: tDescr,
+  sState: tDescr,
+  sType: tDescr
+)
+with index
+(
+  mtNorm1 = Sotr
+);
+
+
+Create view
+  var
+    StopDate: date;
+    Total: longint;
+  as select * from mtStaff, KatSotr, mtPir, mtPirNumb, mtTmp, mtNorm, State, Class, mtStruct
+  where (( mtStaff.Sotr == KatSotr.NRec ));
+
+sql query ProblemQuery =
+  select p.ProblNumb as Numb,
+         s.Code as sState,
+         t.Code as sType
+    from Problem p left outer join Class t on p.cProblType = t.atl_nRec
+                   left outer join Class s on p.cState     = s.atl_nRec
+    where p.Archive = 0 and
+          p.cExecEmpl = :Sotr and
+          p.RegDate <= :StopDate;
+
+var oStateType: StateType;
+var oGroups: GroupsDB;
+var oStaff: StaffDB;
+var oPir: PirDB;
+var oPirNumb: PirNumbDB;
+
+Function GetCurDatePir_(_CheckDate: date; _CheckTime: time): longint;
+{
+  result := 0;
+
+  var dCheckDate: date; // Дата контроля
+  dCheckDate := _CheckDate;
+
+  if (_CheckTime < Time(9, 30, 0, 0))
+    dCheckDate := Sub_Day(_CheckDate, 1);
+
+  delete all mtPir where (( dCheckDate == mtPir.Period ));
+  delete all mtPirNumb where (( dCheckDate   == mtPirNumb.Period ));
+
+  var objQuery: IQuery;
+  var objResultSet: IResultSet;
+
+  StartNewVisual(vtIndicatorVisual, vfBreak + vfConfirm + vfTimer, 'Сбор данных на ' + string(dCheckDate), RecordsInTable(#mtStaff));
+
+  _loop mtStaff
+  {
+    if (not iNextVisual(KatSotr.FIO))
+      break;
+
+    delete all mtTmp;
+
+    objQuery := QueryManager.CreateQuery(ProblemQuery);
+
+    if (objQuery = NullRef)
+    {
+      message('Ошибка создания SQL-запроса ProblemQuery', Error);
+      StopVisual;
+      exit;
+    }
+
+    var Err: array[1..9] of longint;
+    var Law: array[1..9] of longint;
+    var i: word;
+
+    for (i := 1; i < 10; i++)
+    {
+      Err[i] := 0;
+      Law[i] := 0;
+    }
+
+    objQuery.SetParam('Sotr', KatSotr.cClass);
+    objQuery.SetParam('StopDate', dCheckDate);
+
+    if (objQuery.execute.ErrorCode <> tsOk)
+    {
+      message('Ошибка выполнения SQL-запроса ProblemQuery'#13 +
+              'Код: ' + string(objQuery.ErrorCode), Error);
+      break;
+    }
+
+    var res: integer;
+    res := SqlCopyInto(objQuery, #mtTmp, true);
+
+    if (res <> tsOk)
+    {
+      if (res = tsDirectSQLIfcError)
+        continue;
+
+      message('Ошибка копирования SQL-выборки ProblemQuery'#13 +
+              'Код: ' + string(res), Error);
+      break;
+    }
+
+    var cSotr: comp;
+    cSotr := mtStaff.NRec;
+    //insert into mtPir select dCheckDate, StateCode, TypeCode, cSotr, Quantity from mtTmp;
+
+    _loop mtTmp
+    {
+      if (GetFirst mtPir where (( cSotr        == mtPir.Sotr      and
+                                  dCheckDate   == mtPir.Period    and
+                                  mtTmp.sState == mtPir.StateCode and
+                                  mtTmp.sType  == mtPir.TypeCode )) = tsOk)
+      {
+        mtPir.Quantity := mtPir.Quantity + 1;
+        update current mtPir;
+      }
+      else
+      {
+        ClearBuffer(#mtPir);
+        mtPir.Period    := dCheckDate;
+        mtPir.StateCode := mtTmp.sState;
+        mtPir.TypeCode  := mtTmp.sType;
+        mtPir.Sotr      := cSotr;
+        mtPir.Quantity  := 1;
+        insert current mtPir;
+      }
+
+      case SubStr(mtTmp.sState, 1, 2) of
+        '01', '02', '05', '06': // Обнаружена, Решается, Отложена, Не решается
+        {
+          ClearBuffer(#mtPirNumb);
+          mtPirNumb.Period := dCheckDate;
+          mtPirNumb.Numb   := mtTmp.Numb;
+          mtPirNumb.sState := mtTmp.sState;
+          mtPirNumb.sType  := mtTmp.sType;
+          mtPirNumb.Sotr   := cSotr;
+          insert current mtPirNumb;
+          result++;
+        }
+      end;
+      // deb.w('StateCode = ' + mtTmp.StateCode + ', TypeCode = ' + mtTmp.TypeCode + ', Quantity = ' + string(mtTmp.Quantity));
+      Total++;
+    }
+
+    //deb.o;
+  }
+  StopVisual;
+}
+
+public Function GetCurDatePir: longint;
+{
+  result := GetCurDatePir_(Cur_Date, Cur_Time);
+}
+
+Screen scParam ('',, sci1EnEsc);
+  NoTableNavigation;
+Fields
+  StopDate: NoProtect;
+Buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+  `Зарегистрированные до даты`.@@@@@@@@@@@ включительно
+
+
+        <. Выполнить .>        <.  Отмена   .>
+>>
+End;
+
+
+sql query NormQuery =
+  select p.Atl_NRec as NRec,
+         p.ProblNumb as Numb,
+         k.NRec as Sotr,
+         v.Code as sVers,
+         s.Code as sState,
+         t.Code as sType
+    from Problem p left outer join Class t on p.cProblType = t.atl_nRec
+                   left outer join Class s on p.cState     = s.atl_nRec
+                   left outer join Class v on p.cVersion   = v.atl_nRec
+                   left outer join KatSotr k on p.cExecEmpl  = k.cClass
+    where p.cSolveEmpl = :Boss and
+          p.RegDate <= :StopDate and
+          p.RegDate >= :StartDate;
+
+Public Function GetNormCheckPir: longint;
+{
+  result := 0;
+
+  delete all mtNorm;
+
+  var objQuery: IQuery;
+  var objResultSet: IResultSet;
+
+  objQuery := QueryManager.CreateQuery(NormQuery);
+
+  if (objQuery = NullRef)
+  {
+    message('Ошибка создания SQL-запроса NormQuery', Error);
+    StopVisual;
+    exit;
+  }
+
+  var _Start, _Stop, _Cur: date;
+  _Cur := Sub_Months(Cur_Date, 2);
+  _Start := date(1, Month(_Cur), Year(_Cur));
+  _Stop := date(Last_Day(_Cur), Month(_Cur), Year(_Cur));
+
+  StartNewVisual(vtIndicatorVisual, vfBreak + vfConfirm + vfTimer, 'Сбор данных на ' + DateToStr(_Start, 'mmm YYYY'), 1);
+
+  objQuery.SetParam('Boss', 28710447624488151);
+  objQuery.SetParam('StartDate', _Start);
+  objQuery.SetParam('StopDate', _Stop);
+
+  if (objQuery.execute.ErrorCode <> tsOk)
+  {
+    message('Ошибка выполнения SQL-запроса NormQuery'#13 +
+            'Код: ' + string(objQuery.ErrorCode), Error);
+    StopVisual;
+    exit;
+  }
+
+  var res: integer;
+  res := SqlCopyInto(objQuery, #mtNorm, true);
+
+  if (res <> tsOk)
+  {
+    StopVisual;
+
+    if (res = tsDirectSQLIfcError)
+      exit;
+
+    message('Ошибка копирования SQL-выборки NormQuery'#13 +
+            'Код: ' + string(res), Error);
+    exit;
+  }
+
+  var m_objClipboard: GetBufferLib;
+  var Norm: array[1..10] of longint;
+  var i: word;
+
+  _loop mtStruct
+  {
+    if (mtStruct.Mode <> 2)
+      continue;
+
+    for (i := 1; i < 10; i++)
+      mtStruct.Norm[i] := 0;
+
+    update current mtStruct;
+  }
+
+  for (i := 1; i <= 10; i++)
+    Norm[i] := 0;
+
+  _loop mtStaff
+  {
+    _loop mtNorm where (( mtStaff.Sotr == mtNorm.Sotr ))
+    {
+      if (SubStr(mtNorm.sVers, 1, 4) <> '1012')
+        continue;
+
+      var SrcType: string;
+      SrcType := mtNorm.sType;
+
+      if (GetLast State where (( mtNorm.Nrec  == State.cProblem and
+                                 pckProblType == State.ModifyType )) = tsOk)
+        if (GetFirst Class where (( State.NewNRec == Class.Atl_NRec )) = tsOk)
+          SrcType := Class.Code;
+
+      case SubStr(SrcType, 1, 2) of
+        '01', '02', '03':
+        {
+          result++;
+          Norm[1]++;
+          m_objClipboard.AddLineToBuffer(mtNorm.Numb);
+
+          if (SubStr(mtNorm.sType, 1, 2) <> '01') and
+             (SubStr(mtNorm.sType, 1, 2) <> '02') and
+             (SubStr(mtNorm.sType, 1, 2) <> '03')
+            Norm[5]++; // Снята, т.е. уже не ошибка
+          else
+            case SubStr(mtNorm.sState, 1, 2) of
+              '01', // Обнаружена
+              '02', // Решается
+              '05', // Отложена
+              '06': // Не решается
+                if (mtNorm.sState = '0260') // Ждем сборки
+                  Norm[3]++; // Сборка
+                else
+                  Norm[2]++; // Не решена
+
+              '03': // Решена
+                  Norm[4]++;
+              '04': // Снята
+                  Norm[5]++;
+            end;
+        }
+       end;
+    }
+
+    if (Norm[1] > 0)
+    {
+      if (GetFirst mtStruct where (( word(2)      == mtStruct.Mode and
+                                     mtStaff.NRec == mtStruct.Rec )) = tsOk)
+      {
+        for (i := 1; i < 10; i++)
+          mtStruct.Norm[i] := Norm[i];
+
+        update current mtStruct;
+
+        var cRec: comp;
+        cRec := mtStruct.Node;
+
+        while (GetFirst mtStruct where (( cRec == mtStruct.NRec )) = tsOk)
+        {
+          for (i := 1; i < 10; i++)
+            mtStruct.Norm[i] += Norm[i];
+
+          update current mtStruct;
+          cRec := mtStruct.Node;
+        }
+      }
+
+      for (i := 1; i <= 10; i++)
+        Norm[i] := 0;
+    }
+  }
+
+  m_objClipboard.CopyInfoToBuffer;
+
+  StopVisual;
+}
+
+
+
+HandleEvent
+
+cmInit:
+{
+  oStateType.Load;
+  oGroups.Load(wMode);
+  oStaff.Load(wMode);
+  oPir.Load(wMode);
+  oPirNumb.Load(wMode);
+  if (not ReadMyDsk(StopDate, 'Gathering.StopDate', false))
+    StopDate := Cur_Date;
+  RereadRecord;
+}
+
+cmDone:
+{
+  SaveMyDsk(StopDate, 'Gathering.StopDate');
+  oGroups.Save;
+  oStaff.Save;
+  oPir.Save;
+  oPirNumb.Save;
+}
+
+cmOk:
+{
+  if (StopDate < date(01, 01, 2013))
+    message('Недопустимо ограничение датой, меньшей 01.01.2013.');
+  else
+  {
+    Total := 0;
+    GetCurDatePir_(StopDate, Time(23, 0, 0, 0));
+    message('Всего проблем: ' + string(Total));
+  }
+}
+
+End;
+
+End.

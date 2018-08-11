@@ -1,0 +1,71 @@
+var dummy: double = 0;
+var pp: longint;
+
+DataStream dsReportByMonth
+(
+  DataSet WageStream
+  (
+    [Year]             dummy; // mtMoney.Year;                   // Год
+    [Month]            pp; // mtMoney.Month;                  // Месяц
+    [FIO]              sal.GetPerson(pp).FIO; // StructName;                     // Сотрудник
+    [DaysPlan]         dummy; // mtMoney.DaysPlan;               // Дней по плану
+    [DaysFact]         dummy; // mtMoney.DaysFact;               // Дней фактически
+    [Salary]           dummy; // sal.UE(R01);                    // Оклад
+    [Salary_Check]     dummy; // sal.GetPrevSalary;              // Оклад за прошлый месяц
+    [DepBonus]         dummy; // sal.UE(R02);                    // Премия отдела
+    [GovBonus]         dummy; // sal.UE(R03);                    // Премия Управления
+    [PrBisnes]         dummy; // sal.UE(R04);                    // Проектный бизнес
+    [OthBonus]         dummy; // sal.UE(R05) + UE(R06);          // Другие премии
+                                                       // Начислено
+    [Accrued]          dummy; // sal.UE(R07);
+    [TaxDeductKol]     dummy; // if(mtMoney.TaxDeductKol = 0, mtStaff.TaxDeduct, mtMoney.TaxDeductKol);  // Льгота по подоходному налогу, количество
+    [TaxDeductRB]      dummy; // sal.RB(R21);                    // Льгота по подоходному налогу, BYN
+    [TaxDeductUE]      dummy; // sal.UE(R21);                    // Льгота по подоходному налогу, USD
+    [IncomingRB]       dummy; // sal.RB(R08);                    // Вх. остаток, BYN
+    [IncomingRB_Check] dummy; // sal.GetPrevIncomingRB;          // Вх. остаток - контроль с распечаткой, BYN
+    [IncomingUE]       dummy; // sal.UE(R08);                    // Вх. остаток, USD
+    [ToIssue]          dummy; // sal.UE(R09);                    // К выдаче
+    [PrepaymentRB]     dummy; // sal.RB(R10);                    // Аванс, BYN
+    [PrepaymentEx]     dummy; // if(sal.RB(R10) = 0, 0, sal.Rate(R10));  // Аванс, курс
+    [PrepaymentUE]     dummy; // sal.UE(R10);                    // Аванс, USD
+    [PaymBetwinRB]     dummy; // sal.RB(R11);                    // Отпуск, BYN
+    [PaymBetwinEx]     dummy; // if(sal.RB(R11) = 0, 0, sal.Rate(R11));  // Отпуск, курс
+    [PaymBetwinUE]     dummy; // sal.UE(R11);                    // Отпуск, USD
+    [SecPartRB]        dummy; // sal.RB(R13);                    // Выплата, BYN
+    [SecPartEx]        dummy; // if(sal.RB(R13) = 0, 0, sal.Rate(R13));  // Выплата, курс
+    [SecPartUE]        dummy; // sal.UE(R13);                    // Выплата, USD
+    [ThrdPartRB]       dummy; // sal.RB(R14);                    // Выплата 2-й части, BYN
+    [ThrdPartEx]       dummy; // if(sal.RB(R14) = 0, 0, sal.Rate(R14));  // Выплата 2-й части, курс
+    [ThrdPartUE]       dummy; // sal.UE(R14);                    // Выплата 2-й части, USD
+    [TotalIssuedRB]    dummy; // sal.RB(R16);                    // Итого выдано, BYN
+    [TotalIssuedUE]    dummy; // sal.UE(R16);                    // Итого выдано, USD
+    [OutgoingRB]       dummy; // sal.RB(R15);                    // Исх. остаток, BYN
+    [OutgoingUE]       dummy; // sal.UE(R09) - sal.UE(R16);      // Исх. остаток, USD
+    [OutgoingUE_Check] dummy; // sal.UE(R15);                    // Исх. остаток - контроль с распечаткой, USD
+    [OutgoingUE_Delta] dummy; // sal.UE(R09) - sal.UE(R16) - sal.UE(R15);
+  );
+)
+
+HandleEvent DataSet WageStream
+
+cmPreProcess:
+{
+  pp := 0;
+}
+
+cmOnProcess:
+{
+  pp++;
+  if (pp <= sal.PersCount)
+    ContinueDataSet;
+}
+
+end;
+end;
+
+
+procedure ReportByMonth_New;
+{
+  RunFReport(dsReportByMonth, '', false);
+}
+

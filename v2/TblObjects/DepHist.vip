@@ -1,0 +1,99 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект истории подразделений
+//------------------------------------------------------------------------------
+
+Interface DepHist;
+
+// Структура подразделений на дату
+Table struct mtDepHist
+(
+  NRec:   comp,
+  dBeg:   date,
+  dEnd:   date,
+  Node:   comp,
+  Sort:   s50,
+  Depart: comp
+)
+With index
+(
+  DhId   = NRec (unique, surrogate),
+  ByNode = Node + dBeg
+);
+
+
+Create view from mtDepHist;
+
+property NRec:   comp absolute mtDepHist.NRec;
+property dBeg:   date absolute mtDepHist.dBeg;
+property dEnd:   date absolute mtDepHist.dEnd;
+property Node:   comp absolute mtDepHist.Node;
+property Sort:   s50  absolute mtDepHist.Sort;
+property Depart: comp absolute mtDepHist.Depart;
+
+index DhId auto;
+index ByNode auto;
+
+function IModify.doInsert : word;
+{
+  result := insert current mtDepHist;
+}
+
+function IModify.doUpdate : word;
+{
+  result := update current mtDepHist;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtDepHist;
+}
+
+implementation IModify.doFlush  abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtDepHist;
+}
+
+public procedure Clear;
+{
+  delete all mtDepHist;
+}
+
+public function Load(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtDepHist);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:NRec':   NRec   := comp(_e.FndAttr.Value);
+        'rok:dBeg':   dBeg   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:dEnd':   dEnd   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Node':   Node   := comp(_e.FndAttr.Value);
+        'rok:Sort':   Sort   := _e.FndAttr.Value;
+        'rok:Depart': Depart := comp(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtDepHist;
+  result := true;
+}
+
+public function Save(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:DepHist');
+  xnode.AddAttr('rok:NRec='   + string(NRec,0,0));
+  xnode.AddAttr('rok:dBeg='   + string(dBeg));
+  xnode.AddAttr('rok:dEnd='   + string(dEnd));
+  xnode.AddAttr('rok:Node='   + string(Node,0,0));
+  xnode.AddAttr('rok:Sort='   + Sort);
+  xnode.AddAttr('rok:Depart=' + string(Depart,0,0));
+  result := xnode;
+}
+
+end.

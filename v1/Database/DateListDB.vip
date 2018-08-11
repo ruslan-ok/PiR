@@ -1,0 +1,41 @@
+#include DateListDB.vih
+#include MT.vih
+
+Interface DateListDB;
+
+Create view as select * from mtDateList, mtPir;
+
+Function  GetFileName: string;
+{
+  result := 'DateList';
+}
+
+Procedure LoadRecord;
+{
+  mtDateList.Period := Add_Day(cgiStartDate, longint(part[1]));
+  insert current mtDateList;
+}
+
+Procedure SaveRecord;
+{
+  DoSet( '', string(CalcDaysBetweenDates(cgiStartDate, mtDateList.Period, false) - 1));
+}
+
+Procedure SaveAll;
+{
+  HttpClear;
+
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfBreak + vfConfirm, 'Выгрузка таблицы ' +
+                                    GetFileName + 'в буфер...', RecordsInTable(#mtDateList));
+  _loop mtDateList
+  {
+    if not NextVisual
+      break;
+    if (GetFirst mtPir where (( mtDateList.Period == mtPir.Period )) <> tsOk)
+      continue;
+    SaveRecord;
+  }
+  StopVisual;
+}
+
+End.

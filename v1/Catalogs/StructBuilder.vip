@@ -1,0 +1,273 @@
+#include MT.vih
+#include StructBuilder.vih
+!#include VipDebug.vih
+#include PirFun.inc
+
+Interface StructBuilder;
+
+!var deb: IVipDebug;
+
+Create view
+var
+  cNode: comp;
+as select
+  *
+from
+  mtStaff,
+  mtGroup,
+  mtStruct,
+  mtPir,
+  mtDateList,
+  //mtPirNumb,
+  Problem,
+  Class ClassProblType,
+  Class ClassState
+where ((
+  cNode              == mtGroup.Node            and
+  Problem.cProblType == ClassProblType.Atl_NRec and
+  Problem.cState     == ClassState.Atl_NRec
+));
+
+Function InsertSt(_Node: comp; _Mode: word; _Rec: comp): comp;
+{
+  ClearBuffer(#mtStruct);
+  mtStruct.Node := _Node;
+  mtStruct.Mode := _Mode;
+  mtStruct.Rec  := _Rec;
+  insert current mtStruct;
+  result := mtStruct.NRec;
+}
+
+Procedure ScanStaff(_Group, _NodeSt: comp);
+{
+  _loop mtStaff where (( _Group == mtStaff.Group ))
+    InsertSt(_NodeSt, 2, mtStaff.NRec);
+}
+
+Procedure ScanGroup(_NodeGr, _NodeSt: comp);
+{
+  PushPos(#mtGroup);
+  var PrevNode, NewNode: comp;
+  PrevNode := cNode;
+
+  cNode := _NodeGr;
+  _loop mtGroup
+  {
+    NewNode := InsertSt(_NodeSt, 1, mtGroup.NRec);
+    ScanStaff(mtGroup.NRec, NewNode);
+    ScanGroup(mtGroup.NRec, NewNode);
+  }
+
+  cNode := PrevNode;
+  PopPos(#mtGroup);
+}
+
+/*
+// получение номера офиса и номер записи  по номеру проблемы
+Procedure GetOffice_Number(sOffice_Number: string; var nOffice: longint; var nNumber: longint);
+var iPos : byte;
+{
+   iPos := Instr('.', sOffice_Number);
+   if (iPos = 0)
+   {
+     nOffice := longint(sOffice_Number);
+     nNumber := 0;
+     exit;
+   }
+
+   nOffice := longint(trim(substr(sOffice_Number, 1, iPos - 1)));
+   nNumber := longint(trim(substr(sOffice_Number, iPos + 1, 10)));
+}
+
+function GetAtlNrecByNumb(_PiR: string): comp;
+var
+  nOffice, nNumber: longint;
+{
+  GetOffice_Number(_PiR, nOffice, nNumber);
+  result := OffNumToNRec(nOffice, nNumber);
+}
+*/
+Procedure ScanPir(_Period: date; _Offset: word);
+{
+  var Err: array[1..10] of longint;
+  var Law: array[1..10] of longint;
+  var Hung: array[1..10] of longint;
+  var Norm: array[1..10] of longint;
+  var i: word;
+
+  for (i := 1; i <= 10; i++)
+  {
+    Err[i] := 0;
+    Law[i] := 0;
+    Hung[i] := 0;
+    Norm[i] := 0;
+  }
+
+  _loop mtPir where (( mtStaff.NRec == mtPir.Sotr and
+                       _Period      == mtPir.Period ))
+  {
+    var sState, sType: string;
+    sState := SubStr(mtPir.StateCode, 1, 2);
+    sType := SubStr(mtPir.TypeCode, 1, 2);
+
+    var lQnt: longint;
+    lQnt := mtPir.Quantity;
+
+    if (mtPir.StateCode = '0260') // Ждем сборки
+    {
+      case sType of
+        '01', // Ошибки
+        '02', // Ошибки по законодательству
+        '03': // Несоответствие стандарту
+        {
+          Hung[1] += lQnt; // Ошибки 8.1
+          Hung[2] += lQnt; // Ошибки 9.1
+        }
+      end;
+
+      Hung[3] += lQnt; // Всего 9.1
+    }
+
+    if (mtPir.StateCode = '0320') // Закрыта патчем
+    {
+      case sType of
+        '01', // Ошибки
+        '02', // Ошибки по законодательству
+        '03': // Несоответствие стандарту
+        {
+          Hung[2] += lQnt; // Ошибки 9.1
+        }
+      end;
+
+      Hung[3] += lQnt; // Всего 9.1
+    }
+
+    case sState of
+      '01', '02', '05', '06': // Обнаружена, Решается, Отложена, Не решается
+        if (mtPir.StateCode <> '0260') // Ждем сборки
+        {
+          /*
+          case mtPir.TypeCode of
+            '0110', '0120', '0130', '0140', '0210', '0220', '0310', '0320':
+              deb.w(string(mtPir.Period) + ', ' + mtPir.StateCode + ', ' + mtPir.TypeCode + ', ' +
+                    mtPir.Sotr + ', ' + string(mtPir.Quantity));
+          end;
+          */
+          case mtPir.TypeCode of
+            '0110': { Err[1] += lQnt; Err[9] += lQnt; } // Ошибки, исключающие использование
+            '0120': { Err[2] += lQnt; Err[9] += lQnt; } // Ошибки, существенно затрудняющие использование
+            '0130': { Err[3] += lQnt; Err[9] += lQnt; } // Прочие ошибки
+            '0140': { Err[4] += lQnt; Err[9] += lQnt; } // Ошибки правописания
+            '0210': { Err[5] += lQnt; Err[9] += lQnt; } // Ошибки по законодательству, исключающие использование
+            '0220': { Err[6] += lQnt; Err[9] += lQnt; } // Ошибки по законодательству, существенно затрудняющие использование
+            '0310': { Err[7] += lQnt; Err[9] += lQnt; } // Несоответствие стандарту, существенно затрудняющее использование
+            '0320': { Err[8] += lQnt; Err[9] += lQnt; } // Прочие несоответствия стандарту
+            '0510': { Law[1] += lQnt; Law[9] += lQnt; } // Критичные предложения по поддержке законодательства
+            '0520': { Law[2] += lQnt; Law[9] += lQnt; } // Существенные предложения по поддержке законодательства
+            '0530': { Law[3] += lQnt; Law[9] += lQnt; } // Прочие предложения по поддержке законодательства
+          end;
+        }
+    end;
+  }
+/*
+  var _Start, _Stop, _Cur2: date;
+  _Cur2 := Sub_Months(Cur_Date, 2);
+  _Start := date(1, Month(_Cur2), Year(_Cur2));
+  _Stop := date(Last_Day(_Cur2), Month(_Cur2), Year(_Cur2));
+
+  _loop mtPirNumb where (( mtStaff.NRec == mtPirNumb.Sotr   and
+                           _Start      <<= mtPirNumb.Period and
+                           _Stop       >>= mtPirNumb.Period ))
+  {
+  _loop mtPirNumb where (( mtStaff.NRec == mtPirNumb.Sotr   and
+                           _Start      <<= mtPirNumb.Period and
+                           _Stop       >>= mtPirNumb.Period ))
+  {
+    if (GetFirst Problem where (( GetAtlNrecByNumb(mtPirNumb.Numb) == Problem.Atl_Nrec )) <> tsOk)
+      continue;
+
+//    if (Problem.RegDate < _Start) or (Problem.RegDate > _Stop)
+//      continue;
+
+    if (Problem.cVersion <> 28710447624498209) // не 9.1
+      continue;
+
+    var sState, sType: string;
+    sState := SubStr(ClassState.Code, 1, 2);
+    sType := SubStr(ClassProblType.Code, 1, 2);
+
+    if (sType <> '01') and (sType <> '02') and (sType <> '03')
+      continue; // не ошибка
+
+    Norm[1]++;
+
+    case sState of
+      '01', // Обнаружена
+      '02', // Решается
+      '05', // Отложена
+      '06': // Не решается
+        if (ClassState.Code <> '0260') // Ждем сборки
+          Norm[2]++;
+        else
+          Norm[3]++;
+
+      '03': // Решена
+          Norm[4]++;
+      '04': // Снята
+          Norm[5]++;
+    end;
+  }
+*/
+  if (Err[9] > 0) or (Law[9] > 0) or (Hung[3] > 0) or (Norm[1] > 0)
+  {
+    if (GetFirst mtStruct where (( word(2)      == mtStruct.Mode and
+                                   mtStaff.NRec == mtStruct.Rec )) = tsOk)
+    {
+      for (i := 1; i < 10; i++)
+      {
+        mtStruct.Err[i + _Offset] := Err[i];
+        mtStruct.Law[i + _Offset] := Law[i];
+        mtStruct.Hung[i + _Offset] := Hung[i];
+        mtStruct.Norm[i + _Offset] := Norm[i];
+      }
+      update current mtStruct;
+
+      var cRec: comp;
+      cRec := mtStruct.Node;
+
+      while (GetFirst mtStruct where (( cRec == mtStruct.NRec )) = tsOk)
+      {
+        for (i := 1; i < 10; i++)
+        {
+          mtStruct.Err[i + _Offset] += Err[i];
+          mtStruct.Law[i + _Offset] += Law[i];
+          mtStruct.Hung[i + _Offset] += Hung[i];
+          mtStruct.Norm[i + _Offset] += Norm[i];
+        }
+        update current mtStruct;
+        cRec := mtStruct.Node;
+      }
+    }
+  }
+}
+
+public Procedure Build(_Date1, _Date2: date);
+{
+  //deb.u('Build');
+  delete all mtStruct;
+
+  ScanStaff(0, 0);
+  ScanGroup(0, 0);
+
+  GetLast mtDateList;
+
+  _loop mtStaff
+  {
+    ScanPir(_Date1, 0);
+    if (_Date1 <> _Date2)
+      ScanPir(_Date2, 10);
+  }
+  //deb.o;
+}
+
+End.

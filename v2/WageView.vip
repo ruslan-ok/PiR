@@ -1,0 +1,527 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Просмотр информации
+//------------------------------------------------------------------------------
+
+#include Marker.vih
+#include AtlProtocol.vih
+
+Interface WageView 'Отдел разработки "Управление персоналом"' ('',, sci1478Esc);
+  Show at(,, 120, 30);
+
+var
+  cNode: comp;
+  sav_Mode: word;
+  sav_cRec: comp;
+  sav_NRec: comp;
+  CurPerson: s50;
+  mtPeriods: IPeriods(Periods) new;
+  mtDepHist: IDepHist(DepHist) new;
+  mtDepart:  IDepart(Depart)   new;
+  mtPost:    IPost(Post)       new;
+  mtPerson:  IPerson(Person)   new;
+  mtAppoint: IAppoint(Appoint) new;
+  mtPersPer: IPersPer(PersPer) new;
+  mtDebtIn:  IPayment(DebtIn)  new;
+  mtNachisl: IPayment(Nachisl) new;
+  mtPayment: IPayment(Payment) new;
+  mtDebtOut: IPayment(DebtOut) new;
+  pMarker:   IMarker(marker)   new;
+
+Table struct mtStruct
+(
+  NRec:   comp,
+  Node:   comp,
+  dPer:   date,
+  dBeg:   date,
+  dEnd:   date,
+  Name:   string,
+  Mode:   byte,
+  Rec:    comp,
+  Person: s50,
+  Sort:   s100
+)
+with index
+(
+  mtStruct1 = NRec (unique, surrogate),
+  mtStruct2 = dPer + Node + Mode(desc) + Sort,
+  mtStruct3 = dPer + Mode + Rec,
+  mtStruct4 = dPer + Mode + Person
+);
+
+Create view as select *
+From
+  mtPeriods,
+  mtDepHist,
+  mtDepart,
+  mtPost,
+  mtAppoint,
+  mtPerson,
+  mtStruct,
+  mtStruct SubStruct,
+  mtPersPer,
+  mtDebtIn,
+  mtNachisl,
+  mtPayment,
+  mtDebtOut
+
+Where ((
+  mtPeriods.dBeg    == mtStruct.dPer    and
+  cNode             == mtStruct.Node    and
+  mtStruct.Person   == mtAppoint.Person and
+  mtStruct.Person   == mtPersPer.Person and
+  mtPeriods.dBeg    == mtPersPer.Period and
+  mtStruct.Person   == mtDebtIn.Person  and
+  mtPeriods.dBeg    == mtDebtIn.Period  and
+  mtStruct.Person   == mtNachisl.Person and
+  mtPeriods.dBeg    == mtNachisl.Period and
+  mtStruct.Person   == mtPayment.Person and
+  mtPeriods.dBeg    == mtPayment.Period and
+  mtStruct.Person   == mtDebtOut.Person and
+  mtPeriods.dBeg    == mtDebtOut.Period and
+  mtAppoint.Depart  == mtDepart.NRec    and
+  mtAppoint.Post    == mtPost.NRec      and
+  mtPeriods.dBeg    == SubStruct.dPer   and
+  mtStruct.NRec     == SubStruct.Node
+))
+
+Condition CurAppoint = ((mtPeriods.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriods.dBeg)))
+Condition SotrOnly = ((mtPeriods.dBeg = mtStruct.dPer) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
+Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
+;
+
+private procedure OpenAllNodes; forward;
+private function GetNachisl(_mode: byte): double; forward;
+private function GetPayment(_mode: byte): double; forward;
+
+Browse brPeriods ('',, sci14EnEsc);
+  Show at(,, 10,) Fixed_X;
+  Table mtPeriods;
+Fields
+  mtPeriods.dBeg 'Период' ('Месяц и год расчетного периода'): [15, 'MM.YYYY'], Protect;
+End;
+
+TableEvent
+  Table mtPeriods;
+
+cmPositionChanged:
+  OpenAllNodes;
+
+End;
+
+
+Tree trFilling ('',, sci14EscTree);
+  Show at(11,, 36,);
+  Table mtStruct;
+  recMarker = pMarker {mtStruct.NRec};
+Fields
+  mtStruct.Name 'Подразделение или ФИО' ('Наименование подразделения или ФИО работника'): [20], Protect;
+End;
+
+TableEvent
+  Table mtStruct;
+
+cmTreeTop:
+  cNode := 0;
+
+cmTreeUp:
+  cNode := mtStruct.Node;
+
+cmTreeDown:
+  cNode := mtStruct.NRec;
+
+cmTreeNodeType:
+{
+  var yType: byte; // лист или папка (открытая или закрытая)
+  yType := ntfText;
+  if (isValid(#mtStruct) and isValid(#SubStruct))
+    if (TreeNodeIsOpen(trFilling))
+      yType := ntfOpen;
+    else
+      yType := ntfClose;
+
+  TreeSetNodeType(trFilling, yType);
+}
+
+cmTreeNeedOwner:
+  TreeJumpToRecord(trFilling, mtStruct.Node);
+
+cmPositionChanged:
+{
+  sav_NRec := mtStruct.NRec;
+  sav_Mode := mtStruct.Mode;
+  sav_cRec := mtStruct.Rec;
+}
+
+End;
+
+TabbedSheet right tsInfo;
+  show at(37,,,);
+
+Screen scInfo 'Основное' ('',, sci178Esc);
+  table mtPersPer;
+Fields
+  mtAppoint.dBeg:       protect;
+  mtAppoint.dEnd:       protect;
+  mtAppoint.Salary:     [13.2,'\2p[|-]366`666`666~99'], protect;
+  mtAppoint.Currency:   skip;
+  mtDepart.Name:        protect;
+  mtPost.Name:          protect;
+  mtPeriods.PlanDays:   protect;
+  mtPersPer.FactDays:   noProtect;
+
+  mtDebtIn.NetUSD ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
+  mtDebtIn.NetBYN ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
+
+  GetNachisl(cgNetUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetNachisl(cgTaxUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetNachisl(cgNetBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetNachisl(cgTaxBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
+
+  GetPayment(cgNetUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetPayment(cgTaxUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetPayment(cgNetBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetPayment(cgTaxBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
+
+  mtDebtOut.NetUSD ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
+  mtDebtOut.NetBYN ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
+<<
+
+   `Назначение с`     .@@@@@@@@@@@@                  `Контракт до` .@@@@@@@@@@@@
+   `Оклад`            .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Отдел`            .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Должность`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+   `Дней план`        .@@@@@@@@@@@@                    `Дней факт` .@@@@@@@@@@@@
+
+                            Net_USD        Tax_USD        Net_BYN        Tax_BYN
+   `Входящий остаток` .@@@@@@@@@@@@                 .@@@@@@@@@@@@
+   `Начислено`        .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Выплачено`        .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Исходящий остаток`.@@@@@@@@@@@@                 .@@@@@@@@@@@@
+>>
+End;
+
+Browse brNachisl 'Начисления';
+  table mtNachisl;
+Fields
+  mtNachisl.Title  'Описание':    [10], Protect;
+  mtNachisl.Payed  'Дата':        [10], Protect;
+  mtNachisl.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
+  mtNachisl.TaxCur 'Валюта и налоги': [10],
+                         [list cgNetBYN 'BYN без налогов',
+                               cgTaxBYN 'BYN с налогами',
+                               cgNetUSD 'USD без налогов',
+                               cgTaxUSD 'USD с налогами'], Protect;
+  mtNachisl.Rate  'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
+  mtNachisl.Info  'Комментарий': [10], Protect;
+End;
+
+Browse brPayment 'Выплаты';
+  table mtPayment;
+Fields
+  mtPayment.Title  'Описание':    [10], Protect;
+  mtPayment.Payed  'Дата':        [10], Protect;
+  mtPayment.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
+  mtPayment.TaxCur 'Валюта и налоги': [10],
+                         [list cgNetBYN 'BYN без налогов',
+                               cgTaxBYN 'BYN с налогами',
+                               cgNetUSD 'USD без налогов',
+                               cgTaxUSD 'USD с налогами'], Protect;
+  mtPayment.Rate   'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
+  mtPayment.Info   'Комментарий': [10], Protect;
+End;
+
+Browse brAppoints 'Назначения' ('',, sci1478Esc);
+  table mtAppoint;
+Fields
+  mtAppoint.dBeg     'Назначен с':    [15], Protect;
+  mtAppoint.dEnd     'Контракт до':   [15], Protect;
+  mtAppoint.Salary   'Оклад':         [13.2,'\2p[|-]366`666`666~99'], Protect;
+  mtAppoint.Currency 'Вал.':          [ 5], Protect;
+  mtDepart.Name      'Подразделение': [15], Protect;
+  mtPost.Name        'Должность':     [15], Protect;
+End;
+
+End; // tsInfo
+
+#include ReportFuncs.vpp
+
+#include Depart.vpp
+#include Post.vpp
+#include Person.vpp
+#include PersPer.vpp
+#include DebtIn.vpp
+#include Nachisl.vpp
+#include Payment.vpp
+#include DebtOut.vpp
+#include Appoint.vpp
+#include Export.vpp
+#include Import.vpp
+
+#include ReportBySotr.vpp
+#include ReportByMonth.vpp
+#include ReportOwertime.vpp
+
+#include DoSend.vpp
+
+private procedure OpenAllNodes;
+{
+  if TreeGetFirst(trFilling)
+    do
+      TreeOpenNode(trFilling);
+    while TreeGetNext(trFilling);
+
+  if (GetFirst mtStruct where (( mtPeriods.dBeg == mtStruct.dPer and
+                                  sav_Mode       == mtStruct.Mode and
+                                  sav_cRec       == mtStruct.Rec )) = tsOk)
+    sav_NRec := mtStruct.NRec;
+
+  TreeJumpToRecord(trFilling, sav_NRec);
+  RescanPanel(#mtStruct);
+}
+
+private procedure ScanAppoint(_dep, _dst: comp);
+{
+  PushPos(#mtAppoint);
+  PushPos(#mtStruct);
+  _loop mtAppoint where (( _dep            == mtAppoint.Depart and
+                           mtPeriods.dBeg >>= mtAppoint.dBeg ))
+  {
+    if ((mtAppoint.dEnd <> ZeroDate) and (mtAppoint.dEnd < mtPeriods.dBeg))
+      continue;
+
+    if (GetFirst mtPerson where (( mtAppoint.Person == mtPerson.Login )) <> tsOk)
+      continue;
+
+    insert mtStruct set mtStruct.dPer   := mtPeriods.dBeg,
+                         mtStruct.Node   := _dst,
+                         mtStruct.Mode   := 2,
+                         mtStruct.dBeg   := mtAppoint.dBeg,
+                         mtStruct.dEnd   := mtAppoint.dEnd,
+                         mtStruct.Rec    := mtPerson.NRec,
+                         mtStruct.Person := mtPerson.Login,
+                         mtStruct.Name   := mtPerson.FIO,
+                         mtStruct.Sort   := LPadCh(string(mtPerson.Sort), '0', 6);
+
+  }
+  PopPos(#mtStruct);
+  PopPos(#mtAppoint);
+}
+
+private procedure ScanDepHist(_src, _dst: comp);
+{
+  PushPos(#mtDepHist);
+  _loop mtDepHist where (( _src            == mtDepHist.Node and
+                           mtPeriods.dBeg >>= mtDepHist.dBeg ))
+  {
+    if ((mtDepHist.dEnd <> ZeroDate) and (mtDepHist.dEnd < mtPeriods.dBeg))
+      continue;
+
+    if (GetFirst mtDepart where (( mtDepHist.Depart == mtDepart.NRec )) <> tsOk)
+      continue;
+
+    insert mtStruct set mtStruct.dPer := mtPeriods.dBeg,
+                         mtStruct.Node := _dst,
+                         mtStruct.Mode := 1,
+                         mtStruct.dBeg := mtDepHist.dBeg,
+                         mtStruct.dEnd := mtDepHist.dEnd,
+                         mtStruct.Rec  := mtDepHist.Depart,
+                         mtStruct.Name := mtDepart.Name,
+                         mtStruct.Sort := mtDepart.Code;
+    ScanAppoint(mtDepHist.Depart, mtStruct.NRec);
+    ScanDepHist(mtDepHist.NRec, mtStruct.NRec);
+  }
+  PopPos(#mtDepHist);
+}
+
+private procedure BuildTree;
+{
+  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, 'Построение иерархии', 1);
+  ResetBounds(#mtStruct);
+  delete all mtStruct;
+
+  RereadRecord;
+
+  _loop mtPeriods
+    ScanDepHist(0, 0);
+
+  SetBounds(#mtStruct);
+  GetFirst mtPeriods;
+  RereadRecord;
+  StopVisual;
+}
+
+private function GetNachisl(_mode: byte): double;
+{
+  result := 0;
+
+  _loop mtNachisl
+    case _mode of
+      cgNetUSD: result += mtNachisl.NetUSD;
+      cgTaxUSD: result += mtNachisl.TaxUSD;
+      cgNetBYN: result += mtNachisl.NetBYN;
+      cgTaxBYN: result += mtNachisl.TaxBYN;
+    end;
+}
+
+private function GetPayment(_mode: byte): double;
+{
+  result := 0;
+
+  _loop mtPayment
+    case _mode of
+      cgNetUSD: result += mtPayment.NetUSD;
+      cgTaxUSD: result += mtPayment.TaxUSD;
+      cgNetBYN: result += mtPayment.NetBYN;
+      cgTaxBYN: result += mtPayment.TaxBYN;
+    end;
+}
+
+private procedure DoPick;
+{
+  case CurField of
+    #mtDepart.Name: RunWindowModal(wnPickDepart);
+    #mtPost.Name:   RunWindowModal(wnPickPost);
+  end;
+}
+
+private procedure DoDel;
+{
+  case CurField of
+    #mtDepart.Name: set mtAppoint.Depart := 0;
+    #mtPost.Name:   set mtAppoint.Post   := 0;
+  end;
+}
+
+
+HandleEvent
+
+cmInit:
+  PutCommand(cmValue30);
+
+cmValue30:
+{
+  TreeGetFirst(trFilling);
+  PushConditionForLeave(tcCurAppoint, tnmtAppoint);
+  SetTitle('Отдел разработки "Управление персоналом" [+]');
+  RereadRecord;
+  sXmlFile := '';
+  ReadMyDsk(sXmlFile, 'WageView_sXmlFile', false);
+  if ExistFile(sXmlFile)
+    DoImport;
+  SelectFormat(trFilling);
+}
+
+cmChangeTabbedSheetFormat:
+  if (Target = brAppoints)
+  {
+    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
+    SetTitle('Отдел разработки "Управление персоналом" [-]');
+    RereadRecord;
+  }
+  else
+  {
+    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
+    SetTitle('Отдел разработки "Управление персоналом" [+]');
+    RereadRecord;
+  }
+
+cmEdit:
+  case CurTable of
+    #mtStruct:
+      if isValid(#mtStruct)
+        case mtStruct.Mode of
+          1: RunWindowModal(wnDepart);
+          2: RunWindowModal(wnPerson);
+        end;
+    #mtNachisl:
+      RunWindowModal(wnNachisl);
+    #mtPayment:
+      RunWindowModal(wnPayment);
+    #mtAppoint:
+      RunWindowModal(wnAppoint);
+    #mtPersPer:
+      case CurField of
+        #mtDebtIn.NetUSD, #mtDebtIn.NetBYN:
+          RunWindowModal(wnDebtIn);
+        #mtDebtOut.NetUSD, #mtDebtOut.NetBYN:
+          RunWindowModal(wnDebtOut);
+      end;
+  end;
+
+cmInsert:
+  PutCommand(cmEdit);
+
+cmPick:
+  DoPick;
+
+cmDelOnProtect:
+  DoDel;
+
+cmHotKeys:
+  PutHotCommand(RunMenu('mnWage'));
+
+cmAccording:
+{
+  if (not isValid(#mtPeriods))
+  {
+    message('Не определен период');
+    exit;
+  }
+
+  wMonth := Month(mtPeriods.dBeg);
+  wYear  := Year(mtPeriods.dBeg);
+
+  if ((Month(Cur_Date) = 1) and ((wMonth <> 12) or (wYear <> (Year(Cur_Date)-1)))) or
+     ((Month(Cur_Date) > 1) and ((wMonth <> (Month(Cur_Date)-1)) or (wYear <> Year(Cur_Date))))
+  {
+    if (message('Подозрение на попытку отправки расчетников за предыдущий период - ' + DateToStr(mtPeriods.dBeg, 'month YYYY') + ' г.'#13#13 +
+                'Отменить операцию?', Confirmation + YesNo) = cmYes)
+      exit;
+  }
+
+  if (pMarker.Count = 0) and (mtStruct.Mode <> 2)
+  {
+    message('Нет помеченных сотрудников');
+    exit;
+  }
+
+  DoSend;
+}
+
+cmExp:
+  RunWindowModal(wnExport);
+
+cmImp:
+  RunWindowModal(wnImport);
+
+cmCtrlQ:
+{
+  BuildTree;
+  OpenAllNodes;
+}
+
+cmValue9:
+  ReportBySotr;
+
+cmValue11:
+  ReportByMonth;
+
+cmValue12:
+  ReportOwertime;
+
+End;
+End.
+
+mnWage menu
+{
+ - 'Отправить', cmAccording, 'Отправить по почте',, 'Alt+S',  kbAltS, sci1Esc;
+ - 'Экспорт', cmExp, 'Экспорт',, 'Alt+O', kbAltO, sci1Esc,,,, bmpExpDoc;
+ - 'Импорт',  cmImp, 'Импорт',,  'Alt+I', kbAltI, sci1Esc,,,, bmpImpDoc;
+ ------;
+ - 'Отчет по сотруднику', cmValue9, 'Контрольный отчет по сотруднику за период',,,, sci1Esc;
+ - 'Отчет по всем за месяц', cmValue11, 'Контрольный отчет по всем сотрудникам за выбранный месяц',,,, sci1Esc;
+ - 'Сверхурочные', cmValue12, 'Сверхурочные',,,, sci1Esc;
+}

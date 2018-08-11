@@ -1,0 +1,106 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования подразделения
+//------------------------------------------------------------------------------
+
+Window wnDepart 'Подразделение';
+  show at(,, 80, 4);
+
+Screen scDepart ('',, sci178Esc);
+  table mtDepart;
+Fields
+  mtDepart.Code (''): noprotect;
+  mtDepart.Name (''): noprotect;
+<<
+
+   `Код`          .@@@@@@@@@@@@
+   `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+WindowEvent wnDepart;
+
+cmInit:
+{
+  PushPos(#mtDepart);
+  ResetBounds(#mtDepart);
+
+  var cGoto: comp;
+  cGoto := 0;
+  if isValid(#mtStruct)
+    if (mtStruct.Mode = 1)
+      cGoto := mtStruct.Rec;
+
+  if (GetFirst mtDepart where (( cGoto == mtDepart.NRec )) = tsOk)
+    RescanPanel(#mtDepart);
+}
+
+cmDone:
+{
+  UpdateTable;
+  SetBounds(#mtDepart);
+  PopPos(#mtDepart);
+}
+
+End;
+
+
+TableEvent
+  table mtDepart;
+
+cmInsertRecord:
+  insert current mtDepart;
+
+cmUpdateRecord:
+  update current mtDepart;
+
+cmDeleteRecord:
+  if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
+    delete current mtDepart;
+
+end;
+
+
+Window wnPickDepart 'Выбор подразделения' ('',, sci1EnEsc) DoAccept;
+  show at(,, 60, 15);
+
+Browse brDepart;
+  table mtDepart;
+Fields
+  mtDepart.Code 'Код':          [20], protect;
+  mtDepart.Name 'Наименование': [40], protect;
+End;
+
+End;
+
+WindowEvent wnPickDepart;
+
+cmInit:
+{
+  PushPos(#mtDepart);
+  ResetBounds(#mtDepart);
+
+  var cGoto: comp;
+  cGoto := 0;
+  if isValid(#mtAppoint)
+    cGoto := mtAppoint.Depart;
+
+  if (GetFirst mtDepart where (( cGoto == mtDepart.NRec )) = tsOk)
+    RescanPanel(#mtDepart);
+}
+
+cmDefault:
+{
+  set mtAppoint.Depart := mtDepart.NRec;
+}
+
+cmDone:
+{
+  SetBounds(#mtDepart);
+  PopPos(#mtDepart);
+}
+
+End;

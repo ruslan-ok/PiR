@@ -1,0 +1,9 @@
+#include BaseDB.vih
+
+VipInterface DateListDB(BaseDB) licensed(free);
+  public:
+    Function  IBaseDB.GetFileName: string;
+    Procedure IBaseDB.LoadRecord;
+    Procedure IBaseDB.SaveRecord;
+    Procedure IBaseDB.SaveAll;
+End;

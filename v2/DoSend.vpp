@@ -1,0 +1,293 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Отправка расчетников по почте
+//------------------------------------------------------------------------------
+
+var
+  sPath: string;
+  wSend: word;
+  bSend: boolean;
+  wSendet: word;
+  wDebug: word;
+  wMonth: word;
+  wYear: word;
+
+Window wnSend 'Параметры отправки писем';
+  Show at(,, 60, 10);
+
+Screen scSend;
+Fields
+  sPath ('',, sci13Esc): NoProtect;
+  wSend ('',, sci13Esc): NoProtect;
+  wDebug ('',, sci13Esc): NoProtect;
+Buttons
+  cmValue6, default,, 'Отправить по почте',, sci1Esc;
+  cmCancel,,, '',, sci1Esc;
+<<
+
+    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+    (.) сформировать именной html-файл`  [.] с отладкой`
+    (.) сформировать именной архив`
+    (.) отправить на мой адрес`
+    (.) отправить получателям`
+
+    <.   Отправить   .>    <.   Отмена    .>
+>>
+End;
+End;
+
+WindowEvent wnSend;
+
+cmInit:
+{
+  if (pMarker.Count = 0) and (mtStruct.Mode <> 2)
+  {
+    message('Не выбраны сотрудники');
+    abort;
+    exit;
+  }
+
+  if (pMarker.Count > 0)
+    SetWindowTitle(wnSend, 'Параметры отправки писем помеченным');
+  else
+    SetWindowTitle(wnSend, 'Параметры отправки писем сотруднику ' + mtStruct.Name);
+
+  bSend := false;
+  sPath := 'D:\';
+  ReadMyDsk(sPath, 'Depart_sPath', false);
+  wSend := 0;
+  ReadMyDsk(wSend, 'Depart_wSend', false);
+}
+
+cmValue6:
+{
+  bSend := true;
+  SaveMyDsk(sPath, 'Depart_sPath');
+  SaveMyDsk(wSend, 'Depart_wSend');
+  CloseWindow(wnSend);
+}
+
+End;
+
+
+File f;
+
+//function PrintTotals: boolean;
+//{
+//  result := true;
+//
+//  if (CurPeriod = 201402) or (CurPeriod = 201407) or ((CurPeriod > 201502) and (CurPeriod < 201506))
+//    result := false;
+//}
+
+private procedure PrintString(_row, _debug: word);
+{
+  f.WriteLn('<tr align="center">');
+  f.WriteLn(Oem2Ansi('<td width="190" align="right">' + PrintCell(_row, 1, _debug) + '</td>'));
+  f.WriteLn(Oem2Ansi('<td width="90"  align="right">' + PrintCell(_row, 2, _debug) + '</td>'));
+  f.WriteLn(Oem2Ansi('<td width="50"  align="right">' + PrintCell(_row, 3, _debug) + '</td>'));
+  f.WriteLn(Oem2Ansi('<td width="100" align="right">' + PrintCell(_row, 4, _debug) + '</td>'));
+  f.WriteLn(Oem2Ansi('<td width="200" align="left">'  + PrintCell(_row, 5, _debug) + '</td>'));
+  f.WriteLn('</tr>');
+}
+
+Procedure SendThis;
+{
+  if (GetFirst mtPerson where (( mtStruct.Person == mtPerson.Login )) <> tsOk)
+    exit;
+
+  if (sPath[length(sPath)] <> '\')
+    sPath += '\';
+
+  var sName: string; // имя файла, включающее отчетный период и ФИО сотрудника
+  sName := string(wYear) + '.' + if(wMonth < 10, '0', '') + string(wMonth) + '_' +
+           SubStr(mtPerson.EMail, 1, pos('@', mtPerson.EMail)-1);
+
+  f.OpenFile(sPath + sName + '.html', stCreate);
+
+  f.WriteLn('<!DOCTYPE HTML>');
+  f.WriteLn('<HTML>');
+  f.WriteLn('<HEAD>');
+  f.WriteLn(Oem2Ansi('<TITLE>ОРУП Атл. Информация о расчете и выплате зарплаты</TITLE>'));
+  f.WriteLn('<META http-equiv="Content-Type" content="text/html; charset=windows-1251">');
+  f.WriteLn('</HEAD>');
+  f.WriteLn('<BODY>');
+  f.WriteLn(Oem2Ansi('Информация о расчете и выплате зарплаты сотрудника<br>'));
+  f.WriteLn(Oem2Ansi('<strong>' + mtStruct.Name + '</strong>' + // таб. № ' + mtMoney.TabNmb +
+                     ' за период <strong>' + DateToStr(mtPeriods.dBeg, 'month YYYY</strong> г.') + '<p>'));
+
+  f.WriteLn('<table width="300" frame="border" border=0 style="font-size: 10pt;">');
+  f.WriteLn('<tr align="right">');
+  f.WriteLn(Oem2Ansi('    <td width="280">По графику рабочих дней в месяце:</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="20">' + string(mtPeriods.PlanDays) + '</td>'));
+  f.WriteLn('</tr>');
+  f.WriteLn('<tr align="right">');
+  f.WriteLn(Oem2Ansi('    <td width="280">' + if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '<strong>') +
+                                              'Фактически отработано дней:' +
+                                              if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '</strong>') + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="20">' + if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '<strong>') +
+                                             string(mtPersPer.FactDays) +
+                                             if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '</strong>') +'</td>'));
+  f.WriteLn('</tr>');
+  f.WriteLn('</table><p>');
+
+  f.WriteLn('<table width="650" frame="border" border=0 style="font-family: arial; font-size: 10pt;" cellspacing="5" cellpadding="5%">');
+  f.WriteLn('<tr align="center">');
+  f.WriteLn(Oem2Ansi('    <td width="210" align="right"></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="90"  align="right"><strong>у.е.</strong></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="50"  align="right"><strong>курс</strong></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="100" align="right"><strong>руб.</strong></td>'));
+  f.WriteLn(Oem2Ansi('    <td width="200" align="left"></td>'));
+  f.WriteLn('</tr>');
+
+  var row: byte;
+  row := 1;
+  while (row <= MaxRows)
+  {
+    if NeedPrint(row, wDebug)
+    {
+      case row of
+        R02:
+        {
+          _loop mtNachisl
+            PrintString(R02, wDebug);
+        }
+
+        R10:
+        {
+          _loop mtPayment
+            PrintString(R10, wDebug);
+        }
+
+        R03, R04, R05, R06, R11, R13, R14:
+        { // Ничего не делаем, т.к. должны были обработать при R02 или R10
+        }
+
+      else
+        PrintString(row, wDebug);
+      end;
+    }
+    row++;
+  }
+
+  f.WriteLn('</table>');
+  f.WriteLn(' </BODY>');
+  f.WriteLn(' </HTML>');
+  f.Close;
+
+  if (wSend = 0)
+    exit;
+
+  // ===================== АРХИВАЦИЯ ==========================
+  var retCode, aErrorCode: integer;
+  retCode := ExecProgram('c:\Program files\7-Zip\7z.exe', 'a ' + sPath + sName + '.7z -p' + mtPerson.Passw +
+                         ' -mhe ' + sPath + sName + '.html', 'архивация', pfSilent, aErrorCode);
+
+  if (retCode <> 0) or (aErrorCode <> 0)
+  {
+    message('Архивация для отправки сотруднику ' + mtStruct.Name + ' за период ' + string(wMonth) + '.' + string(wYear) + ':'#13 +
+            'retCode = ' + string(retCode) + ', aErrorCode = ' + string(aErrorCode));
+    exit;
+  }
+
+  if (wSend = 1)
+    exit;
+
+  // ===================== ОТПРАВКА ==========================
+  f.OpenFile('letter.html', stCreate);
+  f.WriteLn('<!DOCTYPE HTML>');
+  f.WriteLn('<HTML>');
+  f.WriteLn('<HEAD>');
+  f.WriteLn('<TITLE>Информация о расчете и выплате зарплаты</TITLE>');
+  f.WriteLn('<META http-equiv="Content-Type" content="text/html; charset=windows-1251">');
+  f.WriteLn('</HEAD>');
+  f.WriteLn('<BODY>');
+  f.WriteLn('Во вложенном файле - информация о расчете и выплате зарплаты за <strong>' + DateToStr(mtPeriods.dBeg, 'month YYYY') + '</strong> г.<br>');
+  f.WriteLn('Для открытия архива необходимо ввести персональный пароль, отправленный ранее отдельным письмом.<p>');
+  f.WriteLn('Напоминаем, что на основании трудового договора, заработная плата не подлежит разглашению и открытому обсуждению.<br>');
+  f.WriteLn('Любые вопросы по суммам в расчетном листке следует выяснять через начальника отдела.<br><br>');
+  f.WriteLn('Окуневич Руслан Васильевич<br>');
+  f.WriteLn('Начальник ОРУП АТЛ департамента "Управление персоналом"<br>');
+  f.WriteLn('Корпорация Галактика<br>');
+  f.WriteLn('+375(17)294-9999');
+  f.WriteLn(' </BODY>');
+  f.WriteLn(' </HTML>');
+
+  if (wDebug = 0)
+  {
+    var bError: boolean;
+    bError := true;
+
+    var sTo, sCc: string;
+    if (wSend = 2)
+    {
+      sTo := 'Ruslan.Okunevich@galaktika.by';
+      sCc := '';
+    }
+    else
+    {
+      sTo := mtPerson.EMail;
+      sCc := 'Ruslan.Okunevich@galaktika.by';
+    }
+
+    if SetCurMailEncodingTable(AMAIL_1251)         // устанавливаем кодировку
+      if CreateMail(sTo, sCc, 'Информация о расчете и выплате зарплаты за ' +  // создаем письмо
+                                   DateToStr(mtPeriods.dBeg, 'month YYYY г.'))
+        if SetBody(f.Handle, 3)                    // тело письма
+          if AddAttachFrom(sPath + sName + '.7z')  // прикрепляемый файл
+            if SendMail                            // отправка письма
+              bError := false;
+    if bError
+      message(GetMailErrorString);
+    else
+      wSendet++;
+  }
+
+  f.Close;
+}
+
+Procedure DoSend;
+{
+  RunWindowModal(wnSend);
+  if (not bSend)
+    exit;
+
+  wSendet := 0;
+
+  if (pMarker.Count = 0)
+  {
+    SendThis;
+
+    if (wSendet > 0)
+      message('Отправлено писем: ' + string(wSendet));
+
+    exit;
+  }
+
+  PushPos(#mtStruct);
+  SubBounds(tbRMmtStruct1);
+  AddBounds(tbRMmtStruct2);
+
+  StartNewVisual(vtIndicatorVisual, vfBreak + vfConfirm + vfTimer, 'Формирование расчетных листков', pMarker.Count);
+
+  _loop pMarker
+  {
+    if (not NextVisual)
+      break;
+
+    if (GetFirst mtStruct where (( pMarker.pNRec == mtStruct.NRec )) = tsOk )
+      if (mtStruct.Mode = 2)
+        SendThis;
+  }
+
+  StopVisual;
+
+  SubBounds(tbRMmtStruct2);
+  AddBounds(tbRMmtStruct1);
+  PopPos(#mtStruct);
+
+  if (wSendet > 0)
+    message('Отправлено писем: ' + string(wSendet));
+}

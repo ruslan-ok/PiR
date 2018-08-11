@@ -1,0 +1,33 @@
+#ifndef __BaseDB__
+#define __BaseDB__
+Const
+  MyDataBase = 'D:\Work\Сотрудники\ПиР\Data\';
+  coDirect_Read  = 1;
+  coDirect_Write = 2;
+  coConnectorServer = 'http://178.172.132.68/pir/';
+  //coConnectorServer = 'http://google.by';
+End;
+
+ObjInterface IBaseDB;
+  Function  GetFileName: string;
+  Procedure Load(_Mode: word); // 0 - WEB,
+                               // 1 - чтение БД, запись WEB
+                               // 2 - чтение WEB, запись БД
+                               // 3 - БД
+  Procedure LoadPart(_part: string);
+  Procedure Save;
+  Procedure LoadRecord;
+  Procedure SaveRecord;
+  Procedure SaveAll;
+  Function  ReadMode: string;
+  Function  WriteMode: string;
+End;
+
+VipInterface BaseDB
+  implements IBaseDB
+  licensed(free);
+  public:
+    Function check(s: string): string;
+End;
+
+#end

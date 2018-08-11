@@ -1,0 +1,7 @@
+ObjInterface IStructBuilder;
+  Procedure Build(_Date1, _Date2: date);
+End;
+
+VipInterface StructBuilder
+  implements IStructBuilder
+  licensed(free);

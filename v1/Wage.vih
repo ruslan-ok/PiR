@@ -1,0 +1,158 @@
+/*
+#include DomDoc.vih
+#include AtlProtocol.vih
+
+ObjInterface ISerialisible;
+  procedure Load(_e: IDomNode);
+  procedure Save(_e: IDomNode);
+End;
+
+//-----------------------------------------------------------------------------------
+VipInterface Department
+  implements ISerialisible
+  licensed(free);
+public:
+  property Id: comp read;
+  property Parent: comp read;
+  property Code: string read;
+  property Name: string read;
+  constructor Init;
+  constructor SetValues(_id, _parent: comp; _code, _name: string);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Post
+  implements ISerialisible
+  licensed(free);
+public:
+  property Id: comp read;
+  property Code: string read;
+  property Name: string read;
+  constructor Init;
+  constructor SetValues(_id: comp; _code, _name: string);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Person
+  implements ISerialisible
+  licensed(free);
+public:
+  property Login: string read;
+  property EMail: string read;
+  property TabNum: string read;
+  property FIO: string read;
+  property Password: string read;
+  property TaxDeduct: double read;
+  constructor Init;
+  constructor SetValues(_login, _email, _tab, _fio, _password: string; _taxdeduct: double);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Appoint
+  implements ISerialisible
+  licensed(free);
+public:
+  property Appointed: date read;
+  property Contract: date read;
+  property Login: string read;
+  property PostId: comp read;
+  property DepartId: comp read;
+  property Salary: double read;
+  constructor Init;
+  constructor SetValues(_from, _to: date; _login: string; _post, _depart: comp; _salary: double);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Period
+  implements ISerialisible
+  licensed(free);
+public:
+  property pYear: word read;
+  property pMonth: byte read;
+  property PlanDays: byte read;
+  property AvansDate: date read;
+  property PaymentDate: date read;
+  property AvansRate: double read;
+  property PaymentRate: double read;
+  constructor Init;
+  constructor SetValues(_year: word; _month, _plan: byte; _a_date, _p_date: date; _a_rate, _p_rate: double);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface WageSumma
+  implements ISerialisible
+  licensed(free);
+public:
+  property Title: string read;
+  property USD: double read;
+  property BYN: double read;
+  property Rate: double read;
+  property PayDay: date read;
+  property Comment: string read;
+  constructor Init;
+  constructor SetValues(_title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Bonus(WageSumma)
+  licensed(free);
+public:
+  constructor Init;
+  constructor SetValues(_title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Payment(WageSumma)
+  licensed(free);
+public:
+  constructor Init;
+  constructor SetValues(_title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface PersPeriod
+  implements ISerialisible
+  licensed(free);
+public:
+  property Login: string read;
+  property pYear: word read;
+  property pMonth: byte read;
+  property Salary: double read;
+  property FactDays: byte read;
+  property DebtFrom: double read; // Зачет с прошлого месяца
+  property DebtTo: double read; // Зачет на следующий месяц
+  constructor Init;
+  constructor SetValues(_login: string; _year: word; _month: byte; _salary: double; _fact: byte);
+  procedure AddBonus(_sum: WageSumma);
+  procedure AddPayment(_sum: WageSumma);
+  procedure AddDebt(_from: boolean; _usd, _byn: double);
+end;
+
+//-----------------------------------------------------------------------------------
+VipInterface Wage licensed(free);
+public:
+  constructor Init;
+  destructor Done;
+  procedure Save;
+  property PersCount: longint read;
+  procedure AddDepartment(_id, _parent: comp; _code, _name: string);
+  procedure AddPost(_id: comp; _code, _name: string);
+  procedure AddPerson(_login, _email, _tab, _fio, _password: string; _taxdeduct: double);
+  function FindPerson(_tab, _fio: string): string;
+  procedure AddAppoint(_from, _to: date; _login: string; _post, _depart: comp; _salary: double);
+  procedure AddPeriod(_year: word; _month, _plan: byte; _a_date, _p_date: date; _a_rate, _p_rate: double);
+  function AddPersPeriod(_login: string; _year: word; _month: byte; _salary: double; _fact: byte): PersPeriod;
+  procedure AddBonus(_login: string; _year: word; _month: byte; _title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+  procedure AddPayment(_login: string; _year: word; _month: byte; _title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+  procedure AddDebt(_login: string; _year: word; _month: byte; _from: boolean; _usd, _byn: double);
+  function GetPerson(_num: longint): Person;
+//  procedure Logging(_type: word; _mess: string);
+  procedure CheckAll(_log: AtlProtocol);
+  //procedure BeforePrintPerson(_year: word; _month: byte; _fio: string);
+
+//  function UE(_row: byte): double;
+//  function Rate(_row: byte): double;
+//  function RB(_row: byte): double;
+
+end;
+*/

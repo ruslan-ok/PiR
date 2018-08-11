@@ -1,0 +1,104 @@
+#include PirNumbDB.vih
+#include MT.vih
+
+Interface PirNumbDB;
+
+Var LastDate: date;
+
+Create view as select * from mtPirNumb, mtStateType, mtDateList2;
+
+Function GetFileName: string;
+{
+  result := 'PirNumb';
+}
+
+Procedure Load(_Mode: word);
+{
+  delete all mtPirNumb;
+  delete all mtDateList2;
+  LastDate := ZeroDate;
+  inherited::Load(_Mode);
+}
+
+Function GetPartName(_period: date): string;
+{
+  result := string(CalcDaysBetweenDates(cgiStartDate, _period, false) - 1)
+}
+
+Procedure LoadPeriod(_period: date);
+{
+  LoadPart(GetPartName(_period));
+}
+
+Procedure LoadRecord;
+{
+  var StateType: word;
+  StateType := word(part[2]);
+
+  if (GetFirst mtStateType where (( StateType == mtStateType.Value )) <> tsOk)
+  {
+    message('Не найдена запись StateType = ' + string(StateType), Information);
+    exit;
+  }
+
+  mtPirNumb.Period := Add_Day(cgiStartDate, longint(part[1]));
+  mtPirNumb.sState := mtStateType.StateCode;
+  mtPirNumb.sType  := mtStateType.TypeCode;
+  mtPirNumb.Sotr   := comp(part[3]);
+  mtPirNumb.Numb   := part[4];
+  insert current mtPirNumb;
+
+  if (mtPirNumb.Period <> LastDate)
+  {
+    insert mtDateList2 set Period := mtPirNumb.Period;
+    LastDate := mtPirNumb.Period;
+  }
+}
+
+Procedure SaveRecord;
+{
+  DoSet(      GetPartName(mtPirNumb.Period),
+              string(mtStateType.Value)
+      + ';' + string(mtPirNumb.Sotr)
+      + ';' + mtPirNumb.Numb);
+}
+
+Procedure SaveAll;
+{
+  var cur: date;
+  cur := ZeroDate;
+
+  _loop mtPirNumb ordered by mtPirNumb.Period, mtPirNumb.Numb
+  {
+    if not NextVisual
+      break;
+
+    if (cur <> mtPirNumb.Period)
+    {
+      if (cur <> ZeroDate)
+      {
+        StopVisual;
+        HttpDonePart(GetPartName(cur));
+      }
+
+      StartNewVisual(vtNumericVisual, vfTimer + vfBreak + vfConfirm,
+                     'Выгрузка в буфер блока "' + GetPartName(mtPirNumb.Period) + '" таблицы ' + GetFileName + '...', 1);
+      cur := mtPirNumb.Period;
+      HttpClear;
+    }
+
+    if (GetFirst mtStateType where (( mtPirNumb.sState == mtStateType.StateCode and
+                                      mtPirNumb.sType  == mtStateType.TypeCode )) <> tsOk)
+      continue;
+
+    SaveRecord;
+  }
+
+  if (cur <> ZeroDate)
+  {
+    StopVisual;
+    HttpDonePart(GetPartName(cur));
+  }
+}
+
+End.

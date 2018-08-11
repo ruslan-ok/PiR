@@ -1,0 +1,316 @@
+#include BaseDB.vih
+
+Interface BaseDB;
+
+Create view;
+var
+  wMode: word;
+  p_http: pointer;
+
+Function  GetFileName: string;
+{
+  result := '???';
+}
+
+File f;
+
+Var part: array[1..40] of string;
+
+Function ParseString(s: string): byte;
+{
+  result := 0;
+
+  var p: byte;
+  p := Pos(';', s);
+  if (p = 0)
+  {
+    result++;
+    part[result] := s;
+  }
+  else
+  {
+    while (p > 0)
+    {
+      result++;
+      part[result] := SubStr(s, 1, p-1);
+      s := SubStr(s, p+1, Length(s)-p);
+      p := Pos(';', s);
+    }
+    result++;
+    part[result] := s;
+  }
+}
+
+Function check(s: string): string;
+{
+  result := Replace(s, ';', '?');
+}
+
+// [VIRTUAL]
+Procedure LoadRecord;
+{
+}
+
+// [VIRTUAL]
+Procedure SaveRecord;
+{
+}
+
+// [VIRTUAL]
+Procedure SaveAll;
+{
+}
+
+// [VIRTUAL]
+Function  ReadMode: string;
+{
+  if ((wMode and 2) > 0)
+    result := 'http';
+  else
+    result := 'text';
+}
+
+// [VIRTUAL]
+Function  WriteMode: string;
+{
+  if ((wMode and 1) > 0)
+    result := 'http';
+  else
+    result := 'text';
+}
+
+Function HttpMode(_direct: word): boolean;
+{
+  if (_direct = coDirect_Read)
+    result := (ReadMode = 'http');
+  else
+    result := (WriteMode = 'http');
+}
+
+Procedure HttpInit;
+{
+  if (HttpMode(coDirect_Read) or HttpMode(coDirect_Write))
+  {
+    p_http := OleCreate('Ruslan.Connector');
+
+    if (longint(p_http) = 0)
+      message('Не удалось загрузить COM-объект Ruslan.Connector');
+    else
+      _try
+      {
+        OleCall2(p_http, ocProc, 'Init', coConnectorServer, GetFileName);
+      }
+      _except
+        on ExOleBadCall:
+          Message(ExploreException);
+  }
+}
+
+Procedure HttpDonePart(_part: string);
+{
+  if ((HttpMode(coDirect_Read) or HttpMode(coDirect_Write)) and (longint(p_http) <> 0))
+  {
+    if (HttpMode(coDirect_Write) and (longint(p_http) <> 0))
+    {
+      var ret: string;
+      _try
+      {
+        StartNewVisual(vtRotateVisual, vfTimer,
+                       if(_part = '', 'Отправка таблицы ' + GetFileName + ' на сервер...',
+                                      'Отправка на сервер блока "' + _part + '" таблицы ' + GetFileName + '...'), 1);
+        ret := '';
+        //OleCall1(p_http, ocFunc, 'Done', ret);
+        StopVisual;
+      }
+      _except
+        on ExOleBadCall:
+        {
+          StopVisual;
+          Message(ExploreException);
+        }
+      if (ret != '')
+        message('Не удалось сохранить на сервере таблицу ' + GetFileName + ''#13 + ret, Information);
+    }
+  }
+}
+
+Procedure HttpDone;
+{
+  HttpDonePart('');
+}
+
+procedure HttpClear;
+{
+  if (HttpMode(coDirect_Write) and (longint(p_http) <> 0))
+  {
+    var ret: boolean;
+    _try
+    {
+      StartNewVisual(vtRotateVisual, vfTimer, 'Очистка буфера таблицы ' + GetFileName + '...', 1);
+      OleCall1(p_http, ocFunc, 'Clear', ret);
+      StopVisual;
+    }
+    _except
+      on ExOleBadCall:
+      {
+        StopVisual;
+        Message(ExploreException);
+      }
+  }
+}
+
+procedure DoSet(_part, _rec: string);
+{
+  var ret: boolean;
+  if (HttpMode(coDirect_Write))
+  {
+    if (longint(p_http) <> 0)
+      _try
+      {
+        OleCall3(p_http, ocFunc, 'Set', _part, _rec, ret);
+      }
+      _except
+        on ExOleBadCall:
+          Message(ExploreException);
+  }
+  else
+    f.WriteLn(if(_part = '', '', _part + ';') + _rec);
+}
+
+Procedure DoGet;
+{
+  var s, prev: string;
+  s := '';
+  var first: boolean;
+  first := true;
+
+  while (true)
+  {
+    _try
+    {
+      if (first and (GetFileName = 'DateList'))
+      {
+        first := false;
+        OleCall1(p_http, ocFunc, 'Debug', s);
+        message('dbg = ' + s);
+      }
+      prev := s;
+      OleCall1(p_http, ocFunc, 'Get', s);
+    }
+    _except
+      on ExOleBadCall:
+      {
+        Message(ExploreException);
+        break;
+      }
+
+    if (s = '')
+      break;
+
+    var q: byte;
+    q := ParseString(s);
+    if (q > 0)
+      LoadRecord;
+  }
+}
+
+Procedure Load(_Mode: word);
+{
+  wMode := _Mode;
+  if (_Mode = 3)
+    wMode := 0;
+  if (_Mode = 0)
+    wMode := 3;
+  HttpInit;
+
+  if (HttpMode(coDirect_Read))
+  {
+    if (GetFileName = 'PirNumb') or (GetFileName = 'Pir')
+      exit;
+
+    var ret: boolean;
+    _try
+    {
+      OleCall2(p_http, ocFunc, 'Load', '', ret);
+    }
+    _except
+      on ExOleBadCall:
+        Message(ExploreException);
+
+    if (not ret)
+      message('Не удалось получить с сервера таблицу ' + GetFileName, Information);
+    else
+      DoGet;
+  }
+  else
+  {
+    if (GetFileName = 'DateList')
+      exit;
+
+    _try
+    {
+      f.OpenFile(MyDataBase + GetFileName + '.csv', stOpen);
+
+      while (not f.EOF)
+      {
+        var s: string;
+        f.ReadLn(s);
+        var q: byte;
+        q := ParseString(s);
+        if (q > 0)
+          LoadRecord;
+      }
+    }
+    _except
+      on ExFileNotFound:
+      {
+      };
+    _finally
+      f.Close;
+  }
+}
+
+Procedure LoadPart(_part: string);
+{
+  if (HttpMode(coDirect_Read) and ((GetFileName = 'PirNumb') or (GetFileName = 'Pir')))
+  {
+    var ret: boolean;
+    _try
+    {
+      OleCall2(p_http, ocFunc, 'Load', _part, ret);
+    }
+    _except
+      on ExOleBadCall:
+        Message(ExploreException);
+
+    if (not ret)
+      message('Не удалось получить с сервера блок записей "' + _part + '" таблицы ' + GetFileName, Information);
+    else
+      DoGet;
+  }
+}
+
+Procedure Save;
+{
+  if (HttpMode(coDirect_Write))
+  {
+    if ((GetFileName <> 'PirNumb') and (GetFileName <> 'Pir'))
+      SaveAll;
+  }
+  else
+  {
+    _try
+    {
+      f.OpenFile(MyDataBase + GetFileName + '.csv', stCreate);
+      SaveAll;
+    }
+    _finally
+      f.Close;
+  }
+  HttpDone;
+
+  if ((HttpMode(coDirect_Read) or HttpMode(coDirect_Write)) and (longint(p_http) <> 0))
+    OleDestroy(p_http);
+}
+
+End.

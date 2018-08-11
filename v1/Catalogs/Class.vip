@@ -1,0 +1,132 @@
+#include MT.vih
+#include Class.vih
+
+Interface Class;
+
+Create view
+var
+  pcRec, cNode, cNewNode: comp;
+as select
+  *
+from
+  mtGroup,
+  mtGroup UpGroup,
+  mtGroup SubGroup
+where ((
+  cNode        == mtGroup.Node  and
+  mtGroup.Node == UpGroup.NRec  and
+  mtGroup.NRec == SubGroup.Node
+))
+;
+
+Parameters
+  pcRec;
+
+Window wnEdit 'Группа сотрудников';
+  Show at(,, 60, 5);
+
+Screen scEdit;
+  Table mtGroup;
+Fields
+  UpGroup.Name: Skip;
+  mtGroup.Name;
+  mtGroup.Code;
+<<
+
+  `Вышестоящая`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  `Код`          .@@@@@@@
+>>
+End;
+
+End; // wnEdit
+
+Tree trGroups ('',, sci1478EscTree);
+  Table mtGroup;
+Fields
+  mtGroup.Name ''#3'Название': [15], Protect;
+  mtGroup.Code ''#3'Код':      [5],  Protect;
+End;
+
+TableEvent
+  Table mtGroup;
+
+cmTreeTop:
+  cNode := cNewNode := 0;
+
+cmTreeUp:
+  cNode := cNewNode := mtGroup.Node;
+
+cmTreeDown:
+  cNode := cNewNode := mtGroup.NRec;
+
+cmTreeNodeType:
+{
+  var yType: byte; // лист или папка (открытая или закрытая)
+  yType := ntfText;
+  if (isValid(#mtGroup))
+    if (isValid(#SubGroup))
+      if (TreeNodeIsOpen(trGroups))
+        yType := ntfOpen;
+      else
+        yType := ntfClose;
+
+  TreeSetNodeType(trGroups, yType);
+}
+
+cmTreeNeedOwner:
+  TreeJumpToRecord(trGroups, mtGroup.Node);
+
+cmSetDefault:
+  mtGroup.Node := cNewNode;
+
+cmInsertRecord:
+{
+  insert current mtGroup;
+  //cNode := mtGroup.Node;
+  TreeJumpToRecord(trGroups, mtGroup.NRec);
+  RescanPanel(#mtGroup);
+}
+
+cmUpdateRecord:
+  update current mtGroup;
+
+cmDeleteRecord:
+  if (message('Удалить текущую группу?', YesNo + Confirmation) = cmYes)
+    delete current mtGroup;
+
+End;
+
+HandleEvent // interface
+
+cmInit:
+  if (pcRec <> 0)
+    TreeJumpToRecord(trGroups, pcRec);
+
+cmDefault:
+  if (isValid(#mtGroup))
+    pcRec := mtGroup.NRec;
+
+cmAddNewRec:
+  PutCommand(cmValue1);
+
+cmInsLevel:
+{
+  if (isValid(#mtGroup))
+    cNewNode := mtGroup.NRec;
+  else
+    cNewNode := 0;
+
+  NewRecord;
+  PutCommand(cmValue1);
+}
+
+cmEdit:
+  PutCommand(cmValue1);
+
+cmValue1:
+  RunWindow(wnEdit);
+
+End;
+
+End.

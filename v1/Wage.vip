@@ -1,0 +1,1000 @@
+/*
+#include Wage.vih
+#include BaseDB.vih
+
+//-----------------------------------------------------------------------------------
+Interface Department
+
+var cId: comp;
+var cParent: comp;
+var sCode: string;
+var sName: string;
+
+property Id: comp read cId;
+property Parent: comp read cParent;
+property Code: string read sCode;
+property Name: string read sName;
+
+constructor Init;
+{
+  result := true;
+  cId := cParent := 0;
+  sCode := sName := '';
+}
+
+constructor SetValues(_id, _parent: comp; _code, _name: string);
+{
+  result := true;
+  cId := _id;
+  cParent := _parent;
+  sCode := _code;
+  sName := _name;
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Id':     cId     := comp(_e.FndAttr.AttrValue);
+        'rok:Parent': cParent := comp(_e.FndAttr.AttrValue);
+        'rok:Code':   sCode   := _e.FndAttr.AttrValue;
+        'rok:Name':   sName   := _e.FndAttr.AttrValue;
+      end;
+    }
+    while (_e.GetNextAttr);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Department');
+  xnode.AddAttr('rok:Id='     + string(cId,0,0));
+  xnode.AddAttr('rok:Parent=' + string(cParent,0,0));
+  xnode.AddAttr('rok:Code='   + sCode);
+  xnode.AddAttr('rok:Name='   + sName);
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Post
+
+var cId: comp;
+var sCode: string;
+var sName: string;
+
+property Id: comp read cId;
+property Code: string read sCode;
+property Name: string read sName;
+
+constructor Init;
+{
+  result := true;
+  cId := 0;
+  sCode := sName := '';
+}
+
+constructor SetValues(_id: comp; _code, _name: string);
+{
+  result := true;
+  cId := _id;
+  sCode := _code;
+  sName := _name;
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Id':     cId   := comp(_e.FndAttr.AttrValue);
+        'rok:Code':   sCode := _e.FndAttr.AttrValue;
+        'rok:Name':   sName := _e.FndAttr.AttrValue;
+      end;
+    }
+    while (_e.GetNextAttr);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Post');
+  xnode.AddAttr('rok:Id='   + string(cId,0,0));
+  xnode.AddAttr('rok:Code=' + sCode);
+  xnode.AddAttr('rok:Name=' + sName);
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Person
+
+var sLogin: string;
+var sEMail: string;
+var sTabNum: string;
+var sFIO: string;
+var sPassword: string;
+var fTaxDeduct: double;
+
+property Login: string read sLogin;
+property EMail: string read sEMail;
+property TabNum: string read sTabNum;
+property FIO: string read sFIO;
+property Password: string read sPassword;
+property TaxDeduct: double read fTaxDeduct;
+
+constructor Init;
+{
+  result := true;
+  sLogin := sEMail := sTabNum := sFIO := sPassword := '';
+  fTaxDeduct := 0;
+}
+
+constructor SetValues(_login, _email, _tab, _fio, _password: string; _taxdeduct: double);
+{
+  result := true;
+  sLogin     := _login;
+  sEMail     := _email;
+  sTabNum    := _tab;
+  sFIO       := _fio;
+  sPassword  := _password;
+  fTaxDeduct := _taxdeduct;
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Login':     sLogin     := _e.FndAttr.AttrValue;
+        'rok:EMail':     sEMail     := _e.FndAttr.AttrValue;
+        'rok:TabNum':    sTabNum    := _e.FndAttr.AttrValue;
+        'rok:FIO':       sFIO       := _e.FndAttr.AttrValue;
+        'rok:Password':  sPassword  := _e.FndAttr.AttrValue;
+        'rok:TaxDeduct': fTaxDeduct := double(_e.FndAttr.AttrValue);
+      end;
+    }
+    while (_e.GetNextAttr);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Person');
+  xnode.AddAttr('rok:Login='     + sLogin);
+  xnode.AddAttr('rok:EMail='     + sEMail);
+  xnode.AddAttr('rok:TabNum='    + sTabNum);
+  xnode.AddAttr('rok:FIO='       + sFIO);
+  xnode.AddAttr('rok:Password='  + sPassword);
+  xnode.AddAttr('rok:TaxDeduct=' + string(fTaxDeduct));
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Appoint
+
+var dFrom: date;
+var dTo: date;
+var sLogin: string;
+var cPostId: comp;
+var cDepartId: comp;
+var fSalary: double;
+
+property Appointed: date read dFrom;
+property Contract: date read dTo;
+property Login: string read sLogin;
+property PostId: comp read cPostId;
+property DepartId: comp read cDepartId;
+property Salary: double read fSalary;
+
+constructor Init;
+{
+  result := true;
+  dFrom := dTo := ZeroDate;
+  cPostId := cDepartId := 0;
+  sLogin := '';
+  fSalary := 0;
+}
+
+constructor SetValues(_from, _to: date; _login: string; _post, _depart: comp; _salary: double);
+{
+  result := true;
+  dFrom := _from;
+  dTo := _to;
+  sLogin := _login;
+  cPostId := _post;
+  cDepartId := _depart;
+  fSalary := _salary;
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Appointed': dFrom     := StrToDate(_e.FndAttr.AttrValue, 'DD/MM/YYYY');
+        'rok:Contract':  dTo       := StrToDate(_e.FndAttr.AttrValue, 'DD/MM/YYYY');
+        'rok:Login':     sLogin    := _e.FndAttr.AttrValue;
+        'rok:PostId':    cPostId   := comp(_e.FndAttr.AttrValue);
+        'rok:DepartId':  cDepartId := comp(_e.FndAttr.AttrValue);
+        'rok:Salary':    fSalary   := double(_e.FndAttr.AttrValue);
+      end;
+    }
+    while (_e.GetNextAttr);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Appoint');
+  xnode.AddAttr('rok:Appointed=' + string(dFrom));
+  xnode.AddAttr('rok:Contract='  + string(dTo));
+  xnode.AddAttr('rok:Login='     + sLogin);
+  xnode.AddAttr('rok:PostId='    + string(cPostId,0,0));
+  xnode.AddAttr('rok:DepartId='  + string(cDepartId,0,0));
+  xnode.AddAttr('rok:Salary='    + string(fSalary));
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Period
+
+var wYear: word;
+var yMonth: byte;
+var yPlanDays: byte;
+var dAvansDate: date;
+var dPaymentDate: date;
+var fAvansRate: double;
+var fPaymentRate: double;
+
+property pYear: word read wYear;
+property pMonth: byte read yMonth;
+property PlanDays: byte read yPlanDays;
+property AvansDate: date read dAvansDate;
+property PaymentDate: date read dPaymentDate;
+property AvansRate: double read fAvansRate;
+property PaymentRate: double read fPaymentRate;
+
+constructor Init;
+{
+  result := true;
+  wYear := Year(Cur_Date);
+  yMonth := Month(Cur_Date);
+  yPlanDays := 0;
+  dAvansDate := ZeroDate;
+  dPaymentDate := ZeroDate;
+  fAvansRate := 0;
+  fPaymentRate := 0;
+}
+
+constructor SetValues(_year: word; _month, _plan: byte; _a_date, _p_date: date; _a_rate, _p_rate: double);
+{
+  result := true;
+  wYear := _year;
+  yMonth := _month;
+  yPlanDays := _plan;
+  dAvansDate := _a_date;
+  dPaymentDate := _p_date;
+  fAvansRate := _a_rate;
+  fPaymentRate := _p_rate;
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Year':        wYear        := word(_e.FndAttr.AttrValue);
+        'rok:Month':       yMonth       := byte(_e.FndAttr.AttrValue);
+        'rok:PlanDays':    yPlanDays    := byte(_e.FndAttr.AttrValue);
+        'rok:AvansDate':   dAvansDate   := StrToDate(_e.FndAttr.AttrValue, 'DD/MM/YYYY');
+        'rok:PaymentDate': dPaymentDate := StrToDate(_e.FndAttr.AttrValue, 'DD/MM/YYYY');
+        'rok:AvansRate':   fAvansRate   := double(_e.FndAttr.AttrValue);
+        'rok:PaymentRate': fPaymentRate := double(_e.FndAttr.AttrValue);
+      end;
+    }
+    while (_e.GetNextAttr);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Period');
+  xnode.AddAttr('rok:Year='        + string(wYear));
+  xnode.AddAttr('rok:Month='       + string(yMonth));
+  xnode.AddAttr('rok:PlanDays='    + string(yPlanDays));
+  xnode.AddAttr('rok:AvansDate='   + string(dAvansDate));
+  xnode.AddAttr('rok:PaymentDate=' + string(dPaymentDate));
+  xnode.AddAttr('rok:AvansRate='   + string(fAvansRate));
+  xnode.AddAttr('rok:PaymentRate=' + string(fPaymentRate));
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface WageSumma
+
+var sTagName: string;
+var sTitle: string;
+var fUSD: double;
+var fBYN: double;
+var fRate: double;
+var pDay: date;
+var sComment: string;
+
+property Title: string read sTitle;
+property USD: double read fUSD;
+property BYN: double read fBYN;
+property Rate: double read fRate;
+property PayDay: date read pDay;
+property Comment: string read sComment;
+
+constructor Init;
+{
+  result := true;
+  sTagName := 'rok:WageSumma';
+  sTitle := sComment := '';
+  fUSD := fBYN := fRate := 0;
+  pDay := ZeroDate;
+}
+
+constructor SetValues(_title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+{
+  result := true;
+  sTagName := 'rok:WageSumma';
+  sTitle := _title;
+  fUSD := _usd;
+  fBYN := _byn;
+  fRate := _rate;
+  pDay := _day;
+  sComment := _comment;
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Title':   sTitle   := _e.FndAttr.AttrValue;
+        'rok:USD':     fUSD     := double(_e.FndAttr.AttrValue);
+        'rok:BYN':     fBYN     := double(_e.FndAttr.AttrValue);
+        'rok:Rate':    fRate    := double(_e.FndAttr.AttrValue);
+        'rok:PayDay':  pDay     := StrToDate(_e.FndAttr.AttrValue, 'DD/MM/YYYY');
+        'rok:Comment': sComment := _e.FndAttr.AttrValue;
+      end;
+    }
+    while (_e.GetNextAttr);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  if (fUSD = 0) and (fBYN = 0) and (fRate = 0) and (sComment = '')
+    exit;
+
+  var xnode: IDomNode
+  xnode := _e.AddNode(sTagName);
+  xnode.AddAttr('rok:Title='   + sTitle);
+  xnode.AddAttr('rok:USD='     + string(fUSD));
+  xnode.AddAttr('rok:BYN='     + string(fBYN));
+  xnode.AddAttr('rok:Rate='    + string(fRate));
+  xnode.AddAttr('rok:PayDay='  + string(pDay));
+  xnode.AddAttr('rok:Comment=' + sComment);
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Bonus;
+
+constructor Init;
+{
+  result := true;
+  inherited::Init;
+  sTagName := 'rok:Bonus';
+}
+
+constructor SetValues(_title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+{
+  result := true;
+  inherited::SetValues(_title, _usd, _byn, _rate, _comment, _day);
+  sTagName := 'rok:Bonus';
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Payment;
+
+constructor Init;
+{
+  result := true;
+  inherited::Init;
+  sTagName := 'rok:Payment';
+}
+
+constructor SetValues(_title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+{
+  result := true;
+  inherited::SetValues(_title, _usd, _byn, _rate, _comment, _day);
+  sTagName := 'rok:Payment';
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface PersPeriod;
+
+var bonuses: array[1..1] of WageSumma;
+var payments: array[1..1] of WageSumma;
+
+var sLogin: string;
+var wYear: word;
+var yMonth: byte;
+var fSalary: double;
+var yFactDays: byte;
+var fDebtFrom: double;
+var fDebtTo: double;
+
+property Login: string read sLogin;
+property pYear: word read wYear;
+property pMonth: byte read yMonth;
+property Salary: double read fSalary;
+property FactDays: byte read yFactDays;
+property DebtFrom: double read fDebtFrom;
+property DebtTo: double read fDebtTo;
+
+constructor Init;
+{
+  result := true;
+  sLogin := '';
+  wYear := 0;
+  yMonth := 0;
+  fSalary := fDebtFrom := fDebtTo := 0;
+  yFactDays := 0;
+  SetLimit(bonuses, 0);
+  SetLimit(payments, 0);
+}
+
+constructor SetValues(_login: string; _year: word; _month: byte; _salary: double; _fact: byte);
+{
+  result := true;
+  sLogin := _login;
+  wYear := _year;
+  yMonth := _month;
+  fSalary := _salary;
+  yFactDays := _fact;
+  fDebtFrom := fDebtTo := 0;
+  SetLimit(bonuses, 0);
+  SetLimit(payments, 0);
+}
+
+public procedure AddBonus(_sum: WageSumma);
+{
+  var num: longint = 0;
+  num := GetLimit(bonuses) + 1;
+  SetLimit(bonuses, num);
+  bonuses[num] := _sum;
+}
+
+public procedure AddPayment(_sum: WageSumma);
+{
+  var num: longint = 0;
+  num := GetLimit(payments) + 1;
+  SetLimit(payments, num);
+  payments[num] := _sum;
+}
+
+public procedure AddDebt(_from: boolean; _usd, _byn: double);
+{
+  #__UnUsed__(_usd)
+  if _from
+    fDebtFrom := _byn;
+  else
+    fDebtTo := _byn;
+}
+
+private procedure LoadBonus(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(bonuses) + 1;
+  SetLimit(bonuses, num);
+  bonuses[num] := new(Bonus, Init);
+  bonuses[num].Load(_e);
+}
+
+private procedure LoadPayment(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(payments) + 1;
+  SetLimit(payments, num);
+  payments[num] := new(Payment, Init);
+  payments[num].Load(_e);
+}
+
+public procedure Load(_e: IDomNode);
+{
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.AttrName of
+        'rok:Login':     sLogin    := _e.FndAttr.AttrValue;
+        'rok:Year':      wYear     := word(_e.FndAttr.AttrValue);
+        'rok:Month':     yMonth    := byte(_e.FndAttr.AttrValue);
+        'rok:Salary':    fSalary   := double(_e.FndAttr.AttrValue);
+        'rok:FactDays':  yFactDays := byte(_e.FndAttr.AttrValue);
+        'rok:DebtFrom':  fDebtFrom := double(_e.FndAttr.AttrValue);
+        'rok:DebtTo':    fDebtTo   := double(_e.FndAttr.AttrValue);
+      end;
+    }
+    while (_e.GetNextAttr);
+
+  if _e.GetFirstNode
+    do
+    {
+      case _e.FndNode.Name of
+        'rok:Bonus':   LoadBonus(_e.FndNode);
+        'rok:Payment': LoadPayment(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+public procedure Save(_e: IDomNode);
+{
+  if (sLogin = '') or (wYear < 2000) or (wYear > 2050) or (yMonth < 1) or (yMonth > 12)
+    exit;
+
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:PersPeriod');
+  xnode.AddAttr('rok:Login='     + sLogin);
+  xnode.AddAttr('rok:Year='      + string(wYear));
+  xnode.AddAttr('rok:Month='     + string(yMonth));
+  xnode.AddAttr('rok:Salary='    + string(fSalary));
+  xnode.AddAttr('rok:FactDays='  + string(yFactDays));
+  xnode.AddAttr('rok:DebtFrom='  + string(fDebtFrom));
+  xnode.AddAttr('rok:DebtTo='    + string(fDebtTo));
+
+ var i: longint;
+  for(i := 1; i <= GetLimit(bonuses); i++)
+    bonuses[i].Save(xnode);
+
+  for(i := 1; i <= GetLimit(payments); i++)
+    payments[i].Save(xnode);
+}
+
+end.
+
+//-----------------------------------------------------------------------------------
+Interface Wage;
+
+//var wlog: AtlProtocol;
+var bChanged: boolean;
+var departments: array[1..1] of Department;
+var posts: array[1..1] of Post;
+var persons: array[1..1] of Person;
+var appoints: array[1..1] of Appoint;
+var periods: array[1..1] of Period;
+var persPeriods: array[1..1] of PersPeriod;
+var MyNewDataBase: string;
+
+property PersCount: longint read GetLimit(persons);
+
+procedure LoadDepartment(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(departments) + 1;
+  SetLimit(departments, num);
+  departments[num] := new(Department, Init);
+  departments[num].Load(_e);
+  bChanged := true;
+}
+
+procedure LoadPost(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(posts) + 1;
+  SetLimit(posts, num);
+  posts[num] := new(Post, Init);
+  posts[num].Load(_e);
+  bChanged := true;
+}
+
+procedure LoadPerson(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(persons) + 1;
+  SetLimit(persons, num);
+  persons[num] := new(Person, Init);
+  persons[num].Load(_e);
+  bChanged := true;
+}
+
+procedure LoadAppoint(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(appoints) + 1;
+  SetLimit(appoints, num);
+  appoints[num] := new(Appoint, Init);
+  appoints[num].Load(_e);
+  bChanged := true;
+}
+
+procedure LoadPeriod(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(periods) + 1;
+  SetLimit(periods, num);
+  periods[num] := new(Period, Init);
+  periods[num].Load(_e);
+  bChanged := true;
+}
+
+procedure LoadPersPeriod(_e: IDomNode);
+{
+  var num: longint;
+  num := GetLimit(persPeriods) + 1;
+  SetLimit(persPeriods, num);
+  persPeriods[num] := new(PersPeriod, Init);
+  persPeriods[num].Load(_e);
+  bChanged := true;
+}
+
+constructor Init;
+{
+  result := true;
+  MyNewDataBase := 'D:\Gal\Data\PiR\';
+  SetLimit(departments, 0);
+  SetLimit(posts, 0);
+  SetLimit(persons, 0);
+  SetLimit(appoints, 0);
+  SetLimit(periods, 0);
+  SetLimit(persPeriods, 0);
+
+  StartNewVisual(vtRotateVisual, vfTimer, 'Загрузка из ' + MyNewDataBase + 'Wage.xml', 1);
+  var doc: DomDoc new;
+  doc.Load(MyNewDataBase + 'Wage.xml');
+
+  if (doc.RootNode <> NullRef)
+    if doc.RootNode.GetFirstNode
+      do
+      {
+        case doc.RootNode.FndNode.Name of
+          'rok:Department': LoadDepartment(doc.RootNode.FndNode);
+          'rok:Post':       LoadPost(doc.RootNode.FndNode);
+          'rok:Person':     LoadPerson(doc.RootNode.FndNode);
+          'rok:Appoint':    LoadAppoint(doc.RootNode.FndNode);
+          'rok:Period':     LoadPeriod(doc.RootNode.FndNode);
+          'rok:PersPeriod': LoadPersPeriod(doc.RootNode.FndNode);
+        end;
+      }
+      while (doc.RootNode.GetNextNode);
+
+  doc.Free;
+  StopVisual;
+  bChanged := false;
+}
+
+public procedure Save;
+{
+  if (not bChanged)
+    exit;
+
+  StartNewVisual(vtRotateVisual, vfTimer, 'Сохранение в ' + MyNewDataBase + 'Wage.xml', 1);
+  var doc: DomDoc new;
+  doc.CreateXmlDoc;
+  var xwage, xnode: IDomNode;
+  var i: longint;
+  xwage := doc.AddNode('rok:Wage');
+  xwage.AddAttr('xmlns:rok=http://178.172.132.68/pir/');
+
+    for(i := 1; i <= GetLimit(departments); i++)
+      departments[i].Save(xwage);
+
+    for(i := 1; i <= GetLimit(posts); i++)
+      posts[i].Save(xwage);
+
+    for(i := 1; i <= GetLimit(persons); i++)
+      persons[i].Save(xwage);
+
+    for(i := 1; i <= GetLimit(appoints); i++)
+      appoints[i].Save(xwage);
+
+    for(i := 1; i <= GetLimit(periods); i++)
+      periods[i].Save(xwage);
+
+    for(i := 1; i <= GetLimit(persPeriods); i++)
+      persPeriods[i].Save(xwage);
+
+  doc.Save(MyNewDataBase + 'Wage.xml');
+  doc.Free;
+  StopVisual;
+}
+
+destructor Done;
+{
+  //SaveWage;
+
+  var i: longint;
+  for (i := 1; i <= GetLimit(departments); i++)
+    FreeVipInterface(departments[i]);
+  for (i := 1; i <= GetLimit(posts); i++)
+    FreeVipInterface(posts[i]);
+  for (i := 1; i <= PersCount; i++)
+    FreeVipInterface(persons[i]);
+  for (i := 1; i <= GetLimit(appoints); i++)
+    FreeVipInterface(appoints[i]);
+  for (i := 1; i <= GetLimit(periods); i++)
+    FreeVipInterface(periods[i]);
+  for (i := 1; i <= GetLimit(persPeriods); i++)
+    FreeVipInterface(persPeriods[i]);
+  SetLimit(departments, 0);
+  SetLimit(posts, 0);
+  SetLimit(persons, 0);
+  SetLimit(appoints, 0);
+  SetLimit(periods, 0);
+  SetLimit(persPeriods, 0);
+}
+
+public procedure AddDepartment(_id, _parent: comp; _code, _name: string);
+{
+  if (_id = 0)
+    exit;
+
+  var i, num: longint = 0;
+  for (i := 1; i <= GetLimit(departments); i++)
+  {
+    if (departments[i].Id = _id)
+    {
+      num := i;
+      break;
+    }
+  }
+
+  if (num = 0)
+  {
+    num := GetLimit(departments) + 1;
+    SetLimit(departments, num);
+    departments[num] := new(Department, SetValues(_id, _parent, _code, _name));
+    bChanged := true;
+  }
+}
+
+public procedure AddPost(_id: comp; _code, _name: string);
+{
+  if (_id = 0)
+    exit;
+
+  var i, num: longint = 0;
+  for (i := 1; i <= GetLimit(posts); i++)
+  {
+    if (posts[i].Id = _id)
+    {
+      num := i;
+      break;
+    }
+  }
+
+  if (num = 0)
+  {
+    num := GetLimit(posts) + 1;
+    SetLimit(posts, num);
+    posts[num] := new(Post, SetValues(_id, _code, _name));
+    bChanged := true;
+  }
+}
+
+public procedure AddPeriod(_year: word; _month, _plan: byte; _a_date, _p_date: date; _a_rate, _p_rate: double);
+{
+  if (_year < 2000) or (_year > 2050) or (_month < 1) or (_month > 12)
+    exit;
+
+  var i, num: longint = 0;
+  for (i := 1; i <= GetLimit(periods); i++)
+  {
+    if (periods[i].pYear = _year) and (periods[i].pMonth = _month)
+    {
+      num := i;
+      break;
+    }
+  }
+
+  if (num = 0)
+  {
+    num := GetLimit(periods) + 1;
+    SetLimit(periods, num);
+    periods[num] := new(Period, SetValues(_year, _month, _plan, _a_date, _p_date, _a_rate, _p_rate));
+    bChanged := true;
+  }
+}
+
+public procedure AddPerson(_login, _email, _tab, _fio, _password: string; _taxdeduct: double);
+{
+  if (_login = '')
+    exit;
+
+  var num, i: longint = 0;
+  for (i := 1; i <= GetLimit(persons); i++)
+  {
+    if (persons[i].Login = _login)
+    {
+      num := i;
+      break;
+    }
+  }
+
+  if (num = 0)
+  {
+    num := GetLimit(persons) + 1;
+    SetLimit(persons, num);
+    persons[num] := new(Person, SetValues(_login, _email, _tab, _fio, _password, _taxdeduct));
+    bChanged := true;
+  }
+}
+
+public function FindPerson(_tab, _fio: string): string;
+{
+  result := '';
+
+  if (_fio = '')
+    exit;
+
+  var i: longint;
+  for (i := 1; i <= GetLimit(persons); i++)
+  {
+    if (persons[i].FIO = _fio)
+    {
+      result := persons[i].Login;
+      break;
+    }
+  }
+}
+
+public procedure AddAppoint(_from, _to: date; _login: string; _post, _depart: comp; _salary: double);
+{
+  if (_from = ZeroDate) or (_login = '')
+    exit;
+
+  var i, num: longint = 0;
+  for (i := 1; i <= GetLimit(appoints); i++)
+  {
+    if (appoints[i].Appointed = _from) and (appoints[i].Login = _login)
+    {
+      num := i;
+      break;
+    }
+  }
+
+  if (num = 0)
+  {
+    num := GetLimit(appoints) + 1;
+    SetLimit(appoints, num);
+    appoints[num] := new(Appoint, SetValues(_from, _to, _login, _post, _depart, _salary));
+    bChanged := true;
+  }
+}
+
+public function AddPersPeriod(_login: string; _year: word; _month: byte; _salary: double; _fact: byte): PersPeriod;
+{
+  var num: longint = 0;
+  num := GetLimit(persPeriods) + 1;
+  SetLimit(persPeriods, num);
+  persPeriods[num] := new(PersPeriod, SetValues(_login, _year, _month, _salary, _fact));
+  bChanged := true;
+  result := persPeriods[num];
+}
+
+public function GetPerson(_num: longint): Person;
+{
+  result := persons[_num];
+}
+
+private function GetPersPeriod(_login: string; _year: word; _month: byte): PersPeriod;
+{
+  var i, num: longint = 0;
+  for (i := 1; i <= GetLimit(persPeriods); i++)
+  {
+    if (persPeriods[i].Login = _login) and (persPeriods[i].pYear = _year) and (persPeriods[i].pMonth = _month)
+    {
+      num := i;
+      break;
+    }
+  }
+
+  if (num <> 0)
+    result := persPeriods[num];
+  else
+  {
+    //wlog.LogLine(APE_WARNING, 'Wage.AddBonus: для работника с номером ' + string(_pers) + ' не найден период с номером ' + string(_period));
+    result := AddPersPeriod(_login, _year, _month, 0, 0);
+  }
+}
+
+public procedure AddBonus(_login: string; _year: word; _month: byte; _title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+{
+  GetPersPeriod(_login, _year, _month).AddBonus(new(WageSumma, SetValues(_title, _usd, _byn, _rate, _comment, _day)));
+  bChanged := true;
+}
+
+public procedure AddPayment(_login: string; _year: word; _month: byte; _title: string; _usd, _byn, _rate: double; _comment: string; _day: date);
+{
+  GetPersPeriod(_login, _year, _month).AddPayment(new(WageSumma, SetValues(_title, _usd, _byn, _rate, _comment, _day)));
+  bChanged := true;
+}
+
+public procedure AddDebt(_login: string; _year: word; _month: byte; _from: boolean; _usd, _byn: double);
+{
+  GetPersPeriod(_login, _year, _month).AddDebt(_from, _usd, _byn);
+  bChanged := true;
+}
+
+//public procedure Logging(_type: word; _mess: string);
+//{
+//  #__UnUsed__(_type, _mess)
+//  if (not wlog.Visible)
+//  {
+//    wlog.Clear;
+//    wlog.Visible := true;
+//  }
+//  wlog.LogLine(_type, _mess);
+//}
+
+public procedure CheckAll(_log: AtlProtocol);
+{
+  #__UnUsed__(_log)
+}
+
+public procedure BeforePrintPerson(_year: word; _month: byte; _fio: string);
+{
+  #__UnUsed__(_fio)
+}
+
+public function UE(_row: byte): double;
+{
+  result := 0;
+
+  case _row of
+    R01: result := mtMoney.SalaryUE / mtMoney.DaysPlan * mtMoney.DaysFact; // Оклад
+    R02: result := if(mtMoney.DepBonusUE <> 0, mtMoney.DepBonusUE, Round(RB(_row) / Rate(_row), 2)); // Премия отдела
+    R03: result := if(mtMoney.GovBonusUE <> 0, mtMoney.GovBonusUE, Round(RB(_row) / Rate(_row), 2)); // Премия Управления
+    R04: result := if(mtMoney.PrBisnesUE <> 0, mtMoney.PrBisnesUE, Round(RB(_row) / Rate(_row), 2)); // Проектный бизнес
+    R05: result := mtMoney.CompensUE; // Компенсация разницы курсов
+    R06: result := mtMoney.VyplOtlozhUE; // Выплата отложенной части
+    R21: result := Round(RB(_row) / Rate(_row), 2); // Льгота по подоходному налогу
+    R07: result := UE(R01) + UE(R02) + UE(R03) + UE(R04) + UE(R05) + UE(R06); // Начислено
+
+    // Зачет с прошлого месяца
+    // Если есть запись за предыдущий месяц, берем из неё
+
+
+    // Зачет с прошлого месяца - в распечатке будет в рублях, поэтому в валюте считаем от этой суммы по курсу выплаты в прошлом месяце
+    R08: result := GetIncomingUE; // mtMoney.LadderFromLastRB / if(isValid(#mtPeriodPrev), mtPeriodPrev.SecPartExch, mtPeriod.SecPartExch);
+    R09: result := UE(R07) + UE(R08) + UE(R21); // К выдаче
+    R10: result := Round(RB(_row) / Rate(_row), 2); // Аванс
+    R11: result := Round(RB(_row) / Rate(_row), 2); // Межрасчетные выплаты (отпускные)
+    R12: result := 0; // К доплате
+    R13: result := Round(RB(_row) / Rate(_row), 2); // Перечислено
+    R14: result := Round(RB(_row) / Rate(_row), 2); // 2 часть
+    R16: result := UE(R10) + UE(R11) + UE(R13) + UE(R14); // Выдано
+    R15: result := if(Abs(RB(_row)) < Rate(_row), 0, Round(RB(_row) / Rate(_row), 2)); // Зачет на следующий месяц
+    R17: result := UE(R09) - UE(R16); // Долг за расчетный месяц
+    R20: result := 0; // Долг за предыдущие месяцы
+    R18: result := mtMoney.VyplOtlozhUE; // Выплата отложенной части
+    R19: result := 0; // Долг
+  end;
+}
+
+public function Rate(_row: byte): double;
+public function RB(_row: byte): double;
+
+end.
+
+*/

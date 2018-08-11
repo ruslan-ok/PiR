@@ -1,0 +1,84 @@
+#include PeriodDB.vih
+#include MT.vih
+
+Interface PeriodDB;
+
+Create view as select * from mtPeriod;
+
+Function  GetFileName: string;
+{
+  result := 'Period';
+}
+
+Procedure LoadRecord;
+{
+  var i, y, m: byte;
+  i := 1;
+  y := byte(part[i++]);
+  m := byte(part[i++]);
+  if (GetFirst mtPeriod where (( 2000+y == mtPeriod.Year and
+                                      m == mtPeriod.Month )) <> tsOk)
+  {
+    mtPeriod.Year        := 2000+y;
+    mtPeriod.Month       := m;
+    mtPeriod.Prepayment  := StrToDate(part[i++], 'DD.MM.YYYY');
+    mtPeriod.SecPart     := StrToDate(part[i++], 'DD.MM.YYYY');
+    mtPeriod.PrepayExch  := double(part[i++]);
+    mtPeriod.SecPartExch := double(part[i++]);
+    mtPeriod.ThirdPart   := StrToDate(part[i++], 'DD.MM.YYYY');
+    mtPeriod.ThirdPartExch := double(part[i++]);
+    mtPeriod.OkladExch   := double(part[i++]);
+    mtPeriod.OtlozhExch  := double(part[i++]);
+    mtPeriod.TaxDeduct   := double(part[i++]);
+    insert current mtPeriod;
+  }
+}
+
+Function EmptyZero(_value: double): string;
+{
+  if (_value = 0)
+    result := '';
+  else
+    result := DoubleToStr(_value, '3666666.8888');
+}
+
+Function EmptyDate(_value: date): string;
+{
+  if (_value = ZeroDate)
+    result := '';
+  else
+    result := DateToStr(_value,  'DD.MM.YYYY');
+}
+
+Procedure SaveRecord;
+{
+  DoSet('',
+              check(string(mtPeriod.Year-2000))
+      + ';' + check(string(mtPeriod.Month))
+      + ';' + check(EmptyDate(mtPeriod.Prepayment))
+      + ';' + check(EmptyDate(mtPeriod.SecPart))
+      + ';' + check(EmptyZero(mtPeriod.PrepayExch))
+      + ';' + check(EmptyZero(mtPeriod.SecPartExch))
+      + ';' + check(EmptyDate(mtPeriod.ThirdPart))
+      + ';' + check(EmptyZero(mtPeriod.ThirdPartExch))
+      + ';' + check(EmptyZero(mtPeriod.OkladExch))
+      + ';' + check(EmptyZero(mtPeriod.OtlozhExch))
+      + ';' + check(EmptyZero(mtPeriod.TaxDeduct)));
+}
+
+Procedure SaveAll;
+{
+  HttpClear;
+
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfBreak + vfConfirm, 'Выгрузка таблицы ' +
+                                    GetFileName + ' в буфер...', RecordsInTable(#mtPeriod));
+  _loop mtPeriod
+  {
+    if not NextVisual
+      break;
+    SaveRecord;
+  }
+  StopVisual;
+}
+
+End.

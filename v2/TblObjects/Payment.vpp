@@ -1,0 +1,61 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования разовой выплаты
+//------------------------------------------------------------------------------
+
+Window wnPayment 'Разовая выплата';
+  show at(,, 80, 13);
+
+Screen scPayment ('',, sci178Esc);
+  table mtPayment;
+Fields
+  mtStruct.Name: skip;
+  mtPayment.Period: ['MM.YYYY'], skip;
+  mtPayment.Sort   (''): noprotect;
+  mtPayment.Title  (''): noprotect;
+  mtPayment.Payed  (''): noprotect;
+  mtPayment.Value  (''): [13.2,'\2p[|-]366`666`666~99'], noprotect;
+  mtPayment.TaxCur (''): [list 'BYN без налогов',
+                               'BYN с налогами',
+                               'USD без налогов',
+                               'USD с налогами'], protect;
+  mtPayment.NetBYN: skip;
+  mtPayment.TaxBYN: skip;
+  mtPayment.Rate:   [13.4,'\4p[|-]3`666`666~9999'], noprotect;
+  mtPayment.NetUSD: skip;
+  mtPayment.TaxUSD: skip;
+  mtPayment.Info   (''): noprotect;
+  mtPayment.Error: skip;
+<<
+
+   `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Период`       .@@@@@@@@@@@@              `Номер п/п`    .@@@@@@@@@@@@
+   `Название`     .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Дата выплаты` .@@@@@@@@@@@@
+   `Сумма`        .@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                   без налогов   с налогами
+   `Сумма в BYN`  .@@@@@@@@@@@@ .@@@@@@@@@@@@
+   `Курс`         .@@@@@@@@@@@@
+   `Сумма в USD`  .@@@@@@@@@@@@ .@@@@@@@@@@@@
+   `Комментарий`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+TableEvent
+  table mtPayment;
+
+cmInsertRecord:
+  insert current mtPayment;
+
+cmUpdateRecord:
+  update current mtPayment;
+
+cmDeleteRecord:
+  if (message('Удалить выплату?', Confirmation + YesNo) = cmYes)
+    delete current mtPayment;
+
+end;

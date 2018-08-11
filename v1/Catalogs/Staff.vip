@@ -1,0 +1,193 @@
+#include MT.vih
+#include Staff.vih
+#include Groups.vih
+
+Interface Staff 'Сотрудники' ('',, sci1478Esc) DoAccept, EscClose;
+  Show at(,, 60, 20);
+
+Create view
+var
+  cNode, cNewNode, pcRec: comp;
+as select
+  *
+from
+  mtStaff,
+  mtStaff UpStaff,
+  mtStaff SubStaff,
+  KatSotr,
+  KatSotr UpSotr,
+  mtGroup
+where ((
+  cNode        == mtStaff.Node  and
+  mtStaff.Node == UpStaff.NRec  and
+  mtStaff.NRec == SubStaff.Node and
+  UpStaff.Sotr == UpSotr.NRec   and
+
+  mtStaff.Sotr  == KatSotr.NRec and
+  mtStaff.Group == mtGroup.NRec
+))
+;
+
+Parameters
+  pcRec;
+
+Window wnEdit 'Сотрудник';
+  Show at(,, 75, 5);
+
+Screen scEdit ('',, sci1378Esc);
+  Table mtStaff;
+Fields
+  UpSotr.FIO: Skip;
+  KatSotr.FIO;
+  mtGroup.Name;
+<<
+
+  `Непосредственный руководитель` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  `Фамилия Имя Отчество`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  `Группа`                        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+End; // wnEdit
+
+Tree trStaff ('',, sci1478EscTree);
+  Table mtStaff;
+Fields
+  KatSotr.FIO  ''#3'Сотрудник':   [15], Protect;
+  mtGroup.Name ''#3'Группа':      [10], Protect;
+  KatSotr.Name ''#3'Сетевое имя': [10], Protect;
+End;
+
+TableEvent
+  Table mtStaff;
+
+cmTreeTop:
+  cNode := cNewNode := 0;
+
+cmTreeUp:
+  cNode := cNewNode := mtStaff.Node;
+
+cmTreeDown:
+  cNode := cNewNode := mtStaff.NRec;
+
+cmTreeNodeType:
+{
+  var yType: byte; // лист или папка (открытая или закрытая)
+  yType := ntfText;
+  if (isValid(#mtStaff))
+    if (isValid(#SubStaff))
+      if (TreeNodeIsOpen(trStaff))
+        yType := ntfOpen;
+      else
+        yType := ntfClose;
+
+  TreeSetNodeType(trStaff, yType);
+}
+
+cmTreeNeedOwner:
+  TreeJumpToRecord(trStaff, mtStaff.Node);
+
+cmSetDefault:
+{
+  mtStaff.Node := cNewNode;
+  SelectField(#KatSotr.FIO);
+  PutCommand(cmPick);
+}
+
+cmCheckRecord:
+  if (mtStaff.Sotr = 0)
+  {
+    abort;
+    RereadRecord;
+  }
+
+cmInsertRecord:
+{
+  insert current mtStaff;
+  TreeJumpToRecord(trStaff, mtStaff.NRec);
+}
+
+cmUpdateRecord:
+  update current mtStaff;
+
+cmDeleteRecord:
+  if (message('Удалить текущего сотрудника?', YesNo + Confirmation) = cmYes)
+    delete current mtStaff;
+
+End;
+
+HandleEvent // interface
+
+cmInit:
+  if (pcRec <> 0)
+    TreeJumpToRecord(trStaff, pcRec);
+
+cmDefault:
+  if (isValid(#mtStaff))
+    pcRec := mtStaff.NRec;
+
+cmAddNewRec:
+  if (UpdateTable)
+  {
+    NewRecord;
+    PutCommand(cmValue1);
+  }
+
+cmInsLevel:
+{
+  if (isValid(#mtStaff))
+    cNewNode := mtStaff.NRec;
+  else
+    cNewNode := 0;
+
+  NewRecord;
+  PutCommand(cmValue1);
+}
+
+cmEdit:
+  PutCommand(cmValue1);
+
+cmValue1:
+  RunWindow(wnEdit);
+
+cmPick:
+{
+  case CurField of
+
+    #KatSotr.FIO:
+    {
+      RunInterface('GetSotr', mtStaff.Sotr);
+
+      if (CurWindow <> wnEdit)
+        PutCommand(cmValue1);
+
+      if (mtStaff.Group = 0)
+      {
+        SelectField(#mtGroup.Name);
+        PutCommand(cmPick);
+      }
+    }
+
+
+    #mtGroup.Name:
+      RunInterface('Groups', mtStaff.Group);
+
+  end;
+}
+
+cmDelOnProtect:
+{
+  case CurField of
+
+    #KatSotr.FIO:
+      set mtStaff.Sotr := 0;
+
+    #mtGroup.Name:
+      set mtStaff.Group := 0;
+
+  end;
+}
+
+End;
+
+End.

@@ -1,0 +1,60 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования сотрудника
+//------------------------------------------------------------------------------
+
+Window wnPerson 'Сотрудник';
+  show at(,, 80, 7);
+
+Screen scPerson ('',, sci178Esc);
+  table mtPerson;
+Fields
+  mtPerson.Login  (''): noprotect;
+  mtPerson.FIO    (''): noprotect;
+  mtPerson.EMail  (''): noprotect;
+  mtPerson.Passw  (''): noprotect;
+  mtPerson.Sort   (''): noprotect;
+<<
+
+   `ФИО`             .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Логин`           .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `e-mail`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Пароль`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `N для сортировки`.@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+WindowEvent wnPerson;
+
+cmInit:
+{
+  var cGoto: comp;
+  cGoto := 0;
+  if isValid(#mtStruct)
+    if (mtStruct.Mode = 2)
+      cGoto := mtStruct.Rec;
+
+  if (GetFirst mtPerson where (( cGoto == mtPerson.NRec )) = tsOk)
+    RescanPanel(#mtPerson);
+}
+
+End;
+
+
+TableEvent
+  table mtPerson;
+
+cmInsertRecord:
+  insert current mtPerson;
+
+cmUpdateRecord:
+  update current mtPerson;
+
+cmDeleteRecord:
+  if (message('Удалить сотрудника?', Confirmation + YesNo) = cmYes)
+    delete current mtPerson;
+
+end;

@@ -1,0 +1,91 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект зарплат сотрудников по месяцам
+//------------------------------------------------------------------------------
+
+Interface PersPer;
+
+Table struct mtPersPer
+(
+  Person:     s50,
+  Period:     date,
+  FactDays:   byte
+)
+With index
+(
+  ByPerson = Person + Period
+);
+
+Create view from mtPersPer, mtPersPer mtPersPer2;
+
+property Person:     s50    absolute mtPersPer.Person;
+property Period:     date   absolute mtPersPer.Period;
+property FactDays:   byte   absolute mtPersPer.FactDays;
+
+
+index ByPerson auto;
+
+public function FactDaysPrev: byte;
+{
+  result := mtPersPer.FactDays;
+
+  if (GetLast mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
+                                  mtPersPer.Period >> mtPersPer2.Period )) = tsOk)
+    result := mtPersPer2.FactDays;
+}
+
+function IModify.doInsert: word;
+{
+  result := insert current mtPersPer;
+}
+
+function IModify.doUpdate: word;
+{
+  result := update current mtPersPer;
+}
+
+function IModify.doDelete: word;
+{
+  result := delete current mtPersPer;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtPersPer;
+}
+
+public procedure Clear;
+{
+  delete all mtPersPer;
+}
+
+public function Load(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtPersPer);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:Period':   Period   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:FactDays': FactDays := byte(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtPersPer;
+  result := true;
+}
+
+public function Save(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:PersPer');
+  xnode.AddAttr('rok:Period='   + string(Period));
+  xnode.AddAttr('rok:FactDays=' + string(FactDays));
+  result := xnode;
+}
+
+end.

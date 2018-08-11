@@ -1,0 +1,45 @@
+#include MT.vih
+#include StateType.vih
+
+Interface StateType;
+
+Create view
+var
+  cNode, cNewNode, pcRec: comp;
+as select
+  *
+from
+  mtStateType,
+  Class ClassState,
+  Class ClassType
+where ((
+  word(4) == ClassState.ClassCode and
+  word(5) == ClassType.ClassCode
+));
+
+Procedure Load;
+{
+  delete all mtStateType;
+  var i: word;
+  i := 0;
+
+  _loop ClassState
+  {
+    if (length(ClassState.Code) <= 2) and (ClassState.Code <> '01')
+        continue;
+
+    _loop ClassType
+    {
+      if (length(ClassType.Code) = 2) and (ClassType.Code <> '08')
+        continue;
+
+      ClearBuffer(#mtStateType);
+      mtStateType.StateCode := ClassState.Code;
+      mtStateType.TypeCode  := ClassType.Code;
+      mtStateType.Value := i++;
+      insert current mtStateType;
+    }
+  }
+}
+
+End.

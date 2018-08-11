@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<TfrxReport Version="4.15.4" DotMatrixReport="False" EngineOptions.TempDir="D:\Work\Сотрудники\ПиР\Src\Rep\" EngineOptions.UseFileCache="True" IniFile="\Software\Fast Reports" OldStyleProgress="True" PreviewOptions.Buttons="4095" PreviewOptions.Modal="False" PreviewOptions.PagesInCache="20" PreviewOptions.Zoom="1" PrintOptions.Printer="По умолчанию" PrintOptions.PrintOnSheet="0" ReportOptions.CreateDate="42416,404951331" ReportOptions.Description.Text="" ReportOptions.Name="Выплаты по проектам" ReportOptions.LastChange="42416,4097899537" ScriptLanguage="PascalScript" ScriptText.Text="begin&#13;&#10;&#13;&#10;end." ShowProgress="False" PropData="0844617461736574730101062620446174615365743D224D5450524F4A2220446174615365744E616D653D224D5450524F4A220000095661726961626C65730100055374796C650100">
+  <TfrxDataPage Name="DataPage1" Height="1000" Left="0" Top="0" Width="1000"/>
+  <TfrxReportPage Name="Page1" PaperWidth="210" PaperHeight="297" PaperSize="9" LeftMargin="10" RightMargin="10" TopMargin="10" BottomMargin="10" ColumnWidth="0" ColumnPositions.Text="" HGuides.Text="" VGuides.Text="">
+    <TfrxMasterData Name="MasterData1" Height="22,67718" Left="0" Top="18,89765" Width="718,1107" ColumnWidth="0" ColumnGap="0" DataSet="MTPROJ" DataSetName="MTPROJ" RowCount="0" Stretched="True">
+      <TfrxMemoView Name="Memo2" Left="0" Top="3,77953" Width="132,28355" Height="18,89765" ShowHint="False" StretchMode="smMaxHeight" DataField="STAFF" DataSet="MTPROJ" DataSetName="MTPROJ" Text="[MTPROJ.&#34;STAFF&#34;]"/>
+      <TfrxMemoView Name="Memo3" Left="132,28355" Top="3,77953" Width="41,57483" Height="18,89765" ShowHint="False" StretchMode="smMaxHeight" DataField="YEAR" DataSet="MTPROJ" DataSetName="MTPROJ" HAlign="haCenter" Text="[MTPROJ.&#34;YEAR&#34;]"/>
+      <TfrxMemoView Name="Memo4" Left="173,85838" Top="3,77953" Width="22,67718" Height="18,89765" ShowHint="False" StretchMode="smMaxHeight" DataField="MONTH" DataSet="MTPROJ" DataSetName="MTPROJ" HAlign="haRight" Text="[MTPROJ.&#34;MONTH&#34;]"/>
+      <TfrxMemoView Name="Memo5" Left="196,53556" Top="3,77953" Width="56,69295" Height="18,89765" ShowHint="False" StretchMode="smMaxHeight" DataField="USD" DataSet="MTPROJ" DataSetName="MTPROJ" DisplayFormat.FormatStr="%2.0f" DisplayFormat.Kind="fkNumeric" HAlign="haRight" Text="[MTPROJ.&#34;USD&#34;]"/>
+      <TfrxMemoView Name="Memo6" Left="260,78757" Top="3,77953" Width="457,32313" Height="18,89765" ShowHint="False" StretchMode="smMaxHeight" DataField="COMMENT" DataSet="MTPROJ" DataSetName="MTPROJ" Text="[MTPROJ.&#34;COMMENT&#34;]"/>
+    </TfrxMasterData>
+  </TfrxReportPage>
+</TfrxReport>

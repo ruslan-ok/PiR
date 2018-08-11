@@ -1,0 +1,151 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из xlsx
+//------------------------------------------------------------------------------
+
+//var sal: Wage;
+//var CurPersonLogin: string;
+var wbNum: longint = 0;
+var wlog: AtlProtocol;
+
+private function OpenExcel: boolean;
+{
+  result := false;
+
+  if (not xlOpenExcel(false))
+  {
+    wlog.LogLine(APE_INFO, 'Не открылся Excel');
+    exit;
+  }
+
+  if (not xlIsExcelValid)
+  {
+    wlog.LogLine(APE_INFO, 'Не инициализирован Excel');
+    xlKillExcel;
+    exit;
+  }
+
+  xlGetWorkBooksCount(wbNum);
+
+  if (not xlSetActiveWorkBookByName(FileName))
+    if (not xlOpenWorkBook(FileName))
+    {
+      wlog.LogLine(APE_INFO, 'Не открылась книга Excel ' + FileName);
+      xlKillExcel;
+      exit;
+    }
+
+  wbNum++;
+
+  var i, lSheetsCount: longint = 0;
+  if (not xlGetSheetsCount(lSheetsCount))
+  {
+    wlog.LogLine(APE_INFO, 'Не инициализирован Excel');
+    xlKillExcel;
+    exit;
+  }
+
+  for (i := 1; i <= lSheetsCount; i++)
+  {
+    var sName: string = '???';
+    if (not xlGetSheetName(i, sName))
+    {
+      wlog.LogLine(APE_INFO, 'Не удалось получить название листа номер ' + string(i));
+      xlKillExcel;
+      exit;
+    }
+
+    if (sName = 'Курсы')
+      continue;
+
+    ClearBuffer(#mtSheet);
+    mtSheet.Num := i;
+    mtSheet.Name := sName;
+    mtSheet.Year := word(SubStr(sName, 4, 4));
+    mtSheet.Month := byte(SubStr(sName, 1, 2));
+    insert current mtSheet;
+  }
+
+  if (RecordsInTable(#mtSheet) < 1)
+  {
+    wlog.LogLine(APE_INFO, 'В выбранной Excel-книге нет листов для импорта.');
+    xlKillExcel;
+    exit;
+  }
+
+//  RunWindowModal(wnSelectPeriod);
+//  if (not bSelected)
+//  {
+//    xlKillExcel;
+//    exit;
+//  }
+
+  result := true;
+}
+
+private procedure DoImportXlsx;
+{
+  StartNewVisual(vtRotateVisual, vfTimer + vfConfirm, 'Открытие файла...', 1);
+  var bOk: boolean;
+  bOk := OpenExcel;
+  StopVisual;
+
+  if not bOk
+    exit;
+
+  wlog.LogMessage(APE_INFO, 'Чтение данных из файла');
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Чтение данных из файла...', RecordsInTable(#mtSheet));
+  _loop mtSheet
+  {
+    if not NextVisual
+      break;
+
+    if not LoadSheet
+      break;
+  }
+  StopVisual;
+  wlog.LogCommit;
+
+  xlCloseWorkBook(wbNum);
+  xlKillExcel;
+
+//  RunWindowModal(wnColumns);
+
+  wlog.LogMessage(APE_INFO, 'Анализ колонок');
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Анализ колонок...', RecordsInTable(#mtSheet));
+//  SetVisualTitle('Анализ колонок...');
+  _loop mtSheet
+  {
+    if not NextVisual
+      break;
+
+    BuildColumns;
+  }
+  StopVisual;
+  wlog.LogCommit;
+
+  wlog.LogMessage(APE_INFO, 'Обработка данных');
+  StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Обработка данных...', RecordsInTable(#mtSheet));
+//  SetVisualTitle('Обработка данных...');
+  _loop mtSheet
+  {
+    if not NextVisual
+      break;
+
+    wlog.LogMessage(APE_INFO, mtSheet.Name);
+    ProcessSheet;
+    wlog.LogCommit;
+//    break;
+  }
+  StopVisual;
+  wlog.LogCommit;
+
+  //sal.CheckAll(wlog);
+
+  //RunWindowModal(wnColumns);
+  wlog.LogLine(APE_INFO, 'stop');
+  wlog.Refresh;
+  wlog.Visible := true;
+  wlog.Commit;
+}

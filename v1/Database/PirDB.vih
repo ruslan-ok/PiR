@@ -1,0 +1,11 @@
+#include BaseDB.vih
+
+VipInterface PirDB(BaseDB) licensed(free);
+  public:
+    Function  IBaseDB.GetFileName: string;
+    Procedure IBaseDB.Load(_Mode: word);
+    Procedure LoadPeriod(_period: date);
+    Procedure IBaseDB.LoadRecord;
+    Procedure IBaseDB.SaveRecord;
+    Procedure IBaseDB.SaveAll;
+End;

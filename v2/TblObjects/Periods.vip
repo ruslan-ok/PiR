@@ -1,0 +1,105 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект расчетных периодов
+//------------------------------------------------------------------------------
+
+Interface Periods;
+
+// Список периодов с данными
+Table struct mtPeriods
+(
+  dBeg:        date,
+  PlanDays:    byte,
+  AvansDate:   date,
+  PaymentDate: date,
+  AvansRate:   double,
+  PaymentRate: double
+)
+With index
+(
+  mtPeriods01 = dBeg (desc)
+);
+
+
+Create view from mtPeriods, mtPeriods mtPeriods2;
+
+property dBeg:        date   absolute mtPeriods.dBeg;
+property PlanDays:    byte   absolute mtPeriods.PlanDays;
+property AvansDate:   date   absolute mtPeriods.AvansDate;
+property PaymentDate: date   absolute mtPeriods.PaymentDate;
+property AvansRate:   double absolute mtPeriods.AvansRate;
+property PaymentRate: double absolute mtPeriods.PaymentRate;
+
+index Sort auto;
+
+public function PlanDaysPrev: byte;
+{
+  result := mtPeriods.PlanDays;
+
+  if (GetFirst mtPeriods2 where (( mtPeriods.dBeg >> mtPeriods2.dBeg )) = tsOk)
+    result := mtPeriods2.PlanDays;
+}
+
+function IModify.doInsert : word;
+{
+  result := insert current mtPeriods;
+}
+
+function IModify.doUpdate : word;
+{
+  result := update current mtPeriods;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtPeriods;
+}
+
+implementation IModify.doFlush  abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtPeriods;
+}
+
+public procedure Clear;
+{
+  delete all mtPeriods;
+}
+
+public function Load(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtPeriods);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:dBeg':        dBeg        := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:PlanDays':    PlanDays    := byte(_e.FndAttr.Value);
+        'rok:AvansDate':   AvansDate   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:PaymentDate': PaymentDate := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:AvansRate':   AvansRate   := double(_e.FndAttr.Value);
+        'rok:PaymentRate': PaymentRate := double(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtPeriods;
+  result := true;
+}
+
+public function Save(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Period');
+  xnode.AddAttr('rok:dBeg='        + string(dBeg));
+  xnode.AddAttr('rok:PlanDays='    + string(PlanDays));
+  xnode.AddAttr('rok:AvansDate='   + string(AvansDate));
+  xnode.AddAttr('rok:PaymentDate=' + string(PaymentDate));
+  xnode.AddAttr('rok:AvansRate='   + DoubleToStr(AvansRate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:PaymentRate=' + DoubleToStr(PaymentRate, '\4p[|-]3666666666~9999'));
+  result := xnode;
+}
+
+end.
