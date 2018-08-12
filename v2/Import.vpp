@@ -4,13 +4,15 @@
 // Окно параметров импорта
 //------------------------------------------------------------------------------
 
+var sFile: string;
+
 Window wnImport 'Параметры импорта';
   show at(,, 82, 8);
 
 Screen scImport ('',, sci13Esc);
   table mtPeriods;
 fields
-  sXmlFile ('xml-файл для импорта'): noProtect, pickButton;
+  sFile ('xml-файл для импорта'): noProtect, pickButton;
 buttons
   cmOk, default;
   cmCancel;
@@ -32,15 +34,15 @@ WindowEvent wnImport;
 
 cmInit:
 {
-  sXmlFile := '';
-  ReadMyDsk(sXmlFile, 'WageView_sXmlFile', false);
+  sFile := '';
+  ReadMyDsk(sFile, 'WageView_sFile', false);
 }
 
 cmPick:
   case CurField of
-    #sXmlFile:
+    #sFile:
     {
-      sXmlFile := GetFileName('*.xml;*.xlsx', 'Выбор xml- или xlsx-файла для импорта');
+      sFile := GetFileName('*.xml;*.xlsx', 'Выбор xml- или xlsx-файла для импорта');
       RedrawPanel(#mtPeriods);
     }
   end;
@@ -63,20 +65,20 @@ function StartCheckImport: boolean;
 {
   result := false;
 
-  if (sXmlFile = '')
+  if (sFile = '')
   {
     message('Не задан файл');
     exit;
   }
 
-  if not ExistFile(sXmlFile)
+  if not ExistFile(sFile)
   {
     message('Указанный файл не найден');
     exit;
   }
 
   var sPath, sName, sExt: string;
-  ParseFileName(sXmlFile, sPath, sName, sExt);
+  ParseFileName(sFile, sPath, sName, sExt);
 
   if (UpCase(sExt) <> 'XML') and (UpCase(sExt) <> 'XLSX')
   {
@@ -105,4 +107,12 @@ private procedure DoImport;
     DoImportXml;
   else
     DoImportXlsx;
+}
+
+private procedure AutoImport;
+{
+  sFile := '';
+  ReadMyDsk(sFile, 'WageView_sFile', false);
+  if ExistFile(sFile)
+    DoImport;
 }

@@ -4,86 +4,407 @@
 // Импорт из xlsx
 //------------------------------------------------------------------------------
 
-//var sal: Wage;
-//var CurPersonLogin: string;
 var wbNum: longint = 0;
 var wlog: AtlProtocol;
+var lSheetsCount, lSheetNum: longint;
+var sSheetName: string;
 
 private function OpenExcel: boolean;
 {
   result := false;
+  sSheetName := '';
 
   if (not xlOpenExcel(false))
   {
-    wlog.LogLine(APE_INFO, 'Не открылся Excel');
+    wlog.LogLine(APE_ERROR, 'Не открылся Excel');
     exit;
   }
 
   if (not xlIsExcelValid)
   {
-    wlog.LogLine(APE_INFO, 'Не инициализирован Excel');
+    wlog.LogLine(APE_ERROR, 'Не инициализирован Excel');
     xlKillExcel;
     exit;
   }
 
   xlGetWorkBooksCount(wbNum);
 
-  if (not xlSetActiveWorkBookByName(FileName))
-    if (not xlOpenWorkBook(FileName))
+  if (not xlSetActiveWorkBookByName(sFile))
+    if (not xlOpenWorkBook(sFile))
     {
-      wlog.LogLine(APE_INFO, 'Не открылась книга Excel ' + FileName);
+      wlog.LogLine(APE_ERROR, 'Не открылась книга Excel ' + sFile);
       xlKillExcel;
       exit;
     }
 
   wbNum++;
 
-  var i, lSheetsCount: longint = 0;
   if (not xlGetSheetsCount(lSheetsCount))
   {
-    wlog.LogLine(APE_INFO, 'Не инициализирован Excel');
+    wlog.LogLine(APE_ERROR, 'Не инициализирован Excel (ошибка вызова xlGetSheetsCount)');
     xlKillExcel;
     exit;
   }
+/*
+  var bOk: boolean = false;
 
-  for (i := 1; i <= lSheetsCount; i++)
+  for (lSheetNum := 1; lSheetNum <= lSheetsCount; lSheetNum++)
   {
-    var sName: string = '???';
-    if (not xlGetSheetName(i, sName))
+    if (not xlGetSheetName(lSheetNum, sSheetName))
     {
-      wlog.LogLine(APE_INFO, 'Не удалось получить название листа номер ' + string(i));
+      wlog.LogLine(APE_INFO, 'Не удалось получить название листа номер ' + string(lSheetNum));
       xlKillExcel;
       exit;
     }
 
-    if (sName = 'Курсы')
+    if (sSheetName = 'Курсы')
       continue;
 
-    ClearBuffer(#mtSheet);
-    mtSheet.Num := i;
-    mtSheet.Name := sName;
-    mtSheet.Year := word(SubStr(sName, 4, 4));
-    mtSheet.Month := byte(SubStr(sName, 1, 2));
-    insert current mtSheet;
+    var m: byte = byte(SubStr(sSheetName, 1, 2));
+    var y: word = word(SubStr(sSheetName, 4, 4));
+
+    if (m >= 1) and (m <= 12) and (y > 2000)
+    {
+      bOk := true;
+      var dPeriod: date;
+      dPeriod := date(1, m, y);
+
+      if (GetFirst mtPeriods where (( dPeriod == mtPeriods.dBeg )) <> tsOk)
+      {
+        ClearBuffer(#mtPeriods);
+        mtPeriods.dBeg := dPeriod;
+        insert current mtPeriods;
+      }
+    }
   }
 
-  if (RecordsInTable(#mtSheet) < 1)
+  if not bOk
   {
     wlog.LogLine(APE_INFO, 'В выбранной Excel-книге нет листов для импорта.');
     xlKillExcel;
     exit;
   }
-
-//  RunWindowModal(wnSelectPeriod);
-//  if (not bSelected)
-//  {
-//    xlKillExcel;
-//    exit;
-//  }
-
+*/
   result := true;
 }
 
+private function NeedChangeParam(_src, _dst, _name: string): boolean;
+{
+  result := false;
+
+  if (_src = _dst)
+    exit;
+
+  if (_dst = string(word(0))) or (_dst = string(double(0))) or (_dst = string(ZeroDate))
+    exit;
+
+  result := true;
+
+  if (_src = string(word(0))) or (_src = string(double(0))) or (_src = string(ZeroDate))
+    wlog.LogLine(APE_INFO, _name + ' ' + _dst);
+  else
+    wlog.LogLine(APE_INFO, _name + ' ' + _dst + ' (было ' + _src + ')');
+}
+
+function ReadColumns: boolean;
+{
+  result := true;
+
+  var cellValue: string = '';
+  xlGetCellValue(2, 3, cellValue);
+
+  if (cellValue <> 'ФИО')
+  {
+    result := false;
+    wlog.LogLine(APE_WARNING, 'В ячейке C2 листа "' + sSheetName + '" ожидался заголовок колонки "ФИО", а обнаружено значение "' + cellValue + '"');
+    exit;
+  }
+
+  var row, col, maxRow, maxCol: longint = 0;
+  row := 2;
+  col := 1;
+
+  do
+  {
+    ClearBuffer(#mtColumn);
+    mtColumn.Sheet := lSheetNum;
+    mtColumn.Col := col;
+    xlGetCellValue(row-1, col, mtColumn.Name1);
+    xlGetCellValue(row, col, mtColumn.Name2);
+    insert current mtColumn;
+    col++;
+  }
+  while ((col < 50) and ((col < 40) or (mtColumn.Name1 <> '') or (mtColumn.Name2 <> '')));
+  maxCol := col-1;
+
+  row := 3;
+  col := 3;
+
+  do
+  {
+    ClearBuffer(#mtRow);
+    mtRow.Sheet := lSheetNum;
+    mtRow.Row := row;
+    xlGetCellValue(row, col, mtRow.Name);
+    insert current mtRow;
+    row++;
+  }
+  while (mtRow.Name <> '');
+  maxRow := row-1;
+
+  for (row := 3; row <= maxRow; row++)
+  {
+    for (col := 1; col <= maxCol; col++)
+    {
+      ClearBuffer(#mtRawData);
+      mtRawData.Sheet := lSheetNum;
+      mtRawData.Row := row;
+      mtRawData.Col := col;
+      xlGetCellValue(row, col, mtRawData.Value);
+      insert current mtRawData;
+    }
+  }
+
+  var wAttr: word = 0;
+
+  for (row := maxRow + 1; row <= maxRow + 20; row++)
+  {
+    var sName, sValue: string = '';
+    xlGetCellValue(row, 1, sName);
+    xlGetCellValue(row, 3, sValue);
+
+    var wTmp: word;
+    var dTmp: date;
+    var fTmp: double;
+
+    if (sName <> '')
+    {
+      if (sValue = '')
+        wlog.LogLine(APE_WARNING, 'Нет значения для атрибута ' + sName);
+      else
+      {
+        case sName of
+
+          'план, дней':
+          {
+            wTmp := word(sValue);
+            if NeedChangeParam(string(mtPeriods.PlanDays), sValue, 'Количество дней')
+              mtPeriods.PlanDays := wTmp;
+          }
+
+          'аванс':
+          {
+            dTmp := StrToDate(sValue, 'DD.MM.YYYY');
+            if NeedChangeParam(string(mtPeriods.AvansDate), sValue, 'Дата аванса')
+              mtPeriods.AvansDate := dTmp;
+            wAttr := 1;
+          }
+
+          'з/п':
+          {
+            dTmp := StrToDate(sValue, 'DD.MM.YYYY');
+            if NeedChangeParam(string(mtPeriods.PaymentDate), sValue, 'Дата выплаты зарплаты')
+              mtPeriods.PaymentDate := dTmp;
+            wAttr := 2;
+          }
+
+          'межрасчеты':
+          {
+          }
+
+          'курс':
+          {
+            fTmp := double(sValue);
+
+            if (fTmp <> 0)
+              case wAttr of
+
+                1:
+                {
+                  if NeedChangeParam(string(mtPeriods.AvansRate), sValue, 'Курс выплаты аванса')
+                    mtPeriods.AvansRate := fTmp;
+                }
+
+                2:
+                {
+                  if NeedChangeParam(string(mtPeriods.PaymentRate), sValue, 'Курс выплаты зарплаты')
+                    mtPeriods.PaymentRate := fTmp;
+                }
+
+              end;
+            wAttr := 0;
+          }
+
+        else
+          wlog.LogLine(APE_INFO, 'На листе "' + sSheetName + '" новый атрибут периода "' + sName + '".');
+        end;
+      }
+    }
+  }
+
+  update current mtPeriods;
+}
+
+var lNum, lSp: longint = 1;
+
+procedure BuildColumns;
+{
+  //SetVisualHeader('Анализ колонок...'#13 + sSheetName);
+  var sMainTitle: string = '';
+
+  _loop mtColumn where (( lSheetNum == mtColumn.Sheet ))
+  {
+    if (mtColumn.Name1 = '') and (mtColumn.Name2 = '')
+      continue;
+
+    if (sMainTitle = '') and (mtColumn.Name1 = '') and (mtColumn.Name2 <> '')
+    {
+      if (GetFirst mtColTitle where (( mtColumn.Name2 == mtColTitle.Name )) <> tsOk)
+      {
+        ClearBuffer(#mtColTitle);
+        mtColTitle.Num := lNum++;
+        mtColTitle.Name := mtColumn.Name2;
+        insert current mtColTitle;
+      }
+    }
+
+    var _name1, _name2: string;
+
+    if (mtColumn.Name1 <> '')
+    {
+      sMainTitle := mtColumn.Name1;
+
+      _name1 := mtColumn.Name1;
+      _name1 := Replace(_name1, ''#13#10, ' ');
+      _name1 := Replace(_name1, ''#10, ' ');
+      _name1 := Replace(_name1, ''#13, ' ');
+
+      if (length(_name1) > 10)
+      {
+        var ss: string = '';
+        ss := SubStr(_name1, length(_name1) - 9, 255);
+
+        var dt: date = ZeroDate;
+        dt := StrToDate(ss, 'DD.MM.YYYY');
+
+        if (dt <> ZeroDate)
+          _name1 := Trim(SubStr(_name1, 1, length(_name1) - 10));
+      }
+
+      if (GetFirst mtColTitle where (( _name1 == mtColTitle.Name )) <> tsOk)
+      {
+        ClearBuffer(#mtColTitle);
+        mtColTitle.Num := lNum++;
+        mtColTitle.Name := _name1;
+        insert current mtColTitle;
+      }
+      lSp := 1;
+    }
+
+    _name2 := mtColumn.Name2;
+    _name2 := Replace(_name2, ''#13#10, ' ');
+    _name2 := Replace(_name2, ''#10, ' ');
+    _name2 := Replace(_name2, ''#13, ' ');
+
+    if (sMainTitle = '') and (mtColumn.Name1 = '') and (mtColumn.Name2 <> '')
+      _name2 := '';
+
+    if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                  _name2         == mtSpCol.Name )) = tsOk)
+      lSp := mtSpCol.Num + 1;
+    else
+    {
+      ClearBuffer(#mtSpCol);
+      mtSpCol.Col := mtColTitle.Num;
+      mtSpCol.Num := lSp++;
+      mtSpCol.Name := _name2;
+      insert current mtSpCol;
+      if (_name2 <> '')
+        wlog.LogLine(APE_INFO, 'Колонка: ' + mtColTitle.Name + if(mtSpCol.Name = '', '', ' - ' + mtSpCol.Name));
+    }
+    mtColumn.cSpCol := mtSpCol.NRec;
+    update current mtColumn;
+  }
+}
+/*
+function sGetRaw(_title: string; _sub: string = ''): string;
+{
+  result := '';
+
+  PushPos(#mtColTitle);
+  PushPos(#mtSpCol);
+  PushPos(#mtColumn);
+
+  if (GetFirst mtColTitle where (( _title == mtColTitle.Name )) = tsOk)
+    if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                  _sub           == mtSpCol.Name )) = tsOk)
+      if (GetFirst mtColumn where (( mtSpCol.NRec == mtColumn.cSpCol )) = tsOk)
+        if (GetFirst mtRawData where (( lSheetNum    == mtRawData.Sheet and
+                                        mtRow.Row    == mtRawData.Row and
+                                        mtColumn.Col == mtRawData.Col )) = tsOk)
+          result := mtRawData.Value;
+
+  PopPos(#mtColTitle);
+  PopPos(#mtSpCol);
+  PopPos(#mtColumn);
+}
+
+procedure ProcessSheet;
+{
+  _loop mtRow where (( lSheetNum == mtRow.Sheet ))
+  {
+    wlog.LogMessage(APE_INFO, mtRow.Name);
+    SetVisualHeader(sSheetName + ' - ' + mtRow.Name);
+    CurPersonLogin := sal.FindPerson(sGetRaw('таб. №'), sGetRaw('ФИО'));
+
+    sal.AddPersPeriod(CurPersonLogin, mtSheet.Year, mtSheet.Month, fGetRaw('ЧИСТЫЙ оклад'), wGetRaw('Факт, дней'));
+
+    _loop mtColTitle
+    {
+      case mtColTitle.Name of
+        'таб. №'                                              : continue;
+        '№'                                                   : continue;
+        'ФИО'                                                 : continue;
+        'ЧИСТЫЙ оклад'                                        : continue;
+        'Факт, дней'                                          : continue;
+
+//        'Премия Отдела (код 83)'                              : AddBonus;
+        'Премия Отдела  (код 83)'                             : AddBonus;
+        'Премия ТК по рабочим группам (код 84)'               : AddBonus;
+        'Премия Управления (код 84)'                          : AddBonus;
+//        'Проектный бизнес(код 84)'                            : AddBonus;
+        'Проектный бизнес (код 84)'                           : AddBonus;
+//        'Прочие премии (код 85)'                              : AddBonus;
+        'Прочие премии  (код 85)'                             : AddBonus;
+        'Премия Управления ПИ ТН ТК (по итогам года) (код 84)': AddBonus;
+        'Премия Управления-3 (код 85)'                        : AddBonus;
+
+        'Зачет с прошлого месяца'                             : AddDebt(true);
+
+        'Аванс'                                               : AddPayment;
+        'Межрасчеты'                                          : AddPayment;
+        'Зарплата'                                            : AddPayment;
+
+        'Зачет на следующий месяц, BYN'                       : AddDebt(false);
+
+        'Начислено'                                           : continue;
+        'К выдаче "чистые" + вход. остаток'                   : continue;
+        'Вычеты'                                              : continue;
+        'Льгота'                                              : continue;
+        'Доход'                                               : continue;
+        'Аванс и межрасчет'                                   : continue;
+        'К выплате'                                           : continue;
+        'Мой расчет зачета на след. месяц'                    : continue;
+        'Расхождение с распечаткой, BYN'                      : continue;
+        'Расхождение с распечаткой'                           : continue;
+      else
+        wlog.LogLine(APE_INFO, 'Неизвестная колонка: "' + mtColTitle.Name + '"');
+      end;
+    }
+    wlog.LogCommit;
+  }
+}
+*/
 private procedure DoImportXlsx;
 {
   StartNewVisual(vtRotateVisual, vfTimer + vfConfirm, 'Открытие файла...', 1);
@@ -94,37 +415,73 @@ private procedure DoImportXlsx;
   if not bOk
     exit;
 
-  wlog.LogMessage(APE_INFO, 'Чтение данных из файла');
-  StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Чтение данных из файла...', RecordsInTable(#mtSheet));
-  _loop mtSheet
+//  wLog.AutoFlush := true;
+  //wlog.LogMessage(APE_INFO, 'Чтение данных из файла ' + sFile);
+  wlog.LogStartVisual('Чтение данных из файла ' + sFile, lSheetsCount);
+
+  for (lSheetNum := 1; lSheetNum <= lSheetsCount; lSheetNum++)
   {
-    if not NextVisual
+    if not wlog.LogNextVisual(sSheetName)
       break;
 
-    if not LoadSheet
-      break;
+    xlSetActiveSheet(lSheetNum);
+    xlGetSheetName(lSheetNum, sSheetName);
+    //SetVisualHeader('Чтение данных из файла...'#13 + sSheetName);
+
+    if (sSheetName = 'Курсы')
+      continue;
+
+    var m: byte = byte(SubStr(sSheetName, 1, 2));
+    var y: word = word(SubStr(sSheetName, 4, 4));
+
+    if (m >= 1) and (m <= 12) and (y > 2000)
+    {
+      bOk := true;
+      var dPeriod: date;
+      dPeriod := date(1, m, y);
+      if (GetFirst mtPeriods where (( dPeriod == mtPeriods.dBeg )) = tsOk)
+        wlog.LogMessage(APE_INFO, 'Обработка периода ' + DateToStr(dPeriod, 'MM.YYYY'));
+      else
+      {
+        ClearBuffer(#mtPeriods);
+        mtPeriods.dBeg := dPeriod;
+        insert current mtPeriods;
+        wlog.LogMessage(APE_INFO, 'Добавлен период ' + DateToStr(dPeriod, 'MM.YYYY'));
+      }
+
+      if not ReadColumns
+        break;
+
+      BuildColumns;
+      wlog.LogCommit;
+    }
   }
-  StopVisual;
-  wlog.LogCommit;
 
-  xlCloseWorkBook(wbNum);
-  xlKillExcel;
+  wlog.LogStopVisual;
+  //wlog.LogCommit;
 
 //  RunWindowModal(wnColumns);
 
-  wlog.LogMessage(APE_INFO, 'Анализ колонок');
-  StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Анализ колонок...', RecordsInTable(#mtSheet));
+//  wlog.LogMessage(APE_INFO, 'Анализ колонок');
+  //StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Анализ колонок...', lSheetsCount);
 //  SetVisualTitle('Анализ колонок...');
-  _loop mtSheet
+/*
+  for (lSheetNum := 1; lSheetNum <= lSheetsCount; lSheetNum++)
   {
-    if not NextVisual
+    if not wlog.LogNextVisual
       break;
+
+    xlGetSheetName(lSheetNum, sSheetName);
 
     BuildColumns;
   }
-  StopVisual;
+  //StopVisual;
   wlog.LogCommit;
+*/
+  xlCloseWorkBook(wbNum);
+  xlKillExcel;
 
+/*
   wlog.LogMessage(APE_INFO, 'Обработка данных');
   StartNewVisual(vtIndicatorVisual, vfTimer + vfConfirm, 'Обработка данных...', RecordsInTable(#mtSheet));
 //  SetVisualTitle('Обработка данных...');
@@ -133,19 +490,22 @@ private procedure DoImportXlsx;
     if not NextVisual
       break;
 
-    wlog.LogMessage(APE_INFO, mtSheet.Name);
+    wlog.LogMessage(APE_INFO, sSheetName);
     ProcessSheet;
     wlog.LogCommit;
 //    break;
   }
   StopVisual;
   wlog.LogCommit;
-
+*/
   //sal.CheckAll(wlog);
 
   //RunWindowModal(wnColumns);
-  wlog.LogLine(APE_INFO, 'stop');
+//  wlog.LogLine(APE_INFO, 'stop');
   wlog.Refresh;
   wlog.Visible := true;
-  wlog.Commit;
+  //wlog.Commit;
+
+  if (GetFirst mtPeriods = tsOk)
+    RereadRecord;
 }

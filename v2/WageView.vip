@@ -50,6 +50,84 @@ with index
   mtStruct4 = dPer + Mode + Person
 );
 
+Table struct mtColumn
+(
+  Sheet: longint,
+  Col: longint,
+  Name1: string,
+  Name2: string,
+  cSpCol: comp
+)
+with index
+(
+  mtColumn01 = Sheet + Col,
+  mtColumn02 = cSpCol
+);
+
+Table struct mtRow
+(
+  Sheet: longint,
+  Row: longint,
+  Name: string
+)
+with index
+(
+  mtRow01 = Sheet + Row
+);
+
+Table struct mtRawData
+(
+  Sheet: longint,
+  Row: longint,
+  Col: longint,
+  Value: string
+)
+with index
+(
+  mtRawData01 = Sheet + Row + Col
+);
+
+//Table struct mtPerData
+//(
+//  Sheet: longint,
+//  PlanDays: word,
+//  AvansDate: date,
+//  SalaryDate: date,
+//  InterDate: date,
+//  AvansRate: double,
+//  SalaryRate: double,
+//  InterRate: double
+//)
+//with index
+//(
+//  mtPerData01 = Sheet
+//);
+
+Table struct mtColTitle
+(
+  Num: longint,
+  Name: string
+)
+with index
+(
+  mtColTitle01 = Num,
+  mtColTitle02 = Name
+);
+
+Table struct mtSpCol
+(
+  NRec: comp,
+  Col: longint,
+  Num: longint,
+  Name: string
+)
+with index
+(
+  mtSpCol01 = NRec (surrogate),
+  mtSpCol02 = Col + Num,
+  mtSpCol03 = Col + Name
+);
+
 Create view as select *
 From
   mtPeriods,
@@ -64,7 +142,13 @@ From
   mtDebtIn,
   mtNachisl,
   mtPayment,
-  mtDebtOut
+  mtDebtOut,
+  mtColumn,
+  mtRow,
+  mtRawData,
+//  mtPerData,
+  mtColTitle,
+  mtSpCol
 
 Where ((
   mtPeriods.dBeg    == mtStruct.dPer    and
@@ -407,11 +491,9 @@ cmValue30:
   PushConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetTitle('Отдел разработки "Управление персоналом" [+]');
   RereadRecord;
-  sXmlFile := '';
-  ReadMyDsk(sXmlFile, 'WageView_sXmlFile', false);
-  if ExistFile(sXmlFile)
-    DoImport;
-  SelectFormat(trFilling);
+  AutoImport;
+  if isValid(#mtPeriods)
+    SelectFormat(trFilling);
 }
 
 cmChangeTabbedSheetFormat:

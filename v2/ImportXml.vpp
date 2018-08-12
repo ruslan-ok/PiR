@@ -144,9 +144,9 @@ private procedure LoadPersons(_e: IDomNode);
 private procedure DoImportXml;
 {
   StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
-  SetVisualTitle('Загрузка из ' + sXmlFile);
+  SetVisualTitle('Загрузка из ' + sFile);
   var doc: DomDoc new;
-  doc.Load(sXmlFile);
+  doc.Load(sFile);
 
   if (doc.RootNode <> NullRef)
   {
@@ -189,7 +189,7 @@ private procedure DoImportXml;
   doc.Free;
   StopVisual;
   BuildTree;
-  SaveMyDsk(sXmlFile, 'WageView_sXmlFile');
+  SaveMyDsk(sFile, 'WageView_sFile');
   GetFirst mtPeriods;
   if TreeGetFirst(trFilling)
   {
