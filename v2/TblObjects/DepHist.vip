@@ -26,12 +26,15 @@ With index
 
 Create view from mtDepHist, mtDepHist mtDepHist2;
 
+var pDepart: IDepart;
+
 property NRec:   comp absolute mtDepHist.NRec;
 property dBeg:   date absolute mtDepHist.dBeg;
 property dEnd:   date absolute mtDepHist.dEnd;
 property Node:   comp absolute mtDepHist.Node;
 property Sort:   s50  absolute mtDepHist.Sort;
 property Depart: comp absolute mtDepHist.Depart;
+property UpDepart: string read if(pDepart = NullRef, '', pDepart.GetName(mtDepHist.Node));
 
 index DhId   auto;
 index ByNode auto;
@@ -90,6 +93,54 @@ public function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
     result := true;
 }
 
+private function FindChild(_dep: comp): boolean;
+{
+  result := false;
+
+  PushPos(#mtDepHist2);
+
+  _loop mtDepHist2 where (( mtDepHist.Depart == mtDepHist2.Node ))
+  {
+    if not isCrossPeriod(mtDepHist.dBeg, mtDepHist.dEnd, mtDepHist2.dBeg, mtDepHist2.dEnd)
+      continue;
+
+    if (mtDepHist2.Depart = _dep)
+    {
+      result := true;
+      break;
+    }
+
+    result := FindChild(mtDepHist2.Depart);
+  }
+
+  PopPos(#mtDepHist2);
+}
+
+public function ValidNode(_node: comp): boolean;
+{
+  if (_node = 0)
+  {
+    result := true;
+    exit;
+  }
+
+  if (_node = mtDepHist.Depart)
+  {
+    result := false;
+    message('В качестве вышестоящего не может быть это же подразделение');
+    exit;
+  }
+
+  if FindChild(_node)
+  {
+    result := false;
+    message('Выбранное подразделение уже присутствует среди подчиненных текущему');
+    exit;
+  }
+
+  result := true;
+}
+
 function IModify.doInsert: word;
 {
   result := insert current mtDepHist;
@@ -110,7 +161,19 @@ implementation IModify.doFlush abstract;
 constructor Init;
 {
   result := true;
+  pDepart := NullRef;
   delete all mtDepHist;
+}
+
+constructor Init2(_dep: IDepart);
+{
+  result := Init;
+  pDepart := _dep;
+}
+
+destructor Done;
+{
+  pDepart := NullRef;
 }
 
 public procedure Clear;

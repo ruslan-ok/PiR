@@ -76,21 +76,8 @@ ObjInterface IPeriods(ISerializable);
 
   function PlanDaysPrev: byte;
   function Next: date;
-end;
-
-ObjInterface IDepHist(ISerializable);
-  property NRec:   comp;
-  property dBeg:   date;
-  property dEnd:   date;
-  property Node:   comp;
-  property Sort:   s50;
-  property Depart: comp;
-
-  index DhId   = NRec (unique);
-  index ByNode = Node, dBeg;
-  index ByDep  = Depart, dBeg;
-
-  function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
+  function Correct: boolean;
+  function CanDelete: boolean;
 end;
 
 ObjInterface IDepart(ISerializable);
@@ -103,6 +90,23 @@ ObjInterface IDepart(ISerializable);
   index ByName = Name;
 
   function GetName(_nrec: comp): string;
+end;
+
+ObjInterface IDepHist(ISerializable);
+  property NRec:   comp;
+  property dBeg:   date;
+  property dEnd:   date;
+  property Node:   comp;
+  property Sort:   s50;
+  property Depart: comp;
+  property UpDepart: string read;
+
+  index DhId   = NRec (unique);
+  index ByNode = Node, dBeg;
+  index ByDep  = Depart, dBeg;
+
+  function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
+  function ValidNode(_node: comp): boolean;
 end;
 
 ObjInterface IPost(ISerializable);
@@ -142,6 +146,7 @@ ObjInterface IAppoint(ISerializable);
   index ByDepart = Depart, dBeg;
   index ByPerson = Person, dBeg;
   index ByPeriod = dBeg;
+  index ByPost   = Post;
 
   function prSalary(_per: date): double;
 end;
@@ -152,6 +157,7 @@ ObjInterface IPersPer(ISerializable);
   property FactDays:   byte;
 
   index ByPerson = Person, Period;
+  index ByPeriod = Period;
 
   function FactDaysPrev: byte;
 end;
@@ -218,6 +224,8 @@ VipInterface DepHist
   licensed(free);
 public:
   constructor Init;
+  constructor Init2(_dep: IDepart);
+  destructor Done;
 end;
 
 VipInterface Depart

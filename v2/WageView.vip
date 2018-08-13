@@ -12,12 +12,14 @@ Interface WageView 'Отдел разработки "Управление персоналом"' ('',, sci1478Esc);
 
 var
   cNode: comp;
+  cSotr: comp;
   sav_Mode: word;
   sav_cRec: comp;
   sav_NRec: comp;
   CurPerson: s50;
   mtPeriods: IPeriods(Periods) new;
-  mtDepHist: IDepHist(DepHist) new;
+  mtDepHist: IDepHist;
+//  mtDepHist: IDepHist(DepHist) new;
   mtDepart:  IDepart(Depart)   new;
   mtPost:    IPost(Post)       new;
   mtPerson:  IPerson(Person)   new;
@@ -130,7 +132,7 @@ with index
 );
 
 Create view as select
-  mtDepart.GetName(mtDepHist.Node) (FieldName = UpDepart),
+//  mtDepart.GetName(mtDepHist.Node) (FieldName = UpDepart),
   *
 From
   mtPeriods,
@@ -172,13 +174,13 @@ Where ((
   mtAppoint.Post    == mtPost.NRec      and
   mtPeriods.dBeg    == SubStruct.dPer   and
   mtStruct.NRec     == SubStruct.Node   and
-  mtDepart.NRec     == mtDepHist.Depart
+  cSotr             == KatSotr.NRec
 ))
 
 Condition CurAppoint = ((mtPeriods.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriods.dBeg)))
 Condition SotrOnly = ((mtPeriods.dBeg = mtStruct.dPer) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
 Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
-//Bounds ViewDepHist mtDepart.NRec == mtDepHist.Depart
+Bounds ViewDepHist mtDepart.NRec == mtDepHist.Depart
 ;
 
 private procedure OpenAllNodes; forward;
@@ -343,8 +345,8 @@ private procedure BuildTree; forward;
 #include Periods.vpp
 #include Depart.vpp
 #include Post.vpp
-#include NewStruct.vpp
 #include Person.vpp
+#include NewStruct.vpp
 #include PersPer.vpp
 #include DebtIn.vpp
 #include Nachisl.vpp
@@ -520,6 +522,7 @@ cmInit:
 
 cmValue30:
 {
+  mtDepHist := IDepHist(new(DepHist, Init2(mtDepart)));
   TreeGetFirst(trFilling);
   PushConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetTitle('Отдел разработки "Управление персоналом" [+]');

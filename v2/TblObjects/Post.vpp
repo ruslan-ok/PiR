@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 var cSelectedPost: comp;
+var sPost: string;
 
 Window wnPost 'Должность';
   show at(,, 80, 5);
@@ -33,13 +34,16 @@ cmUpdateRecord:
   update current mtPost;
 
 cmDeleteRecord:
-  if (message('Удалить должность?', Confirmation + YesNo) = cmYes)
-    delete current mtPost;
+  if (GetFirst mtAppoint where (( mtPost.NRec == mtAppoint.Post )) = tsOk)
+    message('Удаление невозможно, так как есть назначения на эту должность.');
+  else
+    if (message('Удалить должность?', Confirmation + YesNo) = cmYes)
+      delete current mtPost;
 
 end;
 
 
-Window wnPickPost 'Выбор должности' ('',, sci1EnEsc) DoAccept;
+Window wnPickPost 'Выбор должности' ('',, sci1478EnEsc) DoAccept;
   show at(,, 60, 15);
 
 Browse brPost;
@@ -58,11 +62,6 @@ cmInit:
   PushPos(#mtPost);
   ResetBounds(#mtPost);
 
-  var cGoto: comp;
-  cGoto := 0;
-  if isValid(#mtAppoint)
-    cGoto := mtAppoint.Post;
-
   if (GetFirst mtPost where (( cSelectedPost == mtPost.NRec )) = tsOk)
     RescanPanel(#mtPost);
 
@@ -71,7 +70,9 @@ cmInit:
 
 cmDefault:
 {
-  set mtAppoint.Post := mtPost.NRec;
+  UpdateTable;
+  cSelectedPost := mtPost.NRec;
+  set sPost := mtPost.Name;
 }
 
 cmDone:
@@ -79,5 +80,11 @@ cmDone:
   SetBounds(#mtPost);
   PopPos(#mtPost);
 }
+
+cmEdit:
+  RunWindowModal(wnPost);
+
+cmInsert:
+  PutCommand(cmEdit);
 
 End;

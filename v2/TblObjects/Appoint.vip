@@ -23,7 +23,8 @@ With index
 (
   ByDepart = Depart + dBeg,
   ByPerson = Person + dBeg,
-  ByPeriod = dBeg
+  ByPeriod = dBeg,
+  ByPost   = Post
 );
 
 Create view from mtAppoint, mtAppoint mtAppoint2;
@@ -41,6 +42,7 @@ property TaxDed: double absolute mtAppoint.TaxDed;
 index ByDepart auto;
 index ByPerson auto;
 index ByPeriod auto;
+index ByPost   auto;
 
 public function prSalary(_per: date): double;
 {

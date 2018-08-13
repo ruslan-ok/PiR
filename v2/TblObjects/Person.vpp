@@ -44,6 +44,22 @@ cmInit:
 End;
 
 
+private function DelPerson(_pers: string): boolean;
+{
+  result := false;
+
+  if (GetFirst mtPersPer where (( _pers == mtPersPer.Person )) = tsOk)
+    message('Удаление невозможно, так как есть результаты расчета по этому сотруднику.');
+  else
+    if (message('Удалить сотрудника?', Confirmation + YesNo) = cmYes)
+    {
+      delete mtAppoint where (( _pers == mtAppoint.Person ));
+      delete mtPerson where (( _pers == mtPerson.Login ));
+      result := true;
+    }
+}
+
+
 TableEvent
   table mtPerson;
 
@@ -54,7 +70,6 @@ cmUpdateRecord:
   update current mtPerson;
 
 cmDeleteRecord:
-  if (message('Удалить сотрудника?', Confirmation + YesNo) = cmYes)
-    delete current mtPerson;
+  DelPerson(mtPerson.Login);
 
 end;

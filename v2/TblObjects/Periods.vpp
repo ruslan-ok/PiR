@@ -35,11 +35,8 @@ cmSetDefault:
   mtPeriods.dBeg := mtPeriods.Next;
 
 cmCheckRecord:
-  if (mtPeriods.PlanDays < 18) or (mtPeriods.PlanDays > 22)
-  {
-    message('Количество рабочих дней должно быть в диапазоне от 18 до 22');
+  if not mtPeriods.Correct
     abort;
-  }
 
 cmInsertRecord:
   insert current mtPeriods;
@@ -48,7 +45,10 @@ cmUpdateRecord:
   update current mtPeriods;
 
 cmDeleteRecord:
-  if (message('Удалить период?', Confirmation + YesNo) = cmYes)
-    delete current mtPeriods;
+  if (GetFirst mtPersPer where (( mtPeriods.dBeg == mtPersPer.Period )) = tsOk)
+    message('Удаление невозможно, так как за этот период есть данные расчета.');
+  else
+    if mtPeriods.CanDelete
+      delete current mtPeriods;
 
 end;

@@ -7,8 +7,8 @@
 var wAddMode: word;
 var sDepCode, sDepName: string;
 var dCreateDep, dCreateApp, dContract: date;
-var cSotr, cSotrDep, cSotrPost: comp;
-var sPassw, sSort, sDepart, sPost: string;
+var cSotrDep, cSotrPost: comp;
+var sPassw, sSort: string;
 var fSalary, fTaxDed: double;
 var wCurrency: word;
 
@@ -47,13 +47,13 @@ Screen scNewPerson;
   show at(26,,, 12);
   table mtStruct;
 Fields
-  KatSotr.FIO ('',, sci13EnEsc): Protect, {font = {backColor = if(cSotr = 0, ColorNeed, 0)}};
+  KatSotr.FIO ('',, sci13Esc): Protect, {font = {backColor = if(cSotr = 0, ColorNeed, 0)}};
   KatSotr.Name:  Protect;
   KatSotr.EMail: Protect;
   sPassw: noProtect;
   sSort:  noProtect;
-  sDepart ('',, sci13EnEsc): protect, {font = {backColor = if(cSotrDep = 0, ColorNeed, 0)}};
-  sPost   ('',, sci13EnEsc): protect, {font = {backColor = if(cSotrPost = 0, ColorNeed, 0)}};
+  sDepart ('',, sci13Esc): protect, {font = {backColor = if(cSotrDep = 0, ColorNeed, 0)}};
+  sPost   ('',, sci13Esc): protect, {font = {backColor = if(cSotrPost = 0, ColorNeed, 0)}};
   dCreateApp: noProtect, {font = {backColor = if(dCreateApp = ZeroDate, ColorNeed, 0)}};
   dContract: noProtect;
   fSalary: noProtect;
@@ -96,7 +96,6 @@ cmInit:
   dContract := ZeroDate;
   cSotr := cSotrDep := cSotrPost := 0;
   sPassw := sSort := sDepart := sPost := '';
-  if (GetFirst KatSotr where (( cSotr == KatSotr.NRec )) = tsOk) {}
 }
 
 cmPick:
@@ -110,10 +109,7 @@ cmPick:
       cSelectedDep := cSotrDep;
       RunWindowModal(wnPickDepart);
       if (cSelectedDep <> 0)
-      {
         set cSotrDep := cSelectedDep;
-        set sDepart := mtDepart.Name;
-      }
     }
 
     #sPost:
@@ -121,10 +117,7 @@ cmPick:
       cSelectedPost := cSotrPost;
       RunWindowModal(wnPickPost);
       if (cSelectedPost <> 0)
-      {
         set cSotrPost := cSelectedPost;
-        set sPost := mtPost.Name;
-      }
     }
 
   end;
@@ -211,5 +204,17 @@ TableEvent
 cmCheckField:
   if (CurField = #wAddMode)
     SetFormat(if(wAddMode = 0, scNewDepart, scNewPerson));
+
+cmDeleteRecord:
+  if isValid(#mtStruct)
+  {
+    var ret: boolean = false;
+    case mtStruct.Mode of
+      1: ret := DelDepart(mtStruct.Rec);
+      2: ret := DelPerson(mtStruct.Person);
+    end;
+    if ret
+      BuildTree;
+  }
 
 End;

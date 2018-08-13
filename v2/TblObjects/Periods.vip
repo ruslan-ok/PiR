@@ -9,6 +9,7 @@ Interface Periods;
 // Список периодов с данными
 Table struct mtPeriods
 (
+  NRec:        comp,
   dBeg:        date,
   PlanDays:    byte,
   AvansDate:   date,
@@ -18,7 +19,8 @@ Table struct mtPeriods
 )
 With index
 (
-  mtPeriods01 = dBeg (desc)
+  ByNRec = NRec (unique, surrogate),
+  ByDate = dBeg (desc)
 );
 
 
@@ -43,19 +45,65 @@ public function PlanDaysPrev: byte;
 
 public function Next: date;
 {
-  if (GetFirst mtPeriods2 = tsOk)
+  if (GetFirst mtPeriods2 ordered by index ByDate = tsOk)
     result := Add_Months(mtPeriods2.dBeg, 1);
   else
     result := date(1, 1, 2000);
 }
 
-//TableEvent
-//  table mtPeriods;
-//
-//cmSetDefault:
-//  mtPeriods.dBeg := Next;
-//
-//End;
+public function CanDelete: boolean;
+{
+  if (GetFirst mtPeriods2 where (( mtPeriods.dBeg << mtPeriods2.dBeg )) = tsOk)
+    if (GetFirst mtPeriods2 where (( mtPeriods.dBeg >> mtPeriods2.dBeg )) = tsOk)
+    {
+      message('Можно удалять только крайние периоды в списке.');
+      result := false;
+      exit;
+    }
+
+  result := (message('Удалить период?', Confirmation + YesNo) = cmYes);
+}
+
+public function Correct: boolean;
+{
+  if (mtPeriods.PlanDays < 18) or (mtPeriods.PlanDays > 22)
+  {
+    message('Количество рабочих дней должно быть в диапазоне от 18 до 22');
+    result := false;
+    exit;
+  }
+
+  if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) >> mtPeriods2.dBeg )) = tsOk)
+    if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) == mtPeriods2.dBeg )) <> tsOk)
+    {
+      message('В списке периодов не должно быть разрывов.');
+      result := false;
+      exit;
+    }
+
+  if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) << mtPeriods2.dBeg )) = tsOk)
+    if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) == mtPeriods2.dBeg )) <> tsOk)
+    {
+      message('В списке периодов не должно быть разрывов.');
+      result := false;
+      exit;
+    }
+
+  if (GetFirst mtPeriods2 where (( mtPeriods.NRec == mtPeriods2.NRec )) = tsOk)
+  {
+    var dTmp: date;
+    dTmp := mtPeriods2.dBeg;
+    if (GetFirst mtPeriods2 where (( Sub_Months(dTmp, 1) == mtPeriods2.dBeg )) = tsOk)
+      if (GetFirst mtPeriods2 where (( Add_Months(dTmp, 1) == mtPeriods2.dBeg )) = tsOk)
+      {
+        message('В списке периодов не должно быть разрывов.');
+        result := false;
+        exit;
+      }
+  }
+
+  result := true;
+}
 
 function IModify.doInsert : word;
 {

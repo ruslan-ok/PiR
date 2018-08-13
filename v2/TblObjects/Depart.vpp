@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 var cSelectedDep: comp;
+var sDepart: string;
 
 Window wnPickDepart 'Выбор подразделения' ('',, sci1EnEsc) DoAccept;
   show at(,, 60, 15);
@@ -34,6 +35,7 @@ cmInit:
 cmDefault:
 {
   cSelectedDep := mtDepart.NRec;
+  set sDepart := mtDepart.Name;
 }
 
 cmDone:
@@ -49,15 +51,6 @@ End;
 Window wnDepart 'Подразделение';
   show at(,, 80, 15);
 
-Browse brDepartTest ('',, sci178Esc);
-  show at(,,, 4);
-  table mtDepart;
-Fields
-  mtDepart.NRec 'NRec': [20], protect, noAutoSize;
-  mtDepart.Code 'Code': [10], noprotect;
-  mtDepart.Name 'Name': [30], noprotect;
-End;
-/*
 Screen scDepart ('',, sci178Esc);
   show at(,,, 4);
   table mtDepart;
@@ -70,17 +63,15 @@ Fields
    `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
-*/
+
 Browse brDepHist ('',, sci178Esc);
   show at(, 5,,);
   table mtDepHist;
 Fields
-  mtDepHist.NRec   'NRec':    [20], protect, noAutoSize;
-  mtDepHist.Depart 'Depart':  [20], protect, noAutoSize;
-  mtDepHist.dBeg   'Начало':    [12], noprotect, noAutoSize;
-  mtDepHist.dEnd   'Окончание': [12], noprotect, noAutoSize;
-//  UpDepart         'Вышестоящее' ('',, sci1378Esc): [25], protect;
-  mtDepHist.Sort   'Для сортировки': [15], noprotect;
+  mtDepHist.dBeg     'Начало':    [12], noprotect, noAutoSize;
+  mtDepHist.dEnd     'Окончание': [12], noprotect, noAutoSize;
+  mtDepHist.UpDepart 'Вышестоящее' ('',, sci1378Esc): [25], protect;
+  mtDepHist.Sort     'Для сортировки': [15], noprotect;
 End;
 
 End;
@@ -91,7 +82,7 @@ cmInit:
 {
   PushPos(#mtDepart);
   ResetBounds(#mtDepart);
-//  PushBounds(tbViewDepHist);
+  PushBounds(tbViewDepHist);
 
   var cGoto: comp;
   cGoto := 0;
@@ -106,23 +97,39 @@ cmInit:
 cmDone:
 {
   UpdateTable;
-//  PopBounds(tbViewDepHist);
+  PopBounds(tbViewDepHist);
   SetBounds(#mtDepart);
   PopPos(#mtDepart);
   BuildTree;
 }
 
 cmPick:
-  if (CurField = #UpDepart)
+  if (CurField = #mtDepHist.UpDepart)
   {
     cSelectedDep := mtDepHist.Node;
     RunWindowModal(wnPickDepart);
     if (cSelectedDep <> 0)
-      set mtDepHist.Node := cSelectedDep;
+      if mtDepHist.ValidNode(cSelectedDep)
+        set mtDepHist.Node := cSelectedDep;
   }
 
 End;
 
+private function DelDepart(_rec: comp): boolean;
+{
+  result := false;
+
+  if (GetFirst mtAppoint where (( _rec == mtAppoint.Depart )) = tsOk)
+    message('Удаление невозможно, так как есть назначения для этого подразделения.');
+  else
+    if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
+    {
+      delete mtDepHist where (( _rec == mtDepHist.Depart ));
+      delete mtDepart where (( _rec == mtDepart.NRec ));
+      RescanPanel(#mtDepart);
+      result := true;
+    }
+}
 
 TableEvent
   table mtDepart;
@@ -134,8 +141,7 @@ cmUpdateRecord:
   update current mtDepart;
 
 cmDeleteRecord:
-  if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
-    delete current mtDepart;
+  DelDepart(mtDepart.NRec);
 
 end;
 
@@ -143,15 +149,16 @@ end;
 TableEvent
   table mtDepHist;
 
-cmSetDefault:
-  mtDepHist.NRec := 0;
-
 cmCheckRecord:
   if mtDepHist.FindOther(mtDepHist.NRec, mtDepHist.Depart, mtDepHist.dBeg, mtDepHist.dEnd)
   {
     message('Периоды записей истории подразделения не должны пересекаться.');
     abort;
   }
+
+cmDelOnProtect:
+  if (CurField = #mtDepHist.UpDepart)
+    set mtDepHist.Node := 0;
 
 cmInsertRecord:
   insert current mtDepHist;

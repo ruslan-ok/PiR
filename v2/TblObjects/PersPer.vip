@@ -14,7 +14,8 @@ Table struct mtPersPer
 )
 With index
 (
-  ByPerson = Person + Period
+  ByPerson = Person + Period,
+  ByPeriod = Period
 );
 
 Create view from mtPersPer, mtPersPer mtPersPer2;
@@ -25,6 +26,7 @@ property FactDays:   byte   absolute mtPersPer.FactDays;
 
 
 index ByPerson auto;
+index ByPeriod auto;
 
 public function FactDaysPrev: byte;
 {
