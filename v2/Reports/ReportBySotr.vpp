@@ -19,7 +19,7 @@ DataStream dsReportBySotr
     [DepBonus]         UE(R02);                        // Премия отдела
     [GovBonus]         UE(R03);                        // Премия Управления
     [PrBisnes]         UE(R04);                        // Проектный бизнес
-    [OthBonus]         UE(R05) + UE(R06);              // Другие премии
+    [OthBonus]         UE(R22);                        // Остальные начисления
                                                        // Начислено
     [Accrued]          UE(R07);
     [TaxDeductKol]     mtAppoint.TaxDed;               // Льгота по подоходному налогу, количество
@@ -38,9 +38,9 @@ DataStream dsReportBySotr
     [SecPartRB]        RB(R13);                        // Выплата, BYN
     [SecPartEx]        if(RB(R13) = 0, 0, Rate(R13));  // Выплата, курс
     [SecPartUE]        UE(R13);                        // Выплата, USD
-    [ThrdPartRB]       RB(R14);                        // Выплата 2-й части, BYN
-    [ThrdPartEx]       if(RB(R14) = 0, 0, Rate(R14));  // Выплата 2-й части, курс
-    [ThrdPartUE]       UE(R14);                        // Выплата 2-й части, USD
+    [ThrdPartRB]       RB(R23);                        // Остальные выплаты, BYN
+    [ThrdPartEx]       0;                              // Остальные выплаты, курс
+    [ThrdPartUE]       UE(R23);                        // Остальные выплаты, USD
     [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
     [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
     [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN: mtDebtOut.NetBYN

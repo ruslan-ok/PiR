@@ -188,14 +188,4 @@ private procedure DoImportXml;
   }
   doc.Free;
   StopVisual;
-  BuildTree;
-  SaveMyDsk(sFile, 'WageView_sFile');
-  GetFirst mtPeriods;
-  if TreeGetFirst(trFilling)
-  {
-    do
-      TreeOpenNode(trFilling);
-    while TreeGetNext(trFilling) and (TreeLevel(trFilling) > 0);
-    TreeGetFirst(trFilling);
-  }
 }

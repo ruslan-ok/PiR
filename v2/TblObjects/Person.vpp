@@ -10,8 +10,8 @@ Window wnPerson 'Сотрудник';
 Screen scPerson ('',, sci178Esc);
   table mtPerson;
 Fields
-  mtPerson.Login  (''): noprotect;
   mtPerson.FIO    (''): noprotect;
+  mtPerson.Login  (''): noprotect;
   mtPerson.EMail  (''): noprotect;
   mtPerson.Passw  (''): noprotect;
   mtPerson.Sort   (''): noprotect;

@@ -49,7 +49,7 @@ with index
   mtStruct3 = dPer + Mode + Rec,
   mtStruct4 = dPer + Mode + Person
 );
-
+/*
 Table struct mtColumn
 (
   Sheet: longint,
@@ -86,7 +86,7 @@ with index
 (
   mtRawData01 = Sheet + Row + Col
 );
-
+*/
 //Table struct mtPerData
 //(
 //  Sheet: longint,
@@ -119,6 +119,7 @@ Table struct mtSpCol
   NRec: comp,
   Col: longint,
   Num: longint,
+  ColNum: longint,
   Name: string
 )
 with index
@@ -128,7 +129,9 @@ with index
   mtSpCol03 = Col + Name
 );
 
-Create view as select *
+Create view as select
+  mtDepart.GetName(mtDepHist.Node) (FieldName = UpDepart),
+  *
 From
   mtPeriods,
   mtDepHist,
@@ -143,12 +146,13 @@ From
   mtNachisl,
   mtPayment,
   mtDebtOut,
-  mtColumn,
-  mtRow,
-  mtRawData,
+//  mtColumn,
+//  mtRow,
+//  mtRawData,
 //  mtPerData,
   mtColTitle,
-  mtSpCol
+  mtSpCol,
+  KatSotr
 
 Where ((
   mtPeriods.dBeg    == mtStruct.dPer    and
@@ -167,19 +171,21 @@ Where ((
   mtAppoint.Depart  == mtDepart.NRec    and
   mtAppoint.Post    == mtPost.NRec      and
   mtPeriods.dBeg    == SubStruct.dPer   and
-  mtStruct.NRec     == SubStruct.Node
+  mtStruct.NRec     == SubStruct.Node   and
+  mtDepart.NRec     == mtDepHist.Depart
 ))
 
 Condition CurAppoint = ((mtPeriods.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriods.dBeg)))
 Condition SotrOnly = ((mtPeriods.dBeg = mtStruct.dPer) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
 Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
+//Bounds ViewDepHist mtDepart.NRec == mtDepHist.Depart
 ;
 
 private procedure OpenAllNodes; forward;
 private function GetNachisl(_mode: byte): double; forward;
 private function GetPayment(_mode: byte): double; forward;
 
-Browse brPeriods ('',, sci14EnEsc);
+Browse brPeriods ('',, sci1478EnEsc);
   Show at(,, 10,) Fixed_X;
   Table mtPeriods;
 Fields
@@ -195,7 +201,7 @@ cmPositionChanged:
 End;
 
 
-Tree trFilling ('',, sci14EscTree);
+Tree trFilling ('',, sci1478EscTree);
   Show at(11,, 36,);
   Table mtStruct;
   recMarker = pMarker {mtStruct.NRec};
@@ -290,31 +296,31 @@ End;
 Browse brNachisl 'Начисления';
   table mtNachisl;
 Fields
-  mtNachisl.Title  'Описание':    [10], Protect;
+  mtNachisl.Title  'Описание':    [20], Protect;
   mtNachisl.Payed  'Дата':        [10], Protect;
   mtNachisl.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
-  mtNachisl.TaxCur 'Валюта и налоги': [10],
+  mtNachisl.TaxCur 'Валюта и налоги': [5],
                          [list cgNetBYN 'BYN без налогов',
                                cgTaxBYN 'BYN с налогами',
                                cgNetUSD 'USD без налогов',
                                cgTaxUSD 'USD с налогами'], Protect;
   mtNachisl.Rate  'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
-  mtNachisl.Info  'Комментарий': [10], Protect;
+  mtNachisl.Info  'Комментарий': [20], Protect;
 End;
 
 Browse brPayment 'Выплаты';
   table mtPayment;
 Fields
-  mtPayment.Title  'Описание':    [10], Protect;
+  mtPayment.Title  'Описание':    [20], Protect;
   mtPayment.Payed  'Дата':        [10], Protect;
   mtPayment.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
-  mtPayment.TaxCur 'Валюта и налоги': [10],
+  mtPayment.TaxCur 'Валюта и налоги': [5],
                          [list cgNetBYN 'BYN без налогов',
                                cgTaxBYN 'BYN с налогами',
                                cgNetUSD 'USD без налогов',
                                cgTaxUSD 'USD с налогами'], Protect;
   mtPayment.Rate   'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
-  mtPayment.Info   'Комментарий': [10], Protect;
+  mtPayment.Info   'Комментарий': [20], Protect;
 End;
 
 Browse brAppoints 'Назначения' ('',, sci1478Esc);
@@ -325,15 +331,19 @@ Fields
   mtAppoint.Salary   'Оклад':         [13.2,'\2p[|-]366`666`666~99'], Protect;
   mtAppoint.Currency 'Вал.':          [ 5], Protect;
   mtDepart.Name      'Подразделение': [15], Protect;
-  mtPost.Name        'Должность':     [15], Protect;
+  mtPost.Name        'Должность':     [25], Protect;
 End;
 
 End; // tsInfo
 
+private procedure BuildTree; forward;
+
 #include ReportFuncs.vpp
 
+#include Periods.vpp
 #include Depart.vpp
 #include Post.vpp
+#include NewStruct.vpp
 #include Person.vpp
 #include PersPer.vpp
 #include DebtIn.vpp
@@ -435,6 +445,14 @@ private procedure BuildTree;
   GetFirst mtPeriods;
   RereadRecord;
   StopVisual;
+
+  if TreeGetFirst(trFilling)
+  {
+    do
+      TreeOpenNode(trFilling);
+    while TreeGetNext(trFilling) and (TreeLevel(trFilling) > 0);
+    TreeGetFirst(trFilling);
+  }
 }
 
 private function GetNachisl(_mode: byte): double;
@@ -466,8 +484,23 @@ private function GetPayment(_mode: byte): double;
 private procedure DoPick;
 {
   case CurField of
-    #mtDepart.Name: RunWindowModal(wnPickDepart);
-    #mtPost.Name:   RunWindowModal(wnPickPost);
+
+    #mtDepart.Name:
+    {
+      cSelectedDep := mtAppoint.Depart;
+      RunWindowModal(wnPickDepart);
+      if (cSelectedDep <> 0)
+        set mtAppoint.Depart := cSelectedDep;
+    }
+
+    #mtPost.Name:
+    {
+      cSelectedPost := mtAppoint.Post;
+      RunWindowModal(wnPickPost);
+      if (cSelectedPost <> 0)
+        set mtAppoint.Post := cSelectedPost;
+    }
+
   end;
 }
 
@@ -492,6 +525,14 @@ cmValue30:
   SetTitle('Отдел разработки "Управление персоналом" [+]');
   RereadRecord;
   AutoImport;
+
+  if not isValid(#mtPeriods)
+  {
+    mtPeriods.PlanDays := 22;
+    insert current mtPeriods;
+    RereadRecord;
+  }
+
   if isValid(#mtPeriods)
     SelectFormat(trFilling);
 }
@@ -531,7 +572,17 @@ cmEdit:
         #mtDebtOut.NetUSD, #mtDebtOut.NetBYN:
           RunWindowModal(wnDebtOut);
       end;
+    #mtPeriods:
+      RunWindowModal(wnPeriods);
   end;
+
+cmAddNewRec:
+  if (CurTable = #mtStruct)
+  {
+    abort;
+    RunWindowModal(wnNewStruct);
+    BuildTree;
+  }
 
 cmInsert:
   PutCommand(cmEdit);
@@ -580,10 +631,7 @@ cmImp:
   RunWindowModal(wnImport);
 
 cmCtrlQ:
-{
   BuildTree;
-  OpenAllNodes;
-}
 
 cmValue9:
   ReportBySotr;

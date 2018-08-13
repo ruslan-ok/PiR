@@ -41,6 +41,22 @@ public function PlanDaysPrev: byte;
     result := mtPeriods2.PlanDays;
 }
 
+public function Next: date;
+{
+  if (GetFirst mtPeriods2 = tsOk)
+    result := Add_Months(mtPeriods2.dBeg, 1);
+  else
+    result := date(1, 1, 2000);
+}
+
+//TableEvent
+//  table mtPeriods;
+//
+//cmSetDefault:
+//  mtPeriods.dBeg := Next;
+//
+//End;
+
 function IModify.doInsert : word;
 {
   result := insert current mtPeriods;

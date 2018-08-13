@@ -30,6 +30,14 @@ index DepId  auto;
 index ByCode auto;
 index ByName auto;
 
+public function GetName(_nrec: comp): string;
+{
+  result := '';
+
+  if (GetFirst mtDepart2 where (( _nrec == mtDepart2.NRec )) = tsOk)
+    result := mtDepart2.Name;
+}
+
 function IModify.doInsert: word;
 {
   result := insert current mtDepart;

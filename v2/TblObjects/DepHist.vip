@@ -19,11 +19,12 @@ Table struct mtDepHist
 With index
 (
   DhId   = NRec (unique, surrogate),
-  ByNode = Node + dBeg
+  ByNode = Node + dBeg,
+  ByDep  = Depart + dBeg
 );
 
 
-Create view from mtDepHist;
+Create view from mtDepHist, mtDepHist mtDepHist2;
 
 property NRec:   comp absolute mtDepHist.NRec;
 property dBeg:   date absolute mtDepHist.dBeg;
@@ -32,25 +33,79 @@ property Node:   comp absolute mtDepHist.Node;
 property Sort:   s50  absolute mtDepHist.Sort;
 property Depart: comp absolute mtDepHist.Depart;
 
-index DhId auto;
+index DhId   auto;
 index ByNode auto;
+index ByDep  auto;
 
-function IModify.doInsert : word;
+private function isHitPeriod(dateBeg, dateEnd, dateTest: date): boolean;
+{ // проверяет попадает ли dateTest в период
+  result := true;
+
+  if (dateTest = ZeroDate)
+    exit;
+
+  if ((dateBeg = ZeroDate) and (dateEnd = ZeroDate))
+    exit;
+
+  if ((dateTest >= dateBeg) and (dateEnd = ZeroDate))
+    exit;
+
+  if ((dateTest <= dateEnd) and (dateBeg = ZeroDate))
+    exit;
+
+  if ((dateEnd <> ZeroDate) and (dateTest <= dateEnd) and (dateBeg <> ZeroDate) and (dateTest >= dateBeg))
+    exit;
+
+  result := false;
+}
+
+private function isCrossPeriod(dateBeg1, dateEnd1, dateBeg2, dateEnd2: date): boolean;
+{ // проверяет на пересечение периодов
+  result := true;
+
+  if ((dateBeg1 = ZeroDate) and (dateEnd1 = ZeroDate) and (dateBeg2 = ZeroDate) and (dateEnd2 = ZeroDate))
+    exit;
+
+  if ((dateBeg2 <> ZeroDate) and isHitPeriod(dateBeg1, dateEnd1, dateBeg2))
+    exit;
+
+  if ((dateEnd2 <> ZeroDate) and isHitPeriod(dateBeg1, dateEnd1, dateEnd2))
+    exit;
+
+  if ((dateBeg1 <> ZeroDate) and isHitPeriod(dateBeg2, dateEnd2, dateBeg1))
+    exit;
+
+  if ((dateEnd1 <>  ZeroDate) and isHitPeriod(dateBeg2, dateEnd2, dateEnd1))
+    exit;
+
+  result := false;
+}
+
+public function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
+{
+  result := false;
+
+  if (GetFirst mtDepHist2 where (( _Depart == mtDepHist2.Depart and
+                                   ((mtDepHist2.NRec <> _NRec) and isCrossPeriod(_dBeg, _dEnd, mtDepHist2.dBeg, mtDepHist2.dEnd)) )) = tsOk)
+    result := true;
+}
+
+function IModify.doInsert: word;
 {
   result := insert current mtDepHist;
 }
 
-function IModify.doUpdate : word;
+function IModify.doUpdate: word;
 {
   result := update current mtDepHist;
 }
 
-function IModify.doDelete : word;
+function IModify.doDelete: word;
 {
   result := delete current mtDepHist;
 }
 
-implementation IModify.doFlush  abstract;
+implementation IModify.doFlush abstract;
 
 constructor Init;
 {

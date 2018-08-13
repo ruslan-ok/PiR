@@ -23,7 +23,7 @@ Table struct mtPayment
 With index
 (
   Sorted = Person + Period + Sort,
-  ForPrev = Person + Period + Title
+  Titled = Person + Period + Title
 );
 
 function GetCountedValue(_PresentTaxCur: byte; _value, _rate: double; _NeededTaxCur: byte): double; forward;
@@ -55,6 +55,7 @@ property TaxUSD: double read fTaxUSD;
 property Error:  string read sError;
 
 index Sorted auto;
+index Titled auto;
 
 var TagName: string;
 

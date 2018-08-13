@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 var sFile: string;
+var wDetProt: word;
 
 Window wnImport 'Параметры импорта';
   show at(,, 82, 8);
@@ -13,6 +14,7 @@ Screen scImport ('',, sci13Esc);
   table mtPeriods;
 fields
   sFile ('xml-файл для импорта'): noProtect, pickButton;
+  wDetProt ('Формирование подробного протокола',, sci1Esc): noProtect;
 buttons
   cmOk, default;
   cmCancel;
@@ -21,14 +23,13 @@ buttons
   `Файл для импорта`
    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-                                 <.  Загрузить  .>      <.   Отмена    .>
+   [.] подробный протокол`          <.  Загрузить  .>      <.   Отмена    .>
 >>
 End;
 
 End;
 
 private procedure DoImport; forward;
-private procedure BuildTree; forward;
 
 WindowEvent wnImport;
 
@@ -36,6 +37,8 @@ cmInit:
 {
   sFile := '';
   ReadMyDsk(sFile, 'WageView_sFile', false);
+  wDetProt := 0;
+  ReadMyDsk(wDetProt, 'WageView_wDetProt', false);
 }
 
 cmPick:
@@ -50,6 +53,8 @@ cmPick:
 cmOk:
 {
   DoImport;
+  SaveMyDsk(sFile, 'WageView_sFile');
+  SaveMyDsk(wDetProt, 'WageView_wDetProt');
   CloseWindow(wnImport);
 }
 
@@ -104,15 +109,27 @@ private procedure DoImport;
     exit;
 
   if bFromXml
+  {
     DoImportXml;
+    SaveMyDsk(sFile, 'WageView_sXmlFile');
+  }
   else
+  {
     DoImportXlsx;
+    SaveMyDsk(sFile, 'WageView_sXlsxFile');
+  }
+
+  GetFirst mtPeriods;
+  BuildTree;
+
+  if isValid(#mtPeriods)
+    SelectFormat(trFilling);
 }
 
 private procedure AutoImport;
 {
   sFile := '';
-  ReadMyDsk(sFile, 'WageView_sFile', false);
+  ReadMyDsk(sFile, 'WageView_sXmlFile', false);
   if ExistFile(sFile)
     DoImport;
 }

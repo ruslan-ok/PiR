@@ -4,6 +4,8 @@
 // Окно редактирования должности
 //------------------------------------------------------------------------------
 
+var cSelectedPost: comp;
+
 Window wnPost 'Должность';
   show at(,, 80, 5);
 
@@ -61,8 +63,10 @@ cmInit:
   if isValid(#mtAppoint)
     cGoto := mtAppoint.Post;
 
-  if (GetFirst mtPost where (( cGoto == mtPost.NRec )) = tsOk)
+  if (GetFirst mtPost where (( cSelectedPost == mtPost.NRec )) = tsOk)
     RescanPanel(#mtPost);
+
+  cSelectedPost := 0;
 }
 
 cmDefault:

@@ -75,6 +75,7 @@ ObjInterface IPeriods(ISerializable);
   index Sort = dBeg (desc);
 
   function PlanDaysPrev: byte;
+  function Next: date;
 end;
 
 ObjInterface IDepHist(ISerializable);
@@ -87,6 +88,9 @@ ObjInterface IDepHist(ISerializable);
 
   index DhId   = NRec (unique);
   index ByNode = Node, dBeg;
+  index ByDep  = Depart, dBeg;
+
+  function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
 end;
 
 ObjInterface IDepart(ISerializable);
@@ -97,6 +101,8 @@ ObjInterface IDepart(ISerializable);
   index DepId  = NRec (unique);
   index ByCode = Code;
   index ByName = Name;
+
+  function GetName(_nrec: comp): string;
 end;
 
 ObjInterface IPost(ISerializable);
@@ -167,6 +173,7 @@ ObjInterface IPayment(ISerializable);
   property Error:  string read;
 
   index Sorted = Person, Period, Sort;
+  index Titled = Person, Period, Title;
 
   function GetValue(_pers: s50; _period: date; _title: s100; _NeededTaxCur: byte): double;
   function GetRate(_pers: s50; _period: date; _title: s100): double;

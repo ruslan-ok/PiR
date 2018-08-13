@@ -4,65 +4,7 @@
 // Окно редактирования подразделения
 //------------------------------------------------------------------------------
 
-Window wnDepart 'Подразделение';
-  show at(,, 80, 4);
-
-Screen scDepart ('',, sci178Esc);
-  table mtDepart;
-Fields
-  mtDepart.Code (''): noprotect;
-  mtDepart.Name (''): noprotect;
-<<
-
-   `Код`          .@@@@@@@@@@@@
-   `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
->>
-End;
-
-End;
-
-WindowEvent wnDepart;
-
-cmInit:
-{
-  PushPos(#mtDepart);
-  ResetBounds(#mtDepart);
-
-  var cGoto: comp;
-  cGoto := 0;
-  if isValid(#mtStruct)
-    if (mtStruct.Mode = 1)
-      cGoto := mtStruct.Rec;
-
-  if (GetFirst mtDepart where (( cGoto == mtDepart.NRec )) = tsOk)
-    RescanPanel(#mtDepart);
-}
-
-cmDone:
-{
-  UpdateTable;
-  SetBounds(#mtDepart);
-  PopPos(#mtDepart);
-}
-
-End;
-
-
-TableEvent
-  table mtDepart;
-
-cmInsertRecord:
-  insert current mtDepart;
-
-cmUpdateRecord:
-  update current mtDepart;
-
-cmDeleteRecord:
-  if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
-    delete current mtDepart;
-
-end;
-
+var cSelectedDep: comp;
 
 Window wnPickDepart 'Выбор подразделения' ('',, sci1EnEsc) DoAccept;
   show at(,, 60, 15);
@@ -83,18 +25,15 @@ cmInit:
   PushPos(#mtDepart);
   ResetBounds(#mtDepart);
 
-  var cGoto: comp;
-  cGoto := 0;
-  if isValid(#mtAppoint)
-    cGoto := mtAppoint.Depart;
-
-  if (GetFirst mtDepart where (( cGoto == mtDepart.NRec )) = tsOk)
+  if (GetFirst mtDepart where (( cSelectedDep == mtDepart.NRec )) = tsOk)
     RescanPanel(#mtDepart);
+
+  cSelectedDep := 0;
 }
 
 cmDefault:
 {
-  set mtAppoint.Depart := mtDepart.NRec;
+  cSelectedDep := mtDepart.NRec;
 }
 
 cmDone:
@@ -104,3 +43,124 @@ cmDone:
 }
 
 End;
+
+//------------------------------------------------------------------------
+
+Window wnDepart 'Подразделение';
+  show at(,, 80, 15);
+
+Browse brDepartTest ('',, sci178Esc);
+  show at(,,, 4);
+  table mtDepart;
+Fields
+  mtDepart.NRec 'NRec': [20], protect, noAutoSize;
+  mtDepart.Code 'Code': [10], noprotect;
+  mtDepart.Name 'Name': [30], noprotect;
+End;
+/*
+Screen scDepart ('',, sci178Esc);
+  show at(,,, 4);
+  table mtDepart;
+Fields
+  mtDepart.Code (''): noprotect;
+  mtDepart.Name (''): noprotect;
+<<
+
+   `Код`          .@@@@@@@@@@@@
+   `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+*/
+Browse brDepHist ('',, sci178Esc);
+  show at(, 5,,);
+  table mtDepHist;
+Fields
+  mtDepHist.NRec   'NRec':    [20], protect, noAutoSize;
+  mtDepHist.Depart 'Depart':  [20], protect, noAutoSize;
+  mtDepHist.dBeg   'Начало':    [12], noprotect, noAutoSize;
+  mtDepHist.dEnd   'Окончание': [12], noprotect, noAutoSize;
+//  UpDepart         'Вышестоящее' ('',, sci1378Esc): [25], protect;
+  mtDepHist.Sort   'Для сортировки': [15], noprotect;
+End;
+
+End;
+
+WindowEvent wnDepart;
+
+cmInit:
+{
+  PushPos(#mtDepart);
+  ResetBounds(#mtDepart);
+//  PushBounds(tbViewDepHist);
+
+  var cGoto: comp;
+  cGoto := 0;
+  if isValid(#mtStruct)
+    if (mtStruct.Mode = 1)
+      cGoto := mtStruct.Rec;
+
+  if (GetFirst mtDepart where (( cGoto == mtDepart.NRec )) = tsOk)
+    RescanPanel(#mtDepart);
+}
+
+cmDone:
+{
+  UpdateTable;
+//  PopBounds(tbViewDepHist);
+  SetBounds(#mtDepart);
+  PopPos(#mtDepart);
+  BuildTree;
+}
+
+cmPick:
+  if (CurField = #UpDepart)
+  {
+    cSelectedDep := mtDepHist.Node;
+    RunWindowModal(wnPickDepart);
+    if (cSelectedDep <> 0)
+      set mtDepHist.Node := cSelectedDep;
+  }
+
+End;
+
+
+TableEvent
+  table mtDepart;
+
+cmInsertRecord:
+  insert current mtDepart;
+
+cmUpdateRecord:
+  update current mtDepart;
+
+cmDeleteRecord:
+  if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
+    delete current mtDepart;
+
+end;
+
+
+TableEvent
+  table mtDepHist;
+
+cmSetDefault:
+  mtDepHist.NRec := 0;
+
+cmCheckRecord:
+  if mtDepHist.FindOther(mtDepHist.NRec, mtDepHist.Depart, mtDepHist.dBeg, mtDepHist.dEnd)
+  {
+    message('Периоды записей истории подразделения не должны пересекаться.');
+    abort;
+  }
+
+cmInsertRecord:
+  insert current mtDepHist;
+
+cmUpdateRecord:
+  update current mtDepHist;
+
+cmDeleteRecord:
+  if (message('Удалить запись истории подразделения?', Confirmation + YesNo) = cmYes)
+    delete current mtDepHist;
+
+end;
