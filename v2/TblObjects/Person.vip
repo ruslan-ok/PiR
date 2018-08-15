@@ -9,44 +9,52 @@ Interface Person;
 // Работник
 Table struct mtPerson
 (
-  NRec:   comp,
+  Id:     byte,
   Login:  s50,
   FIO:    s100,
   EMail:  s100,
   Passw:  s50,
-  Sort:   longint
+  Sort:   byte
 )
 With index
 (
-  PersId  = NRec (unique, surrogate),
+  PersId  = Id (unique),
   ByLogin = Login,
   ByFIO   = FIO
 );
 
-Create view from mtPerson;
+Create view from mtPerson, mtPerson mtPerson2;
 
-property NRec:   comp    absolute mtPerson.NRec;
-property Login:  s50     absolute mtPerson.Login;
-property FIO:    s100    absolute mtPerson.FIO;
-property EMail:  s100    absolute mtPerson.EMail;
-property Passw:  s50     absolute mtPerson.Passw;
-property Sort:   longint absolute mtPerson.Sort;
+property Id:    byte absolute mtPerson.Id;
+property Login: s50  absolute mtPerson.Login;
+property FIO:   s100 absolute mtPerson.FIO;
+property EMail: s100 absolute mtPerson.EMail;
+property Passw: s50  absolute mtPerson.Passw;
+property Sort:  byte absolute mtPerson.Sort;
 
 index PersId  auto;
 index ByLogin auto;
 index ByFIO   auto;
 
-function IModify.doInsert : word;
+private function GenerateNewId: byte;
+{
+  if (GetLast mtPerson2 ordered by index PersId <> tsOk)
+    result := 1;
+  else
+    result := mtPerson2.Id + 1;
+}
+
+function IModify.doInsert: word;
 {
   result := insert current mtPerson;
 }
 
-function IModify.doUpdate : word;
+function IModify.doUpdate: word;
 {
   result := update current mtPerson;
 }
 
-function IModify.doDelete : word;
+function IModify.doDelete: word;
 {
   result := delete current mtPerson;
 }
@@ -59,8 +67,9 @@ constructor Init;
   delete all mtPerson;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtPerson;
 }
 
@@ -79,6 +88,7 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
+  mtPerson.Id := GenerateNewId;
   insert current mtPerson;
   result := true;
 }
@@ -102,7 +112,7 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPerson);
-    NRec  := ReadComp;
+    Id    := ReadByte;
     Login := ReadStr;
     FIO   := ReadStr;
     EMail := ReadStr;
@@ -117,10 +127,10 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  WriteComp(NRec);
+  WriteByte(Id);
   WriteStr(Login);
-  WriteStr(FIO);
-  WriteStr(EMail);
+//  WriteStr(FIO);
+//  WriteStr(EMail);
   WriteStr(Passw);
   WriteLong(Sort);
 }

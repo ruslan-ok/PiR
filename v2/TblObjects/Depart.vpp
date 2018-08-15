@@ -4,7 +4,7 @@
 // Окно редактирования подразделения
 //------------------------------------------------------------------------------
 
-var cSelectedDep: comp;
+var cSelectedDep: byte;
 var sDepart: string;
 
 Window wnPickDepart 'Выбор подразделения' ('',, sci1EnEsc) DoAccept;
@@ -26,7 +26,7 @@ cmInit:
   PushPos(#mtDepart);
   ResetBounds(#mtDepart);
 
-  if (GetFirst mtDepart where (( cSelectedDep == mtDepart.NRec )) = tsOk)
+  if (GetFirst mtDepart where (( cSelectedDep == mtDepart.Id )) = tsOk)
     RescanPanel(#mtDepart);
 
   cSelectedDep := 0;
@@ -34,7 +34,7 @@ cmInit:
 
 cmDefault:
 {
-  cSelectedDep := mtDepart.NRec;
+  cSelectedDep := mtDepart.Id;
   set sDepart := mtDepart.Name;
 }
 
@@ -84,13 +84,13 @@ cmInit:
   ResetBounds(#mtDepart);
   PushBounds(tbViewDepHist);
 
-  var cGoto: comp;
+  var cGoto: byte;
   cGoto := 0;
   if isValid(#mtStruct)
     if (mtStruct.Mode = 1)
       cGoto := mtStruct.Rec;
 
-  if (GetFirst mtDepart where (( cGoto == mtDepart.NRec )) = tsOk)
+  if (GetFirst mtDepart where (( cGoto == mtDepart.Id )) = tsOk)
     RescanPanel(#mtDepart);
 }
 
@@ -115,7 +115,7 @@ cmPick:
 
 End;
 
-private function DelDepart(_rec: comp): boolean;
+private function DelDepart(_rec: byte): boolean;
 {
   result := false;
 
@@ -125,7 +125,7 @@ private function DelDepart(_rec: comp): boolean;
     if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
     {
       delete mtDepHist where (( _rec == mtDepHist.Depart ));
-      delete mtDepart where (( _rec == mtDepart.NRec ));
+      delete mtDepart where (( _rec == mtDepart.Id ));
       RescanPanel(#mtDepart);
       result := true;
     }
@@ -141,7 +141,7 @@ cmUpdateRecord:
   update current mtDepart;
 
 cmDeleteRecord:
-  DelDepart(mtDepart.NRec);
+  DelDepart(mtDepart.Id);
 
 end;
 
@@ -150,7 +150,7 @@ TableEvent
   table mtDepHist;
 
 cmCheckRecord:
-  if mtDepHist.FindOther(mtDepHist.NRec, mtDepHist.Depart, mtDepHist.dBeg, mtDepHist.dEnd)
+  if mtDepHist.FindOther(mtDepHist.Id, mtDepHist.Depart, mtDepHist.dBeg, mtDepHist.dEnd)
   {
     message('Периоды записей истории подразделения не должны пересекаться.');
     abort;

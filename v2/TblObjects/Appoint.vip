@@ -9,9 +9,9 @@ Interface Appoint;
 // Назначение
 Table struct mtAppoint
 (
-  Depart: comp,
-  Person: s50,
-  Post:   comp,
+  Depart: byte,
+  Person: byte,
+  Post:   byte,
   dBeg:   date,
   dEnd:   date,
   Salary: double,
@@ -29,9 +29,9 @@ With index
 
 Create view from mtAppoint, mtAppoint mtAppoint2;
 
-property Depart: comp   absolute mtAppoint.Depart;
-property Person: s50    absolute mtAppoint.Person;
-property Post:   comp   absolute mtAppoint.Post;
+property Depart: byte   absolute mtAppoint.Depart;
+property Person: byte   absolute mtAppoint.Person;
+property Post:   byte   absolute mtAppoint.Post;
 property dBeg:   date   absolute mtAppoint.dBeg;
 property dEnd:   date   absolute mtAppoint.dEnd;
 property Salary: double absolute mtAppoint.Salary;
@@ -78,8 +78,9 @@ constructor Init;
   delete all mtAppoint;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtAppoint2;
 }
 
@@ -90,8 +91,8 @@ public function LoadXml(_e: IDomNode): boolean;
     do
     {
       case _e.FndAttr.Name of
-        'rok:Depart': Depart := comp(_e.FndAttr.Value);
-        'rok:Post':   Post   := comp(_e.FndAttr.Value);
+        'rok:Depart': Depart := GetId(cgDepart, comp(_e.FndAttr.Value));
+        'rok:Post':   Post   := GetId(cgPost, comp(_e.FndAttr.Value));
         'rok:dBeg':   dBeg   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
         'rok:dEnd':   dEnd   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
         'rok:Salary': Salary := double(_e.FndAttr.Value);
@@ -129,9 +130,8 @@ public function LoadRok: boolean;
     ClearBuffer(#mtAppoint);
     dBeg     := ReadDate;
     dEnd     := ReadDate;
-    Depart   := ReadComp;
-    Person   := ReadStr;
-    Post     := ReadComp;
+    Depart   := ReadByte;
+    Post     := ReadByte;
     Salary   := ReadDouble;
     Currency := ReadStr;
     TabNum   := ReadStr;
@@ -147,9 +147,8 @@ public function SaveRok: boolean;
   StartNewRec;
   WriteDate(dBeg);
   WriteDate(dEnd);
-  WriteComp(Depart);
-  WriteStr(Person);
-  WriteComp(Post);
+  WriteByte(Depart);
+  WriteByte(Post);
   WriteDouble(Salary);
   WriteStr(Currency);
   WriteStr(TabNum);

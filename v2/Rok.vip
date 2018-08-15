@@ -6,7 +6,23 @@
 
 Interface Rok;
 
-var pStream: TPtr;
+var
+  pStream: TPtr;
+  oWage: IWageView;
+
+private function GetId(_table: word; _nrec: comp): byte;
+{
+  result := 0;
+  if (oWage <> NullRef)
+    result := oWage.GetId(_table, _nrec);
+}
+
+private function GetTitleId(_title: string): byte;
+{
+  result := 0;
+  if (oWage <> NullRef)
+    result := oWage.GetTitleId(_title);
+}
 
 private function MyRead(_len: byte): string;
 {
@@ -147,8 +163,9 @@ private procedure StartNewRec;
   MyWrite('.');
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
 }
 
 public procedure SetStream(_stream: TPtr);
@@ -182,6 +199,8 @@ public function LoadXml(_e: IDomNode): boolean;
 {
   #__UnUsed__(_e)
   result := false;
+  GetId(0, 0);
+  GetTitleId('');
 }
 
 public function SaveXml(_e: IDomNode): IDomNode;
@@ -223,6 +242,7 @@ constructor Init;
 {
   result := true;
   pStream := 0;
+  oWage := NullRef;
 }
 
 End.

@@ -11,15 +11,15 @@ Screen scPayment ('',, sci178Esc);
   table mtPayment;
 Fields
   mtStruct.Name: skip;
-  mtPayment.Period: ['MM.YYYY'], skip;
-  mtPayment.Sort   (''): noprotect;
-  mtPayment.Title  (''): noprotect;
-  mtPayment.Payed  (''): noprotect;
-  mtPayment.Value  (''): [13.2,'\2p[|-]366`666`666~99'], noprotect;
-  mtPayment.TaxCur (''): [list 'BYN без налогов',
-                               'BYN с налогами',
-                               'USD без налогов',
-                               'USD с налогами'], protect;
+  mtPayment.Period:  ['MM.YYYY'], skip;
+  mtPayment.Sort:         noprotect;
+  mtPayment.GetTitleName: noprotect;
+  mtPayment.Payed:        noprotect;
+  mtPayment.Value: [13.2,'\2p[|-]366`666`666~99'], noprotect;
+  mtPayment.TaxCur: [list 'BYN без налогов',
+                          'BYN с налогами',
+                          'USD без налогов',
+                          'USD с налогами'], protect;
   mtPayment.NetBYN: skip;
   mtPayment.TaxBYN: skip;
   mtPayment.Rate:   [13.4,'\4p[|-]3`666`666~9999'], noprotect;

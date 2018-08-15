@@ -11,7 +11,7 @@ var sSheetName: string;
 var row, col, maxRow, maxCol: longint = 0;
 var sCell, sCell2: string = '';
 var fCell: double;
-var pcDefDepart, pcDefPost: comp;
+var pcDefDepart, pcDefPost: byte;
 
 private function OpenExcel: boolean;
 {
@@ -301,12 +301,12 @@ private procedure CheckPerson(_npp: string);
 
 private procedure CheckAppoint(_tab: string);
 {
-  if (GetLast mtAppoint where (( mtPerson.Login == mtAppoint.Person and
+  if (GetLast mtAppoint where (( mtPerson.Id    == mtAppoint.Person and
                                ((mtPeriods.dBeg >= mtAppoint.dBeg) and
                                ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriods.dBeg))) )) <> tsOk)
   {
     ClearBuffer(#mtAppoint);
-    mtAppoint.Person := mtPerson.Login;
+    mtAppoint.Person := mtPerson.Id;
     mtAppoint.dBeg   := mtPeriods.dBeg;
     mtAppoint.dEnd   := ZeroDate;
     mtAppoint.Depart := pcDefDepart;
@@ -347,11 +347,11 @@ private procedure CheckAppoint(_tab: string);
 
 private procedure CheckFactDays;
 {
-  if (GetFirst mtPersPer where (( mtPerson.Login == mtPersPer.Person and
+  if (GetFirst mtPersPer where (( mtPerson.Id    == mtPersPer.Person and
                                   mtPeriods.dBeg == mtPersPer.Period )) <> tsOk)
   {
     ClearBuffer(#mtPersPer);
-    mtPersPer.Person := mtPerson.Login;
+    mtPersPer.Person := mtPerson.Id;
     mtPersPer.Period := mtPeriods.dBeg;
     mtPersPer.FactDays := byte(sCell);
     insert current mtPersPer;
@@ -370,7 +370,7 @@ private procedure CheckNachisl;
   if (sCell = '')
     exit;
 
-  if (GetFirst mtNachisl where (( mtPerson.Login  == mtNachisl.Person and
+  if (GetFirst mtNachisl where (( mtPerson.Id     == mtNachisl.Person and
                                   mtPeriods.dBeg  == mtNachisl.Period and
                                   mtColTitle.Name == mtNachisl.Title )) = tsOk)
   {
@@ -386,7 +386,7 @@ private procedure CheckNachisl;
   else
   {
     wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD');
-    mtNachisl.Person := mtPerson.Login;
+    mtNachisl.Person := mtPerson.Id;
     mtNachisl.Period := mtPeriods.dBeg;
     mtNachisl.Title  := mtColTitle.Name;
     mtNachisl.Value  := fCell;
@@ -408,7 +408,7 @@ private procedure CheckDebtIn;
     fRate := mtPeriods.PaymentRate;
   PopPos(#mtPeriods);
 
-  if (GetFirst mtDebtIn where (( mtPerson.Login  == mtDebtIn.Person and
+  if (GetFirst mtDebtIn where (( mtPerson.Id     == mtDebtIn.Person and
                                  mtPeriods.dBeg  == mtDebtIn.Period )) = tsOk)
   {
     if (fRate = 0)
@@ -436,7 +436,7 @@ private procedure CheckDebtIn;
   else
   {
     wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + ']');
-    mtDebtIn.Person := mtPerson.Login;
+    mtDebtIn.Person := mtPerson.Id;
     mtDebtIn.Period := mtPeriods.dBeg;
     mtDebtIn.Value  := fCell;
     mtDebtIn.TaxCur := cgNetBYN;
@@ -450,7 +450,7 @@ private procedure CheckPayment(_value, _rate: double; _payed: date);
   if (_value = 0)
     exit;
 
-  if (GetFirst mtPayment where (( mtPerson.Login  == mtPayment.Person and
+  if (GetFirst mtPayment where (( mtPerson.Id     == mtPayment.Person and
                                   mtPeriods.dBeg  == mtPayment.Period and
                                   mtColTitle.Name == mtPayment.Title )) = tsOk)
   {
@@ -467,7 +467,7 @@ private procedure CheckPayment(_value, _rate: double; _payed: date);
   else
   {
     wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(_value) + ' BYN');
-    mtPayment.Person := mtPerson.Login;
+    mtPayment.Person := mtPerson.Id;
     mtPayment.Period := mtPeriods.dBeg;
     mtPayment.Title  := mtColTitle.Name;
     mtPayment.Value  := _value;
@@ -483,7 +483,7 @@ private procedure CheckDebtOut;
   if (fCell = 0)
     exit;
 
-  if (GetFirst mtDebtOut where (( mtPerson.Login == mtDebtOut.Person and
+  if (GetFirst mtDebtOut where (( mtPerson.Id    == mtDebtOut.Person and
                                   mtPeriods.dBeg == mtDebtOut.Period )) = tsOk)
   {
     if (mtDebtOut.Value <> fCell) or (mtDebtOut.TaxCur <> cgNetBYN) or (mtDebtOut.Rate <> mtPeriods.PaymentRate)
@@ -498,7 +498,7 @@ private procedure CheckDebtOut;
   else
   {
     wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(mtPeriods.PaymentRate, '\4p[|-]366 666.8888') + ']');
-    mtDebtOut.Person := mtPerson.Login;
+    mtDebtOut.Person := mtPerson.Id;
     mtDebtOut.Period := mtPeriods.dBeg;
     mtDebtOut.Value  := fCell;
     mtDebtOut.TaxCur := cgNetBYN;
@@ -693,7 +693,7 @@ private procedure CheckDepAndPost;
     mtDepart.Code := '001';
     mtDepart.Name := 'ОРУП Атл';
     insert current mtDepart;
-    pcDefDepart := mtDepart.NRec;
+    pcDefDepart := mtDepart.Id;
     wlog.LogLine(APE_INFO, 'Добавлено подразделение "ОРУП Атл"');
 
     ClearBuffer(#mtDepHist);
@@ -704,7 +704,7 @@ private procedure CheckDepAndPost;
   }
   else
     if (GetFirst mtDepart where (( 'ОРУП Атл' == mtDepart.Name )) = tsOk)
-      pcDefDepart := mtDepart.NRec;
+      pcDefDepart := mtDepart.Id;
   SetBounds(#mtDepart);
 
   ResetBounds(#mtPost);
@@ -714,12 +714,12 @@ private procedure CheckDepAndPost;
     mtPost.Code := '001';
     mtPost.Name := 'инженер-программист';
     insert current mtPost;
-    pcDefPost := mtPost.NRec;
+    pcDefPost := mtPost.Id;
     wlog.LogLine(APE_INFO, 'Добавлена должность "инженер-программист"');
   }
   else
     if (GetFirst mtPost where (( 'инженер-программист' == mtPost.Name )) = tsOk)
-      pcDefPost := mtPost.NRec;
+      pcDefPost := mtPost.Id;
   SetBounds(#mtPost);
 }
 

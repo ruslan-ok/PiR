@@ -9,16 +9,16 @@ Interface DepHist;
 // Структура подразделений на дату
 Table struct mtDepHist
 (
-  NRec:   comp,
+  Id:     byte,
   dBeg:   date,
   dEnd:   date,
-  Node:   comp,
+  Node:   byte,
   Sort:   s50,
-  Depart: comp
+  Depart: byte
 )
 With index
 (
-  DhId   = NRec (unique, surrogate),
+  DhId   = Id (unique),
   ByNode = Node + dBeg,
   ByDep  = Depart + dBeg
 );
@@ -28,12 +28,12 @@ Create view from mtDepHist, mtDepHist mtDepHist2;
 
 var pDepart: IDepart;
 
-property NRec:   comp absolute mtDepHist.NRec;
+property Id:     byte absolute mtDepHist.Id;
 property dBeg:   date absolute mtDepHist.dBeg;
 property dEnd:   date absolute mtDepHist.dEnd;
-property Node:   comp absolute mtDepHist.Node;
+property Node:   byte absolute mtDepHist.Node;
 property Sort:   s50  absolute mtDepHist.Sort;
-property Depart: comp absolute mtDepHist.Depart;
+property Depart: byte absolute mtDepHist.Depart;
 property UpDepart: string read if(pDepart = NullRef, '', pDepart.GetName(mtDepHist.Node));
 
 index DhId   auto;
@@ -84,16 +84,16 @@ private function isCrossPeriod(dateBeg1, dateEnd1, dateBeg2, dateEnd2: date): bo
   result := false;
 }
 
-public function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
+public function FindOther(_Id, _Depart: byte; _dBeg, _dEnd: date): boolean;
 {
   result := false;
 
   if (GetFirst mtDepHist2 where (( _Depart == mtDepHist2.Depart and
-                                   ((mtDepHist2.NRec <> _NRec) and isCrossPeriod(_dBeg, _dEnd, mtDepHist2.dBeg, mtDepHist2.dEnd)) )) = tsOk)
+                                   ((mtDepHist2.Id <> _Id) and isCrossPeriod(_dBeg, _dEnd, mtDepHist2.dBeg, mtDepHist2.dEnd)) )) = tsOk)
     result := true;
 }
 
-private function FindChild(_dep: comp): boolean;
+private function FindChild(_dep: byte): boolean;
 {
   result := false;
 
@@ -116,7 +116,7 @@ private function FindChild(_dep: comp): boolean;
   PopPos(#mtDepHist2);
 }
 
-public function ValidNode(_node: comp): boolean;
+public function ValidNode(_node: byte): boolean;
 {
   if (_node = 0)
   {
@@ -176,8 +176,9 @@ destructor Done;
   pDepart := NullRef;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtDepHist;
 }
 
@@ -188,12 +189,13 @@ public function LoadXml(_e: IDomNode): boolean;
     do
     {
       case _e.FndAttr.Name of
-        'rok:NRec':   NRec   := comp(_e.FndAttr.Value);
+        'rok:NRec':   Id     := GetId(cgDepHist, comp(_e.FndAttr.Value));
+        'rok:Id':     Id     := GetId(cgDepHist, comp(_e.FndAttr.Value));
         'rok:dBeg':   dBeg   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
         'rok:dEnd':   dEnd   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-        'rok:Node':   Node   := comp(_e.FndAttr.Value);
+        'rok:Node':   Node   := GetId(cgDepart, comp(_e.FndAttr.Value));
         'rok:Sort':   Sort   := _e.FndAttr.Value;
-        'rok:Depart': Depart := comp(_e.FndAttr.Value);
+        'rok:Depart': Depart := GetId(cgDepart, comp(_e.FndAttr.Value));
       end;
     }
     while (_e.GetNextAttr);
@@ -205,12 +207,12 @@ public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:DepHist');
-  xnode.AddAttr('rok:NRec='   + string(NRec,0,0));
+  xnode.AddAttr('rok:Id='     + string(Id));
   xnode.AddAttr('rok:dBeg='   + string(dBeg));
   xnode.AddAttr('rok:dEnd='   + string(dEnd));
-  xnode.AddAttr('rok:Node='   + string(Node,0,0));
+  xnode.AddAttr('rok:Node='   + string(Node));
   xnode.AddAttr('rok:Sort='   + Sort);
-  xnode.AddAttr('rok:Depart=' + string(Depart,0,0));
+  xnode.AddAttr('rok:Depart=' + string(Depart));
   result := xnode;
 }
 
@@ -221,12 +223,12 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtDepHist);
-    NRec   := ReadComp;
+    Id     := ReadByte;
     dBeg   := ReadDate;
     dEnd   := ReadDate;
-    Node   := ReadComp;
+    Node   := ReadByte;
     Sort   := ReadStr;
-    Depart := ReadComp;
+    Depart := ReadByte;
     insert current mtDepHist;
     result := true;
   }
@@ -236,12 +238,12 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  WriteComp(NRec);
+  WriteByte(Id);
   WriteDate(dBeg);
   WriteDate(dEnd);
-  WriteComp(Node);
+  WriteByte(Node);
   WriteStr(Sort);
-  WriteComp(Depart);
+  WriteByte(Depart);
 }
 
 end.

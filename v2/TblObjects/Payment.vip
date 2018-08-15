@@ -10,11 +10,11 @@ var mPrev: IPayment;
 
 Table struct mtPayment
 (
-  Person: s50,
+  Person: byte,
   Period: date,
   Payed:  date,
-  Sort:   word,
-  Title:  s100,
+  Sort:   byte,
+  Title:  byte,
   Value:  double,
   TaxCur: byte,
   Rate:   double,
@@ -23,7 +23,8 @@ Table struct mtPayment
 With index
 (
   Sorted = Person + Period + Sort,
-  Titled = Person + Period + Title
+  Titled = Person + Period + Title,
+  ByTitle = Title
 );
 
 function GetCountedValue(_PresentTaxCur: byte; _value, _rate: double; _NeededTaxCur: byte): double; forward;
@@ -39,11 +40,11 @@ from
   mtPayment,
   mtPayment mtPayment2;
 
-property Person: s50    absolute mtPayment.Person;
+property Person: byte   absolute mtPayment.Person;
 property Period: date   absolute mtPayment.Period;
 property Payed:  date   absolute mtPayment.Payed;
-property Sort:   word   absolute mtPayment.Sort;
-property Title:  s100   absolute mtPayment.Title;
+property Sort:   byte   absolute mtPayment.Sort;
+property Title:  byte   absolute mtPayment.Title;
 property Value:  double absolute mtPayment.Value;
 property TaxCur: byte   absolute mtPayment.TaxCur;
 property Rate:   double absolute mtPayment.Rate;
@@ -56,10 +57,11 @@ property Error:  string read sError;
 
 index Sorted auto;
 index Titled auto;
+index ByTitle auto;
 
 var TagName: string;
 
-public function GetValue(_pers: s50; _period: date; _title: s100; _NeededTaxCur: byte): double;
+public function GetValue(_pers: byte; _period: date; _title: byte; _NeededTaxCur: byte): double;
 {
   result := 0;
 
@@ -69,7 +71,7 @@ public function GetValue(_pers: s50; _period: date; _title: s100; _NeededTaxCur:
     result := GetCountedValue(mtPayment2.TaxCur, mtPayment2.Value, mtPayment2.Rate, _NeededTaxCur);
 }
 
-public function GetRate(_pers: s50; _period: date; _title: s100): double;
+public function GetRate(_pers: byte; _period: date; _title: byte): double;
 {
   result := 0;
 
@@ -79,7 +81,7 @@ public function GetRate(_pers: s50; _period: date; _title: s100): double;
     result := mtPayment2.Rate;
 }
 
-public function GetInfo(_pers: s50; _period: date; _title: s100): string;
+public function GetInfo(_pers: byte; _period: date; _title: byte): string;
 {
   result := '';
 
@@ -89,7 +91,7 @@ public function GetInfo(_pers: s50; _period: date; _title: s100): string;
     result := mtPayment2.Info;
 }
 
-public function GetPayed(_pers: s50; _period: date; _title: s100): date;
+public function GetPayed(_pers: byte; _period: date; _title: byte): date;
 {
   result := ZeroDate;
 
@@ -97,6 +99,13 @@ public function GetPayed(_pers: s50; _period: date; _title: s100): date;
                                    _period == mtPayment2.Period and
                                    _title  == mtPayment2.Title )) = tsOk)
     result := mtPayment2.Payed;
+}
+
+public function GetTitleName: string;
+{
+  result := '';
+  if (oWage <> NullRef)
+    result := oWage.GetTitleName(mtPayment.Title);
 }
 
 function IModify.doInsert : word;
@@ -164,8 +173,9 @@ private function GetCountedValue(_PresentTaxCur: byte; _value, _rate: double; _N
   end;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtPayment;
 }
 
@@ -182,11 +192,11 @@ public function LoadXml(_e: IDomNode): boolean;
     {
       case _e.FndAttr.Name of
         'rok:Payed':  Payed  := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-        'rok:Sort':   Sort   := word(_e.FndAttr.Value);
-        'rok:Title':  Title  := _e.FndAttr.Value;
+        'rok:Sort':   Sort   := byte(_e.FndAttr.Value);
+        'rok:Title':  Title  := GetTitleId(_e.FndAttr.Value);
         'rok:Value':  Value  := double(_e.FndAttr.Value);
-        'rok:TaxCur': TaxCur := word(_e.FndAttr.Value);
-        'rok:Rate':   Rate  := double(_e.FndAttr.Value);
+        'rok:TaxCur': TaxCur := byte(_e.FndAttr.Value);
+        'rok:Rate':   Rate   := double(_e.FndAttr.Value);
         'rok:Info':   Info   := _e.FndAttr.Value;
       end;
     }
@@ -202,7 +212,7 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode := _e.AddNode(TagName);
   xnode.AddAttr('rok:Payed='  + string(Payed));
   xnode.AddAttr('rok:Sort='   + string(Sort));
-  xnode.AddAttr('rok:Title='  + Title);
+  xnode.AddAttr('rok:Title='  + string(Title));
   xnode.AddAttr('rok:Value='  + DoubleToStr(Value, '\2p[|-]3666666666666~99'));
   xnode.AddAttr('rok:TaxCur=' + string(TaxCur));
   xnode.AddAttr('rok:Rate='   + DoubleToStr(Rate, '\4p[|-]3666666666~9999'));
@@ -217,11 +227,9 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPayment);
-    Person := ReadStr;
-    Period := ReadDate;
     Payed  := ReadDate;
-    Sort   := ReadWord;
-    Title  := ReadStr;
+    Sort   := ReadByte;
+    Title  := ReadByte;
     Value  := ReadDouble;
     TaxCur := ReadByte;
     Rate   := ReadDouble;
@@ -235,11 +243,9 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  WriteStr(Person);
-  WriteDate(Period);
   WriteDate(Payed);
-  WriteWord(Sort);
-  WriteStr(Title);
+  WriteByte(Sort);
+  WriteByte(Title);
   WriteDouble(Value);
   WriteByte(TaxCur);
   WriteDouble(Rate);

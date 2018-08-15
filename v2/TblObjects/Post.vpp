@@ -4,7 +4,7 @@
 // Окно редактирования должности
 //------------------------------------------------------------------------------
 
-var cSelectedPost: comp;
+var cSelectedPost: byte;
 var sPost: string;
 
 Window wnPost 'Должность';
@@ -34,7 +34,7 @@ cmUpdateRecord:
   update current mtPost;
 
 cmDeleteRecord:
-  if (GetFirst mtAppoint where (( mtPost.NRec == mtAppoint.Post )) = tsOk)
+  if (GetFirst mtAppoint where (( mtPost.Id == mtAppoint.Post )) = tsOk)
     message('Удаление невозможно, так как есть назначения на эту должность.');
   else
     if (message('Удалить должность?', Confirmation + YesNo) = cmYes)
@@ -62,7 +62,7 @@ cmInit:
   PushPos(#mtPost);
   ResetBounds(#mtPost);
 
-  if (GetFirst mtPost where (( cSelectedPost == mtPost.NRec )) = tsOk)
+  if (GetFirst mtPost where (( cSelectedPost == mtPost.Id )) = tsOk)
     RescanPanel(#mtPost);
 
   cSelectedPost := 0;
@@ -71,7 +71,7 @@ cmInit:
 cmDefault:
 {
   UpdateTable;
-  cSelectedPost := mtPost.NRec;
+  cSelectedPost := mtPost.Id;
   set sPost := mtPost.Name;
 }
 

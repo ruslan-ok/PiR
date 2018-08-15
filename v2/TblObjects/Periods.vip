@@ -128,8 +128,9 @@ constructor Init;
   delete all mtPeriods;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtPeriods;
 }
 
@@ -188,18 +189,23 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  var b, b1, b2: byte;
+  var b, b1, b2: byte = 0;
+
   b := byte((((Year(dBeg) - 2000) * 12 + Month(dBeg) - 1) shl 5) + (PlanDays or 31));
   WriteByte(b);
+
   if (Day(AvansDate) < 18) or (Month(AvansDate) <> Month(dBeg)) or (Year(AvansDate) <> Year(dBeg))
     b1 := 0;
   else
     b1 := (Day(AvansDate) - 18);
+
   if (Day(PaymentDate) < 1) or (Day(PaymentDate) > 15) or (Month(PaymentDate) <> Month(Add_Months(dBeg, 1))) or (Year(PaymentDate) <> Year(Add_Months(dBeg, 1)))
     b2 := 0;
   else
     b2 := Day(PaymentDate);
+
   b := (b1 shl 4) + b2;
+
   WriteByte(b);
   WriteDouble(AvansRate);
   WriteDouble(PaymentRate);

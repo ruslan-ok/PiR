@@ -39,7 +39,7 @@ private procedure LoadDeparts(_e: IDomNode);
 private procedure LoadPersPer(_e: IDomNode);
 {
   mtPersPer.Load(_e);
-  mtPersPer.Person := mtPerson.Login;
+  mtPersPer.Person := mtPerson.Id;
   update current mtPersPer;
 
   if _e.GetFirstNode
@@ -56,7 +56,7 @@ private procedure LoadPersPer(_e: IDomNode);
         {
           if (mtDebtIn.Load(_e.FndNode))
           {
-            mtDebtIn.Person := mtPerson.Login;
+            mtDebtIn.Person := mtPerson.Id;
             mtDebtIn.Period := mtPersPer.Period;
             update current mtDebtIn;
           }
@@ -66,7 +66,7 @@ private procedure LoadPersPer(_e: IDomNode);
         {
           if (mtNachisl.Load(_e.FndNode))
           {
-            mtNachisl.Person := mtPerson.Login;
+            mtNachisl.Person := mtPerson.Id;
             mtNachisl.Period := mtPersPer.Period;
             update current mtNachisl;
           }
@@ -76,7 +76,7 @@ private procedure LoadPersPer(_e: IDomNode);
         {
           if (mtPayment.Load(_e.FndNode))
           {
-            mtPayment.Person := mtPerson.Login;
+            mtPayment.Person := mtPerson.Id;
             mtPayment.Period := mtPersPer.Period;
             update current mtPayment;
           }
@@ -86,7 +86,7 @@ private procedure LoadPersPer(_e: IDomNode);
         {
           if (mtDebtOut.Load(_e.FndNode))
           {
-            mtDebtOut.Person := mtPerson.Login;
+            mtDebtOut.Person := mtPerson.Id;
             mtDebtOut.Period := mtPersPer.Period;
             update current mtDebtOut;
           }
@@ -114,7 +114,7 @@ private procedure LoadOnePerson(_e: IDomNode);
         'rok:Appoint':
         {
           mtAppoint.Load(_e.FndNode);
-          mtAppoint.Person := mtPerson.Login;
+          mtAppoint.Person := mtPerson.Id;
           update current mtAppoint;
         }
 
@@ -150,17 +150,17 @@ private procedure DoImportXml;
 
   if (doc.RootNode <> NullRef)
   {
-    mtPeriods.Clear;
-    mtDepart.Clear;
-    mtDepHist.Clear;
-    mtPost.Clear;
-    mtPerson.Clear;
-    mtAppoint.Clear;
-    mtPersPer.Clear;
-    mtDebtIn.Clear;
-    mtNachisl.Clear;
-    mtPayment.Clear;
-    mtDebtOut.Clear;
+    mtPeriods.Clear(IWageView(self));
+    mtDepart.Clear(IWageView(self));
+    mtDepHist.Clear(IWageView(self));
+    mtPost.Clear(IWageView(self));
+    mtPerson.Clear(IWageView(self));
+    mtAppoint.Clear(IWageView(self));
+    mtPersPer.Clear(IWageView(self));
+    mtDebtIn.Clear(IWageView(self));
+    mtNachisl.Clear(IWageView(self));
+    mtPayment.Clear(IWageView(self));
+    mtDebtOut.Clear(IWageView(self));
 
     _try
     {

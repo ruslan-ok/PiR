@@ -7,7 +7,7 @@
 var wAddMode: word;
 var sDepCode, sDepName: string;
 var dCreateDep, dCreateApp, dContract: date;
-var cSotrDep, cSotrPost: comp;
+var cSotrDep, cSotrPost: byte;
 var sPassw, sSort: string;
 var fSalary, fTaxDed: double;
 var wCurrency: word;
@@ -150,7 +150,7 @@ cmOk:
               insert mtDepart set mtDepart.Code := sDepCode,
                                   mtDepart.Name := sDepName;
 
-              insert mtDepHist set mtDepHist.Depart := mtDepart.NRec,
+              insert mtDepHist set mtDepHist.Depart := mtDepart.Id,
                                    mtDepHist.Sort   := sDepCode,
                                    mtDepHist.dBeg   := dCreateDep;
 
@@ -211,7 +211,7 @@ cmDeleteRecord:
     var ret: boolean = false;
     case mtStruct.Mode of
       1: ret := DelDepart(mtStruct.Rec);
-      2: ret := DelPerson(mtStruct.Person);
+      2: ret := DelPerson(mtStruct.Rec);
     end;
     if ret
       BuildTree;

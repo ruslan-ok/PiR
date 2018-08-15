@@ -62,10 +62,10 @@ private procedure DoExportXml;
           SetVisualHeader(mtPerson.FIO);
           xpers := mtPerson.Save(xnode);
 
-          _loop mtAppoint where (( mtPerson.Login == mtAppoint.Person ))
+          _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
             mtAppoint.Save(xpers);
 
-          _loop mtPersPer where (( mtPerson.Login == mtPersPer.Person ))
+          _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
           {
             if not NextVisual
               _raise exUserBreaked;
@@ -74,23 +74,19 @@ private procedure DoExportXml;
             xper := mtPersPer.Save(xpers);
 
             if (GetFirst mtDebtIn where (( mtPersPer.Person == mtDebtIn.Person and
-                                           mtPersPer.Period == mtDebtIn.Period /*and
-                                           cgSum_DebtIn     == mtDebtIn.Mode*/ )) = tsOk)
+                                           mtPersPer.Period == mtDebtIn.Period )) = tsOk)
               mtDebtIn.Save(xper);
 
             _loop mtNachisl where (( mtPersPer.Person == mtNachisl.Person and
-                                     mtPersPer.Period == mtNachisl.Period /*and
-                                     cgSum_Nachisl    == mtNachisl.Mode*/ ))
+                                     mtPersPer.Period == mtNachisl.Period ))
               mtNachisl.Save(xper);
 
             _loop mtPayment where (( mtPersPer.Person == mtPayment.Person and
-                                     mtPersPer.Period == mtPayment.Period /*and
-                                     cgSum_Payment    == mtPayment.Mode*/ ))
+                                     mtPersPer.Period == mtPayment.Period ))
               mtPayment.Save(xper);
 
             if (GetFirst mtDebtOut where (( mtPersPer.Person == mtDebtOut.Person and
-                                            mtPersPer.Period == mtDebtOut.Period /*and
-                                            cgSum_DebtOut    == mtDebtOut.Mode*/ )) = tsOk)
+                                            mtPersPer.Period == mtDebtOut.Period )) = tsOk)
               mtDebtOut.Save(xper);
           }
         }

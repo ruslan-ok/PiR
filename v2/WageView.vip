@@ -14,9 +14,9 @@ var
   cNode: comp;
   cSotr: comp;
   sav_Mode: word;
-  sav_cRec: comp;
+  sav_cRec: byte;
   sav_NRec: comp;
-  CurPerson: s50;
+  CurPerson: byte;
   mtPeriods: IPeriods(Periods) new;
   mtDepHist: IDepHist;
 //  mtDepHist: IDepHist(DepHist) new;
@@ -27,6 +27,7 @@ var
   mtPersPer: IPersPer(PersPer) new;
   mtDebtIn:  IPayment(DebtIn)  new;
   mtNachisl: IPayment(Nachisl) new;
+  mtPayTitle: IPayTitle(PayTitle) new;
   mtPayment: IPayment(Payment) new;
   mtDebtOut: IPayment(DebtOut) new;
   pMarker:   IMarker(marker)   new;
@@ -40,16 +41,14 @@ Table struct mtStruct
   dEnd:   date,
   Name:   string,
   Mode:   byte,
-  Rec:    comp,
-  Person: s50,
+  Rec:    byte,
   Sort:   s100
 )
 with index
 (
   mtStruct1 = NRec (unique, surrogate),
   mtStruct2 = dPer + Node + Mode(desc) + Sort,
-  mtStruct3 = dPer + Mode + Rec,
-  mtStruct4 = dPer + Mode + Person
+  mtStruct3 = dPer + Mode + Rec
 );
 /*
 Table struct mtColumn
@@ -147,6 +146,18 @@ with index
 );
 #end
 
+Table struct mtNrecId
+(
+  wTable: word,
+  NRec: comp,
+  Id: byte
+)
+With index
+(
+  mtNrecId1 = wTable + NRec,
+  mtNrecId2 = wTable + Id
+);
+
 Create view as select
 //  mtDepart.GetName(mtDepHist.Node) (FieldName = UpDepart),
   *
@@ -162,6 +173,7 @@ From
   mtPersPer,
   mtDebtIn,
   mtNachisl,
+  mtPayTitle,
   mtPayment,
   mtDebtOut,
 //  mtColumn,
@@ -170,24 +182,26 @@ From
 //  mtPerData,
   mtColTitle,
   mtSpCol,
-  KatSotr
+  KatSotr,
+  mtNrecId,
+  mtNrecId mtNrecId2
 
 Where ((
   mtPeriods.dBeg    == mtStruct.dPer    and
   cNode             == mtStruct.Node    and
-  mtStruct.Person   == mtAppoint.Person and
-  mtStruct.Person   == mtPersPer.Person and
+  mtStruct.Rec      == mtAppoint.Person and
+  mtStruct.Rec      == mtPersPer.Person and
   mtPeriods.dBeg    == mtPersPer.Period and
-  mtStruct.Person   == mtDebtIn.Person  and
+  mtStruct.Rec      == mtDebtIn.Person  and
   mtPeriods.dBeg    == mtDebtIn.Period  and
-  mtStruct.Person   == mtNachisl.Person and
+  mtStruct.Rec      == mtNachisl.Person and
   mtPeriods.dBeg    == mtNachisl.Period and
-  mtStruct.Person   == mtPayment.Person and
+  mtStruct.Rec      == mtPayment.Person and
   mtPeriods.dBeg    == mtPayment.Period and
-  mtStruct.Person   == mtDebtOut.Person and
+  mtStruct.Rec      == mtDebtOut.Person and
   mtPeriods.dBeg    == mtDebtOut.Period and
-  mtAppoint.Depart  == mtDepart.NRec    and
-  mtAppoint.Post    == mtPost.NRec      and
+  mtAppoint.Depart  == mtDepart.Id      and
+  mtAppoint.Post    == mtPost.Id        and
   mtPeriods.dBeg    == SubStruct.dPer   and
   mtStruct.NRec     == SubStruct.Node   and
   cSotr             == KatSotr.NRec
@@ -195,8 +209,8 @@ Where ((
 
 Condition CurAppoint = ((mtPeriods.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriods.dBeg)))
 Condition SotrOnly = ((mtPeriods.dBeg = mtStruct.dPer) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
-Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
-Bounds ViewDepHist mtDepart.NRec == mtDepHist.Depart
+Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Rec
+Bounds ViewDepHist mtDepart.Id == mtDepHist.Depart
 ;
 
 private procedure OpenAllNodes; forward;
@@ -314,7 +328,7 @@ End;
 Browse brNachisl 'Начисления';
   table mtNachisl;
 Fields
-  mtNachisl.Title  'Описание':    [20], Protect;
+  mtNachisl.GetTitleName  'Описание':    [20], Protect;
   mtNachisl.Payed  'Дата':        [10], Protect;
   mtNachisl.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
   mtNachisl.TaxCur 'Валюта и налоги': [5],
@@ -329,7 +343,7 @@ End;
 Browse brPayment 'Выплаты';
   table mtPayment;
 Fields
-  mtPayment.Title  'Описание':    [20], Protect;
+  mtPayment.GetTitleName 'Описание':    [20], Protect;
   mtPayment.Payed  'Дата':        [10], Protect;
   mtPayment.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
   mtPayment.TaxCur 'Валюта и налоги': [5],
@@ -366,6 +380,7 @@ private procedure BuildTree; forward;
 #include PersPer.vpp
 #include DebtIn.vpp
 #include Nachisl.vpp
+#include PayTitle.vpp
 #include Payment.vpp
 #include DebtOut.vpp
 #include Appoint.vpp
@@ -394,7 +409,7 @@ private procedure OpenAllNodes;
   RescanPanel(#mtStruct);
 }
 
-private procedure ScanAppoint(_dep, _dst: comp);
+private procedure ScanAppoint(_dep: byte; _dst: comp);
 {
   PushPos(#mtAppoint);
   PushPos(#mtStruct);
@@ -404,7 +419,7 @@ private procedure ScanAppoint(_dep, _dst: comp);
     if ((mtAppoint.dEnd <> ZeroDate) and (mtAppoint.dEnd < mtPeriods.dBeg))
       continue;
 
-    if (GetFirst mtPerson where (( mtAppoint.Person == mtPerson.Login )) <> tsOk)
+    if (GetFirst mtPerson where (( mtAppoint.Person == mtPerson.Id )) <> tsOk)
       continue;
 
     insert mtStruct set mtStruct.dPer   := mtPeriods.dBeg,
@@ -412,8 +427,7 @@ private procedure ScanAppoint(_dep, _dst: comp);
                          mtStruct.Mode   := 2,
                          mtStruct.dBeg   := mtAppoint.dBeg,
                          mtStruct.dEnd   := mtAppoint.dEnd,
-                         mtStruct.Rec    := mtPerson.NRec,
-                         mtStruct.Person := mtPerson.Login,
+                         mtStruct.Rec    := mtPerson.Id,
                          mtStruct.Name   := mtPerson.FIO,
                          mtStruct.Sort   := LPadCh(string(mtPerson.Sort), '0', 6);
 
@@ -422,7 +436,7 @@ private procedure ScanAppoint(_dep, _dst: comp);
   PopPos(#mtAppoint);
 }
 
-private procedure ScanDepHist(_src, _dst: comp);
+private procedure ScanDepHist(_src: byte; _dst: comp);
 {
   PushPos(#mtDepHist);
   _loop mtDepHist where (( _src            == mtDepHist.Node and
@@ -431,7 +445,7 @@ private procedure ScanDepHist(_src, _dst: comp);
     if ((mtDepHist.dEnd <> ZeroDate) and (mtDepHist.dEnd < mtPeriods.dBeg))
       continue;
 
-    if (GetFirst mtDepart where (( mtDepHist.Depart == mtDepart.NRec )) <> tsOk)
+    if (GetFirst mtDepart where (( mtDepHist.Depart == mtDepart.Id )) <> tsOk)
       continue;
 
     insert mtStruct set mtStruct.dPer := mtPeriods.dBeg,
@@ -443,7 +457,7 @@ private procedure ScanDepHist(_src, _dst: comp);
                          mtStruct.Name := mtDepart.Name,
                          mtStruct.Sort := mtDepart.Code;
     ScanAppoint(mtDepHist.Depart, mtStruct.NRec);
-    ScanDepHist(mtDepHist.NRec, mtStruct.NRec);
+    ScanDepHist(mtDepHist.Depart, mtStruct.NRec);
   }
   PopPos(#mtDepHist);
 }
@@ -535,6 +549,40 @@ private procedure DoDel;
   end;
 }
 
+private function GenerateNewId(_table: word): byte;
+{
+  if (GetLast mtNrecId2 where (( _table == mtNrecId2.wTable )) ordered by index mtNrecId2 <> tsOk)
+    result := 1;
+  else
+    result := mtNrecId2.Id + 1;
+}
+
+public function GetId(_table: word; _nrec: comp): byte;
+{
+  if (GetFirst mtNrecId where (( _table == mtNrecId.wTable and
+                                 _nrec  == mtNrecId.NRec )) <> tsOk)
+  {
+    ClearBuffer(#mtNrecId);
+    mtNrecId.wTable := _table;
+    mtNrecId.NRec := _nrec;
+    mtNrecId.Id := GenerateNewId(_table);
+    insert current mtNrecId;
+  }
+
+  result := mtNrecId.Id;
+}
+
+public function GetTitleId(_title: string): byte;
+{
+  result := mtPayTitle.GetId(_title);
+}
+
+public function GetTitleName(_title: byte): string;
+{
+  result := '';
+  if (GetFirst mtPayTitle where (( _title == mtPayTitle.Id )) = tsOk)
+    result := mtPayTitle.Name;
+}
 
 HandleEvent
 

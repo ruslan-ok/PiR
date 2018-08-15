@@ -8,7 +8,7 @@ Interface PersPer;
 
 Table struct mtPersPer
 (
-  Person:     s50,
+  Person:     byte,
   Period:     date,
   FactDays:   byte
 )
@@ -20,7 +20,7 @@ With index
 
 Create view from mtPersPer, mtPersPer mtPersPer2;
 
-property Person:     s50    absolute mtPersPer.Person;
+property Person:     byte   absolute mtPersPer.Person;
 property Period:     date   absolute mtPersPer.Period;
 property FactDays:   byte   absolute mtPersPer.FactDays;
 
@@ -60,8 +60,9 @@ constructor Init;
   delete all mtPersPer;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtPersPer;
 }
 
@@ -97,7 +98,6 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPersPer);
-    Person   := ReadStr;
     Period   := ReadDate;
     FactDays := ReadByte;
     insert current mtPersPer;
@@ -109,7 +109,6 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  WriteStr(Person);
   WriteDate(Period);
   WriteByte(FactDays);
 }

@@ -7,13 +7,13 @@ var
   mtDepHist: IDepHist(DepHist) new;
 
 Create view as select * from mtDepart, mtDepHist
-where (( mtDepart.NRec == mtDepHist.Depart ));
+where (( mtDepart.Id == mtDepHist.Depart ));
 
 Browse brDepart ('',, sci178Esc);
   show at(,,, 4);
   table mtDepart;
 Fields
-  mtDepart.NRec 'NRec': [20], protect, noAutoSize;
+  mtDepart.Id   'Id':   [20], protect, noAutoSize;
   mtDepart.Code 'Code': [10], noprotect;
   mtDepart.Name 'Name': [30], noprotect;
 End;
@@ -22,7 +22,7 @@ Browse brDepHist ('',, sci178Esc);
   show at(, 5,,);
   table mtDepHist;
 Fields
-  mtDepHist.NRec   'NRec':    [20], protect, noAutoSize;
+  mtDepHist.Id     'Id':      [20], protect, noAutoSize;
   mtDepHist.Depart 'Depart':  [20], protect, noAutoSize;
   mtDepHist.dBeg 'Начало':    [12], noprotect, noAutoSize;
   mtDepHist.dEnd 'Окончание': [12], noprotect, noAutoSize;
@@ -47,16 +47,6 @@ end;
 
 TableEvent
   table mtDepHist;
-
-//cmSetDefault:
-//  mtDepHist.NRec := 0;
-//
-//cmCheckRecord:
-//  if mtDepHist.FindOther(mtDepHist.NRec, mtDepHist.Depart, mtDepHist.dBeg, mtDepHist.dEnd)
-//  {
-//    message('Периоды записей истории подразделения не должны пересекаться.');
-//    abort;
-//  }
 
 cmInsertRecord:
   insert current mtDepHist;

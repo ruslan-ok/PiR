@@ -31,20 +31,20 @@ WindowEvent wnPerson;
 
 cmInit:
 {
-  var cGoto: comp;
+  var cGoto: byte;
   cGoto := 0;
   if isValid(#mtStruct)
     if (mtStruct.Mode = 2)
       cGoto := mtStruct.Rec;
 
-  if (GetFirst mtPerson where (( cGoto == mtPerson.NRec )) = tsOk)
+  if (GetFirst mtPerson where (( cGoto == mtPerson.Id )) = tsOk)
     RescanPanel(#mtPerson);
 }
 
 End;
 
 
-private function DelPerson(_pers: string): boolean;
+private function DelPerson(_pers: byte): boolean;
 {
   result := false;
 
@@ -54,7 +54,7 @@ private function DelPerson(_pers: string): boolean;
     if (message('Удалить сотрудника?', Confirmation + YesNo) = cmYes)
     {
       delete mtAppoint where (( _pers == mtAppoint.Person ));
-      delete mtPerson where (( _pers == mtPerson.Login ));
+      delete mtPerson where (( _pers == mtPerson.Id ));
       result := true;
     }
 }
@@ -70,6 +70,6 @@ cmUpdateRecord:
   update current mtPerson;
 
 cmDeleteRecord:
-  DelPerson(mtPerson.Login);
+  DelPerson(mtPerson.Id);
 
 end;

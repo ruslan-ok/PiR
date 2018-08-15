@@ -13,7 +13,11 @@ Const
   cgNetUSD = 3;
   cgTaxUSD = 4;
 
+  cgDepart  = 1;
+  cgDepHist = 2;
+  cgPost    = 3;
 End;
+
 
 #doc
 Обёртка для функций обработки XML-DOMDocument
@@ -58,8 +62,17 @@ ObjInterface IDomDoc(IDomNode);
   procedure SetNS(_ns, _value: string);
 end;
 
+
+
+ObjInterface IWageView;
+  function GetId(_table: word; _nrec: comp): byte;
+  function GetTitleId(_title: string): byte;
+  function GetTitleName(_title: byte): string;
+End;
+
+
 private ObjInterface ISerializable;
-  procedure Clear;
+  procedure Clear(_wage: IWageView = NullRef);
   procedure SetStream(_stream: TPtr);
   function Load(_e: IDomNode = NullRef): boolean;
   function Save(_e: IDomNode = NullRef): IDomNode;
@@ -86,53 +99,53 @@ ObjInterface IPeriods(ISerializable);
 end;
 
 ObjInterface IDepart(ISerializable);
-  property NRec: comp;
+  property Id: byte;
   property Code: s50;
   property Name: s100;
 
-  index DepId  = NRec (unique);
+  index DepId  = Id (unique);
   index ByCode = Code;
   index ByName = Name;
 
-  function GetName(_nrec: comp): string;
+  function GetName(_Id: byte): string;
 end;
 
 ObjInterface IDepHist(ISerializable);
-  property NRec:   comp;
+  property Id:     byte; // Нужен для поиска пересекающихся записей
   property dBeg:   date;
   property dEnd:   date;
-  property Node:   comp;
+  property Node:   byte;
   property Sort:   s50;
-  property Depart: comp;
+  property Depart: byte;
   property UpDepart: string read;
 
-  index DhId   = NRec (unique);
+  index DhId   = Id (unique);
   index ByNode = Node, dBeg;
   index ByDep  = Depart, dBeg;
 
-  function FindOther(_NRec, _Depart: comp; _dBeg, _dEnd: date): boolean;
-  function ValidNode(_node: comp): boolean;
+  function FindOther(_Id, _Depart: byte; _dBeg, _dEnd: date): boolean;
+  function ValidNode(_node: byte): boolean;
 end;
 
 ObjInterface IPost(ISerializable);
-  property NRec: comp;
+  property Id:   byte;
   property Code: s50;
   property Name: s100;
 
-  index PostId = NRec (unique);
+  index PostId = Id (unique);
   index ByCode = Code;
   index ByName = Name;
 end;
 
 ObjInterface IPerson(ISerializable);
-  property NRec:   comp;
+  property Id:     byte;
   property Login:  s50;
   property FIO:    s100;
   property EMail:  s100;
   property Passw:  s50;
-  property Sort:   longint;
+  property Sort:   byte;
 
-  index PersId  = NRec (unique);
+  index PersId  = Id (unique);
   index ByLogin = Login;
   index ByFIO   = FIO;
 end;
@@ -140,9 +153,9 @@ end;
 ObjInterface IAppoint(ISerializable);
   property dBeg:   date;
   property dEnd:   date;
-  property Depart: comp;
-  property Person: s50;
-  property Post:   comp;
+  property Depart: byte;
+  property Person: byte;
+  property Post:   byte;
   property Salary: double;
   property Currency: s10;
   property TabNum: s50;
@@ -157,9 +170,9 @@ ObjInterface IAppoint(ISerializable);
 end;
 
 ObjInterface IPersPer(ISerializable);
-  property Person:     s50;
-  property Period:     date;
-  property FactDays:   byte;
+  property Person:   byte;
+  property Period:   date;
+  property FactDays: byte;
 
   index ByPerson = Person, Period;
   index ByPeriod = Period;
@@ -167,12 +180,23 @@ ObjInterface IPersPer(ISerializable);
   function FactDaysPrev: byte;
 end;
 
+ObjInterface IPayTitle(ISerializable);
+  property Id:   byte;
+  property Name: s100;
+
+  index ById = Id (unique);
+  index ByName = Name;
+
+  function GetId(_title: string): byte;
+  function GetTitle(_title: byte): string;
+end;
+
 ObjInterface IPayment(ISerializable);
-  property Person: s50;
+  property Person: byte;
   property Period: date;
   property Payed:  date;
-  property Sort:   word;
-  property Title:  s100;
+  property Sort:   byte;
+  property Title:  byte;
   property Value:  double;
   property TaxCur: byte;
   property Rate:   double;
@@ -185,11 +209,13 @@ ObjInterface IPayment(ISerializable);
 
   index Sorted = Person, Period, Sort;
   index Titled = Person, Period, Title;
+  index ByTitle = Title;
 
-  function GetValue(_pers: s50; _period: date; _title: s100; _NeededTaxCur: byte): double;
-  function GetRate(_pers: s50; _period: date; _title: s100): double;
-  function GetInfo(_pers: s50; _period: date; _title: s100): string;
-  function GetPayed(_pers: s50; _period: date; _title: s100): date;
+  function GetValue(_pers: byte; _period: date; _title: byte; _NeededTaxCur: byte): double;
+  function GetRate(_pers: byte;  _period: date; _title: byte): double;
+  function GetInfo(_pers: byte;  _period: date; _title: byte): string;
+  function GetPayed(_pers: byte; _period: date; _title: byte): date;
+  function GetTitleName: string;
 end;
 
 
@@ -229,7 +255,7 @@ VipInterface Periods(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -243,7 +269,7 @@ public:
   constructor Init;
   constructor Init2(_dep: IDepart);
   destructor Done;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -255,7 +281,7 @@ VipInterface Depart(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -267,7 +293,7 @@ VipInterface Post(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -279,7 +305,7 @@ VipInterface Person(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -291,7 +317,7 @@ VipInterface Appoint(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -303,7 +329,19 @@ VipInterface PersPer(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
+end;
+
+VipInterface PayTitle(Rok)
+  implements IModify, IPayTitle
+  licensed(free);
+public:
+  constructor Init;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -315,7 +353,7 @@ VipInterface Payment(Rok)
   licensed(free);
 public:
   constructor Init;
-  procedure ISerializable.Clear;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
   function ISerializable.LoadXml(_e: IDomNode): boolean;
   function ISerializable.SaveXml(_e: IDomNode): IDomNode;
   function ISerializable.LoadRok: boolean;
@@ -342,6 +380,6 @@ end;
 
 
 
-
 VipInterface WageView
+  implements IWageView
   licensed(free);

@@ -25,72 +25,72 @@ private procedure DoExportRok;
   mtDebtOut.SetStream(fRok.Handle);
 
 
-  fRok.WriteLine('<rok:001>');
+  fRok.WriteLine('<Pr>');
   _loop backward mtPeriods
     mtPeriods.Save;
-  fRok.WriteLn('</rok:001>');
+  fRok.WriteLn('</Pr>');
 
-  fRok.WriteLine('<rok:002>');
+  fRok.WriteLine('<Dp>');
   ResetBounds(#mtDepart);
   _loop mtDepart
     mtDepart.Save;
   SetBounds(#mtDepart);
-  fRok.WriteLn('</rok:002>');
+  fRok.WriteLn('</Dp>');
 
-  fRok.WriteLine('<rok:003>');
+  fRok.WriteLine('<Dh>');
   _loop mtDepHist
     mtDepHist.Save;
-  fRok.WriteLn('</rok:003>');
+  fRok.WriteLn('</Dh>');
 
-  fRok.WriteLine('<rok:004>');
+  fRok.WriteLine('<Pt>');
   ResetBounds(#mtPost);
   _loop mtPost
     mtPost.Save;
   SetBounds(#mtPost);
-  fRok.WriteLn('</rok:004>');
+  fRok.WriteLn('</Pt>');
 
-  fRok.WriteLine('<rok:005>');
+  fRok.WriteLine('<Ps>');
   _loop mtPerson
   {
     mtPerson.Save;
 
-    fRok.WriteLine('<rok:006>');
-    _loop mtAppoint where (( mtPerson.Login == mtAppoint.Person ))
+    fRok.WriteLn('<Ap>');
+    _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
       mtAppoint.Save;
-    fRok.WriteLn('</rok:006>');
+    fRok.WriteLn('</Ap>');
 
-    fRok.WriteLine('<rok:007>');
-    _loop mtPersPer where (( mtPerson.Login == mtPersPer.Person ))
+    fRok.WriteLn('<PP>');
+    _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
     {
       mtPersPer.Save;
 
-      fRok.WriteLine('<rok:008>');
+      fRok.WriteLn('<DI>');
       if (GetFirst mtDebtIn where (( mtPersPer.Person == mtDebtIn.Person and
                                      mtPersPer.Period == mtDebtIn.Period )) = tsOk)
         mtDebtIn.Save;
-      fRok.WriteLn('</rok:008>');
+      fRok.WriteLn('</DI>');
 
-      fRok.WriteLine('<rok:009>');
+      fRok.WriteLn('<Na>');
       _loop mtNachisl where (( mtPersPer.Person == mtNachisl.Person and
                                mtPersPer.Period == mtNachisl.Period ))
         mtNachisl.Save;
-      fRok.WriteLn('</rok:009>');
+      fRok.WriteLn('</Na>');
 
-      fRok.WriteLine('<rok:010>');
+      fRok.WriteLine('<Pm>');
       _loop mtPayment where (( mtPersPer.Person == mtPayment.Person and
                                mtPersPer.Period == mtPayment.Period ))
         mtPayment.Save;
-      fRok.WriteLn('</rok:010>');
+      fRok.WriteLn('</Pm>');
 
-      fRok.WriteLine('<rok:011>');
+      fRok.WriteLine('<DO>');
       if (GetFirst mtDebtOut where (( mtPersPer.Person == mtDebtOut.Person and
                                       mtPersPer.Period == mtDebtOut.Period )) = tsOk)
         mtDebtOut.Save;
-      fRok.WriteLn('</rok:011>');
+      fRok.WriteLn('</DO>');
     }
-    fRok.WriteLn('</rok:007>');
+    fRok.WriteLn('</PP>');
   }
-  fRok.WriteLn('</rok:005>');
+  fRok.WriteLn('</Ps>');
 
   fRok.Close;
   StopVisual;

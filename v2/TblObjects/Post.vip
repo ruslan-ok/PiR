@@ -9,20 +9,20 @@ Interface Post;
 // Должности
 Table struct mtPost
 (
-  NRec: comp,
+  Id:   byte,
   Code: s50,
   Name: s100
 )
 With index
 (
-  PostId = NRec (surrogate),
+  PostId = Id (unique),
   ByCode = Code,
   ByName = Name
 );
 
 Create view from mtPost, mtPost mtPost2;
 
-property NRec: comp absolute mtPost.NRec;
+property Id:   byte absolute mtPost.Id;
 property Code: s50  absolute mtPost.Code;
 property Name: s100 absolute mtPost.Name;
 
@@ -53,8 +53,9 @@ constructor Init;
   delete all mtPost;
 }
 
-public procedure Clear;
+public procedure Clear(_wage: IWageView = NullRef);
 {
+  oWage := _wage;
   delete all mtPost2;
 }
 
@@ -65,7 +66,8 @@ public function LoadXml(_e: IDomNode): boolean;
     do
     {
       case _e.FndAttr.Name of
-        'rok:NRec': NRec := comp(_e.FndAttr.Value);
+        'rok:NRec': Id   := GetId(cgPost, comp(_e.FndAttr.Value));
+        'rok:Id':   Id   := GetId(cgPost, comp(_e.FndAttr.Value));
         'rok:Code': Code := _e.FndAttr.Value;
         'rok:Name': Name := _e.FndAttr.Value;
       end;
@@ -79,7 +81,7 @@ public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Post');
-  xnode.AddAttr('rok:NRec=' + string(NRec,0,0));
+  xnode.AddAttr('rok:Id='   + string(Id));
   xnode.AddAttr('rok:Code=' + Code);
   xnode.AddAttr('rok:Name=' + Name);
   result := xnode;
@@ -92,7 +94,7 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPost);
-    NRec := ReadComp;
+    Id   := ReadByte;
     Code := ReadStr;
     Name := ReadStr;
     insert current mtPost;
@@ -104,7 +106,7 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  WriteComp(NRec);
+  WriteByte(Id);
   WriteStr(Code);
   WriteStr(Name);
 }
