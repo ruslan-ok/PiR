@@ -80,6 +80,8 @@ private ObjInterface ISerializable;
   function SaveXml(_e: IDomNode): IDomNode;
   function LoadRok: boolean;
   function SaveRok: boolean;
+  procedure Start;
+  procedure Stop;
 end;
 
 ObjInterface IPeriods(ISerializable);

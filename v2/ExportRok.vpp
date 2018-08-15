@@ -24,11 +24,10 @@ private procedure DoExportRok;
   mtPayment.SetStream(fRok.Handle);
   mtDebtOut.SetStream(fRok.Handle);
 
-
-  fRok.WriteLine('<Pr>');
+  mtPeriods.Start;
   _loop backward mtPeriods
     mtPeriods.Save;
-  fRok.WriteLn('</Pr>');
+  mtPeriods.Stop;
 
   fRok.WriteLine('<Dp>');
   ResetBounds(#mtDepart);

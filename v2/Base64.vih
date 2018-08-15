@@ -1,0 +1,14 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Реализация кодера Base64
+//------------------------------------------------------------------------------
+
+ObjInterface IBase64;
+  function Encode(_data: string): string;
+  function Decode(_data: string): string;
+End;
+
+VipInterface Base64
+  implements IBase64
+  licensed(free);

@@ -4,6 +4,8 @@
 // Экспорт-импорт в своём формате
 //------------------------------------------------------------------------------
 
+#include Base64.vih
+
 Interface Rok;
 
 var
@@ -140,15 +142,21 @@ private function ReadLong: longint;
 
 private procedure WriteStr(_value: string);
 {
-  MyWrite(string(length(_value)), 3);
-  MyWrite(_value);
+  var s: string;
+  var b64: Base64;
+  s := b64.Encode(_value);
+  MyWrite(string(length(s)), 3);
+  MyWrite(s);
 }
 
 private function ReadStr: string;
 {
   var pp: byte;
   pp := byte(MyRead(3));
-  result := MyRead(pp);
+  var s: string;
+  s := MyRead(pp);
+  var b64: Base64;
+  result := b64.Decode(s);
 }
 
 private function CheckNewRec: boolean;
@@ -207,6 +215,16 @@ public function SaveXml(_e: IDomNode): IDomNode;
 {
   #__UnUsed__(_e)
   result := NullRef;
+}
+
+public procedure Start;
+{
+  WriteStr('{');
+}
+
+public procedure Stop;
+{
+  WriteStr('}');
 }
 
 public function LoadRok: boolean;
