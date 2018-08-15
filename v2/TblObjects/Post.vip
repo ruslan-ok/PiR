@@ -58,7 +58,7 @@ public procedure Clear;
   delete all mtPost2;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPost);
   if _e.GetFirstAttr
@@ -75,7 +75,7 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Post');
@@ -83,6 +83,30 @@ public function Save(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Code=' + Code);
   xnode.AddAttr('rok:Name=' + Name);
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPost);
+    NRec := ReadComp;
+    Code := ReadStr;
+    Name := ReadStr;
+    insert current mtPost;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteComp(NRec);
+  WriteStr(Code);
+  WriteStr(Name);
 }
 
 end.

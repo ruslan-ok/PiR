@@ -72,6 +72,16 @@ private function NeedChangeParam(_src, _dst, _name: string): boolean;
       wlog.LogLine(APE_INFO, _name + ' ' + _dst + ' (было ' + _src + ')');
 }
 
+private function CorrectBonusTitle(_title: string): string;
+{
+  case _title of
+    'Проектный бизнес (код 84)':  result := 'Проектный бизнес';
+    'Премия Отдела (код 83)':     result := 'Премия отдела';
+    'Премия Управления (код 84)': result := 'Премия Управления';
+  else result := _title;
+  end;
+}
+
 private procedure ReadColumns;
 {
   delete all mtColTitle;
@@ -102,7 +112,7 @@ private procedure ReadColumns;
         {
           ClearBuffer(#mtColTitle);
           mtColTitle.Num := lNum++;
-          mtColTitle.Name := sCell2;
+          mtColTitle.Name := CorrectBonusTitle(sCell2);
           insert current mtColTitle;
         }
       }
@@ -134,7 +144,7 @@ private procedure ReadColumns;
         {
           ClearBuffer(#mtColTitle);
           mtColTitle.Num := lNum++;
-          mtColTitle.Name := _name1;
+          mtColTitle.Name := CorrectBonusTitle(_name1);
           insert current mtColTitle;
         }
         lSp := 1;
@@ -202,14 +212,14 @@ private procedure ReadColumns;
           'план, дней':
           {
             wTmp := word(sCell);
-            if NeedChangeParam(string(mtPeriods.PlanDays), sCell, 'Количество дней')
+            if NeedChangeParam(string(mtPeriods.PlanDays), string(wTmp), 'Количество дней')
               mtPeriods.PlanDays := wTmp;
           }
 
           'аванс':
           {
             dTmp := StrToDate(sCell, 'DD.MM.YYYY');
-            if NeedChangeParam(string(mtPeriods.AvansDate), sCell, 'Дата аванса')
+            if NeedChangeParam(string(mtPeriods.AvansDate), string(dTmp), 'Дата аванса')
               mtPeriods.AvansDate := dTmp;
             wAttr := 1;
           }
@@ -217,7 +227,7 @@ private procedure ReadColumns;
           'з/п':
           {
             dTmp := StrToDate(sCell, 'DD.MM.YYYY');
-            if NeedChangeParam(string(mtPeriods.PaymentDate), sCell, 'Дата выплаты зарплаты')
+            if NeedChangeParam(string(mtPeriods.PaymentDate), string(dTmp), 'Дата выплаты зарплаты')
               mtPeriods.PaymentDate := dTmp;
             wAttr := 2;
           }
@@ -235,18 +245,22 @@ private procedure ReadColumns;
 
                 1:
                 {
-                  if NeedChangeParam(string(mtPeriods.AvansRate), sCell, 'Курс выплаты аванса')
+                  if NeedChangeParam(DoubleToStr(mtPeriods.AvansRate, '\4p[|-]366 666.8888'), DoubleToStr(fCell, '\4p[|-]366 666.8888'), 'Курс выплаты аванса')
                     mtPeriods.AvansRate := fCell;
                 }
 
                 2:
                 {
-                  if NeedChangeParam(string(mtPeriods.PaymentRate), sCell, 'Курс выплаты зарплаты')
+                  if NeedChangeParam(DoubleToStr(mtPeriods.PaymentRate, '\4p[|-]366 666.8888'), DoubleToStr(fCell, '\4p[|-]366 666.8888'), 'Курс выплаты зарплаты')
                     mtPeriods.PaymentRate := fCell;
                 }
 
               end;
             wAttr := 0;
+          }
+
+          'курс прошлого месяца':
+          {
           }
 
         else
@@ -262,6 +276,9 @@ private procedure ReadColumns;
 
 private procedure CheckPerson(_npp: string);
 {
+  sCell := Replace(sCell, '.  ', '.');
+  sCell := Replace(sCell, '. ', '.');
+
   if (GetFirst mtPerson where (( sCell == mtPerson.FIO )) = tsOk)
     wlog.LogMessage(APE_INFO, sCell);
   else
@@ -386,27 +403,39 @@ private procedure CheckDebtIn;
 
   var fRate: double = 0;
 
-  if (GetFirst mtDebtOut where (( mtPerson.Login  == mtDebtOut.Person and
-                   Sub_Months(mtPeriods.dBeg, 1)  == mtDebtOut.Period )) = tsOk)
-  {
-    fRate := mtDebtOut.Rate;
-  }
+  PushPos(#mtPeriods);
+  if (GetFirst mtPeriods where (( Sub_Months(mtPeriods.dBeg, 1) == mtPeriods.dBeg )) = tsOk)
+    fRate := mtPeriods.PaymentRate;
+  PopPos(#mtPeriods);
 
   if (GetFirst mtDebtIn where (( mtPerson.Login  == mtDebtIn.Person and
                                  mtPeriods.dBeg  == mtDebtIn.Period )) = tsOk)
   {
-    if (mtDebtIn.Value <> fCell) or (mtDebtIn.TaxCur <> cgNetBYN) or (mtDebtIn.Rate <> fRate)
+    if (fRate = 0)
     {
-      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + string(fRate) + '] (было ' + string(mtDebtIn.Value) + ' BYN [курс ' + string(mtDebtIn.Rate) + '])');
-      mtDebtIn.Value  := fCell;
-      mtDebtIn.TaxCur := cgNetBYN;
-      mtDebtIn.Rate   := fRate;
-      update current mtDebtIn;
+      if (mtDebtIn.Value <> fCell) or (mtDebtIn.TaxCur <> cgNetBYN)
+      {
+        wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + '] (было ' + string(mtDebtIn.Value) + ' BYN [курс ' + DoubleToStr(mtDebtIn.Rate, '\4p[|-]366 666.8888') + '])');
+        mtDebtIn.Value  := fCell;
+        mtDebtIn.TaxCur := cgNetBYN;
+        update current mtDebtIn;
+      }
+    }
+    else
+    {
+      if (mtDebtIn.Value <> fCell) or (mtDebtIn.TaxCur <> cgNetBYN) or (mtDebtIn.Rate <> fRate)
+      {
+        wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + '] (было ' + string(mtDebtIn.Value) + ' BYN [курс ' + DoubleToStr(mtDebtIn.Rate, '\4p[|-]366 666.8888') + '])');
+        mtDebtIn.Value  := fCell;
+        mtDebtIn.TaxCur := cgNetBYN;
+        mtDebtIn.Rate   := fRate;
+        update current mtDebtIn;
+      }
     }
   }
   else
   {
-    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + string(fRate) + ']');
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + ']');
     mtDebtIn.Person := mtPerson.Login;
     mtDebtIn.Period := mtPeriods.dBeg;
     mtDebtIn.Value  := fCell;
@@ -459,7 +488,7 @@ private procedure CheckDebtOut;
   {
     if (mtDebtOut.Value <> fCell) or (mtDebtOut.TaxCur <> cgNetBYN) or (mtDebtOut.Rate <> mtPeriods.PaymentRate)
     {
-      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + string(mtPeriods.PaymentRate) + '] (было ' + string(mtDebtOut.Value) + ' BYN [курс ' + string(mtDebtOut.Rate) + '])');
+      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(mtPeriods.PaymentRate, '\4p[|-]366 666.8888') + '] (было ' + string(mtDebtOut.Value) + ' BYN [курс ' + DoubleToStr(mtDebtOut.Rate, '\4p[|-]366 666.8888') + '])');
       mtDebtOut.Value  := fCell;
       mtDebtOut.TaxCur := cgNetBYN;
       mtDebtOut.Rate   := mtPeriods.PaymentRate;
@@ -468,7 +497,7 @@ private procedure CheckDebtOut;
   }
   else
   {
-    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + string(mtPeriods.PaymentRate) + ']');
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(mtPeriods.PaymentRate, '\4p[|-]366 666.8888') + ']');
     mtDebtOut.Person := mtPerson.Login;
     mtDebtOut.Period := mtPeriods.dBeg;
     mtDebtOut.Value  := fCell;
@@ -504,22 +533,28 @@ private procedure ReadPersons;
          (mtColTitle.Name = 'Расхождение с распечаткой')
         continue;
 
-      if (mtColTitle.Name = '№')
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) = tsOk)
-        {
-          xlGetCellValue(row, mtSpCol.ColNum, sNpp);
-          continue;
-        }
-
       if (mtColTitle.Name = 'таб. №')
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) = tsOk)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sTab);
           continue;
         }
 
+      if (mtColTitle.Name = '№')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sNpp);
+          continue;
+        }
+
       if (mtColTitle.Name = 'ФИО')
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) = tsOk)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           bHaveData := (sCell <> '');
@@ -529,7 +564,9 @@ private procedure ReadPersons;
         }
 
       if (Pos('оклад', mtColTitle.Name) > 0)
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) = tsOk)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           fCell := double(Replace(sCell, ',', '.'));
@@ -538,7 +575,9 @@ private procedure ReadPersons;
         }
 
       if (mtColTitle.Name = 'Факт, дней')
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) = tsOk)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           CheckFactDays;
@@ -546,8 +585,10 @@ private procedure ReadPersons;
         }
 
       if (Pos('Премия', mtColTitle.Name) = 1) or (Pos('Проектный бизнес', mtColTitle.Name) = 1) or (Pos('Прочие премии', mtColTitle.Name) = 1)
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
-                                      'в валюте "чистая"' == mtSpCol.Name )) = tsOk)
+        if (GetFirst mtSpCol where (( mtColTitle.Num      == mtSpCol.Col and
+                                      'в валюте "чистая"' == mtSpCol.Name )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           fCell := double(Replace(sCell, ',', '.'));
@@ -557,7 +598,9 @@ private procedure ReadPersons;
 
       if (mtColTitle.Name = 'Зачет с прошлого месяца')
         if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
-                                      'BYN'          == mtSpCol.Name )) = tsOk)
+                                      'BYN'          == mtSpCol.Name )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           fCell := double(Replace(sCell, ',', '.'));
@@ -567,7 +610,9 @@ private procedure ReadPersons;
 
       if (Pos('Аванс', mtColTitle.Name) = 1) or (Pos('Межрасчеты', mtColTitle.Name) = 1) or (Pos('Зарплата', mtColTitle.Name) = 1)
         if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
-                                      'Выдано, BYN'  == mtSpCol.Name )) = tsOk)
+                                      'Выдано, BYN'  == mtSpCol.Name )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           fCell := double(Replace(sCell, ',', '.'));
@@ -619,7 +664,9 @@ private procedure ReadPersons;
         }
 
       if (mtColTitle.Name = 'Зачет на следующий месяц, BYN')
-        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) = tsOk)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
         {
           xlGetCellValue(row, mtSpCol.ColNum, sCell);
           fCell := double(Replace(sCell, ',', '.'));
@@ -684,7 +731,12 @@ private procedure DoImportXlsx;
   StopVisual;
 
   if not bOk
+  {
+    wlog.LogCommit;
+    wlog.Refresh;
+    wlog.Visible := true;
     exit;
+  }
 
   CheckDepAndPost;
 

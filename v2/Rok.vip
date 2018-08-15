@@ -1,0 +1,228 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Экспорт-импорт в своём формате
+//------------------------------------------------------------------------------
+
+Interface Rok;
+
+var pStream: TPtr;
+
+private function MyRead(_len: byte): string;
+{
+  result := '';
+  var i: byte = 0;
+  var cc: char;
+  while (i < _len)
+  {
+    File_Read(cc, pStream);
+    i++;
+    result += cc;
+  }
+}
+
+private procedure MyWrite(_value: string; _len: byte = 0);
+{
+  var ss: string;
+  if (_len = 0)
+    ss := _value;
+  else
+    ss := LPadCh(_value, '0', _len);
+
+  var i: byte;
+  for (i := 1; i <= length(ss); i++)
+    File_Write(ss[i], pStream);
+}
+
+private procedure WriteComp(_value: comp);
+{
+  MyWrite(string(_value, 0, 0));
+}
+
+private function ReadComp: comp;
+{
+  var ss: string;
+  ss := MyRead(17);
+  result := comp(ss);
+}
+
+private procedure WriteDate(_value: date);
+{
+  MyWrite(string(To_Days(_value)), 6);
+}
+
+private function ReadDate: date;
+{
+  var ss: string;
+  ss := MyRead(6);
+  result := From_Days(longint(ss));
+}
+
+private procedure WriteByte(_value: byte);
+{
+  MyWrite(string(_value), 3);
+}
+
+private function ReadByte: byte;
+{
+  var ss: string;
+  ss := MyRead(3);
+  result := byte(ss);
+}
+
+private procedure WriteWord(_value: word);
+{
+  MyWrite(string(_value), 5);
+}
+
+private function ReadWord: word;
+{
+  var ss: string;
+  ss := MyRead(5);
+  result := word(ss);
+}
+
+private procedure WriteDouble(_value: double);
+{
+  var ss: string;
+  ss := DoubleToStr(_value, '\4p[|-]3666666666~9999');
+  var pp: byte;
+  pp := Pos(ss, '.');
+  MyWrite(string(pp), 2);
+  ss := Replace(ss, '.', '');
+  MyWrite(string(length(ss)), 2);
+  MyWrite(ss);
+}
+
+private function ReadDouble: double;
+{
+  var p1, p2: byte;
+  var ss, s1, s2: string;
+  ss := MyRead(2);
+  p1 := byte(ss);
+  ss := MyRead(2);
+  p2 := byte(ss);
+  ss := MyRead(p2);
+  if (p1 > 0)
+  {
+    s1 := SubStr(ss, 1, p1-1);
+    s2 := SubStr(ss, p1, 255);
+    ss := s1 + '.' + s2;
+  }
+  result := double(ss);
+}
+
+private procedure WriteLong(_value: longint);
+{
+  WriteDouble(double(_value));
+}
+
+private function ReadLong: longint;
+{
+  result := ReadDouble;
+}
+
+private procedure WriteStr(_value: string);
+{
+  MyWrite(string(length(_value)), 3);
+  MyWrite(_value);
+}
+
+private function ReadStr: string;
+{
+  var pp: byte;
+  pp := byte(MyRead(3));
+  result := MyRead(pp);
+}
+
+private function CheckNewRec: boolean;
+{
+  var cc: string;
+  cc := MyRead(1);
+  result := (cc = '.');
+}
+
+private procedure StartNewRec;
+{
+  MyWrite('.');
+}
+
+public procedure Clear;
+{
+}
+
+public procedure SetStream(_stream: TPtr);
+{
+  pStream := _stream;
+}
+
+public function Load(_e: IDomNode = NullRef): boolean;
+{
+  result := false;
+
+  if (pStream = 0) and (_e <> NullRef)
+    result := LoadXml(_e);
+  else
+    if (pStream <> 0) and (_e = NullRef)
+      result := LoadRok;
+}
+
+public function Save(_e: IDomNode = NullRef): IDomNode;
+{
+  result := NullRef;
+
+  if (pStream = 0) and (_e <> NullRef)
+    result := SaveXml(_e);
+  else
+    if (pStream <> 0) and (_e = NullRef)
+      SaveRok;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  #__UnUsed__(_e)
+  result := false;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  #__UnUsed__(_e)
+  result := NullRef;
+}
+
+public function LoadRok: boolean;
+{
+  #__UnUsed__(_stream)
+  result := false;
+  CheckNewRec;
+  ReadStr;
+  ReadDate;
+  ReadByte;
+  ReadWord;
+  ReadComp;
+  ReadLong;
+  ReadDouble;
+}
+
+public function SaveRok: boolean;
+{
+  #__UnUsed__(_stream)
+  result := false;
+  StartNewRec;
+  WriteStr('');
+  WriteDate(ZeroDate);
+  WriteByte(0);
+  WriteWord(0);
+  WriteComp(0);
+  WriteLong(0);
+  WriteDouble(0);
+}
+
+
+constructor Init;
+{
+  result := true;
+  pStream := 0;
+}
+
+End.

@@ -220,7 +220,7 @@ Procedure SendThis;
     var bError: boolean;
     bError := true;
 
-    var sTo, sCc: string;
+    var sTo, sCc: string = '';
     if (wSend = 2)
     {
       sTo := 'Ruslan.Okunevich@galaktika.by';

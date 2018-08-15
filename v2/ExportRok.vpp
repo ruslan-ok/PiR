@@ -1,0 +1,97 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Экспорт в rok
+//------------------------------------------------------------------------------
+
+File fRok;
+
+private procedure DoExportRok;
+{
+  fRok.OpenFile(sResFile, stCreate);
+//  fRok.WriteLn('<rok:Wage xmlns:rok="http://178.172.132.68/pir/">');
+//  fRok.WriteLine('<rok:Periods>');
+
+  mtPeriods.SetStream(fRok.Handle);
+  mtDepart.SetStream(fRok.Handle);
+  mtDepHist.SetStream(fRok.Handle);
+  mtPost.SetStream(fRok.Handle);
+  mtPerson.SetStream(fRok.Handle);
+  mtAppoint.SetStream(fRok.Handle);
+  mtPersPer.SetStream(fRok.Handle);
+  mtDebtIn.SetStream(fRok.Handle);
+  mtNachisl.SetStream(fRok.Handle);
+  mtPayment.SetStream(fRok.Handle);
+  mtDebtOut.SetStream(fRok.Handle);
+
+
+  fRok.WriteLine('<rok:001>');
+  _loop backward mtPeriods
+    mtPeriods.Save;
+  fRok.WriteLn('</rok:001>');
+
+  fRok.WriteLine('<rok:002>');
+  ResetBounds(#mtDepart);
+  _loop mtDepart
+    mtDepart.Save;
+  SetBounds(#mtDepart);
+  fRok.WriteLn('</rok:002>');
+
+  fRok.WriteLine('<rok:003>');
+  _loop mtDepHist
+    mtDepHist.Save;
+  fRok.WriteLn('</rok:003>');
+
+  fRok.WriteLine('<rok:004>');
+  ResetBounds(#mtPost);
+  _loop mtPost
+    mtPost.Save;
+  SetBounds(#mtPost);
+  fRok.WriteLn('</rok:004>');
+
+  fRok.WriteLine('<rok:005>');
+  _loop mtPerson
+  {
+    mtPerson.Save;
+
+    fRok.WriteLine('<rok:006>');
+    _loop mtAppoint where (( mtPerson.Login == mtAppoint.Person ))
+      mtAppoint.Save;
+    fRok.WriteLn('</rok:006>');
+
+    fRok.WriteLine('<rok:007>');
+    _loop mtPersPer where (( mtPerson.Login == mtPersPer.Person ))
+    {
+      mtPersPer.Save;
+
+      fRok.WriteLine('<rok:008>');
+      if (GetFirst mtDebtIn where (( mtPersPer.Person == mtDebtIn.Person and
+                                     mtPersPer.Period == mtDebtIn.Period )) = tsOk)
+        mtDebtIn.Save;
+      fRok.WriteLn('</rok:008>');
+
+      fRok.WriteLine('<rok:009>');
+      _loop mtNachisl where (( mtPersPer.Person == mtNachisl.Person and
+                               mtPersPer.Period == mtNachisl.Period ))
+        mtNachisl.Save;
+      fRok.WriteLn('</rok:009>');
+
+      fRok.WriteLine('<rok:010>');
+      _loop mtPayment where (( mtPersPer.Person == mtPayment.Person and
+                               mtPersPer.Period == mtPayment.Period ))
+        mtPayment.Save;
+      fRok.WriteLn('</rok:010>');
+
+      fRok.WriteLine('<rok:011>');
+      if (GetFirst mtDebtOut where (( mtPersPer.Person == mtDebtOut.Person and
+                                      mtPersPer.Period == mtDebtOut.Period )) = tsOk)
+        mtDebtOut.Save;
+      fRok.WriteLn('</rok:011>');
+    }
+    fRok.WriteLn('</rok:007>');
+  }
+  fRok.WriteLn('</rok:005>');
+
+  fRok.Close;
+  StopVisual;
+}

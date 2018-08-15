@@ -181,7 +181,7 @@ public procedure Clear;
   delete all mtDepHist;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtDepHist);
   if _e.GetFirstAttr
@@ -201,7 +201,7 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:DepHist');
@@ -212,6 +212,36 @@ public function Save(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Sort='   + Sort);
   xnode.AddAttr('rok:Depart=' + string(Depart,0,0));
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtDepHist);
+    NRec   := ReadComp;
+    dBeg   := ReadDate;
+    dEnd   := ReadDate;
+    Node   := ReadComp;
+    Sort   := ReadStr;
+    Depart := ReadComp;
+    insert current mtDepHist;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteComp(NRec);
+  WriteDate(dBeg);
+  WriteDate(dEnd);
+  WriteComp(Node);
+  WriteStr(Sort);
+  WriteComp(Depart);
 }
 
 end.

@@ -169,7 +169,7 @@ public procedure Clear;
   delete all mtPayment;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   result := false;
 
@@ -196,7 +196,7 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode(TagName);
@@ -208,6 +208,42 @@ public function Save(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Rate='   + DoubleToStr(Rate, '\4p[|-]3666666666~9999'));
   xnode.AddAttr('rok:Info='   + Info);
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPayment);
+    Person := ReadStr;
+    Period := ReadDate;
+    Payed  := ReadDate;
+    Sort   := ReadWord;
+    Title  := ReadStr;
+    Value  := ReadDouble;
+    TaxCur := ReadByte;
+    Rate   := ReadDouble;
+    Info   := ReadStr;
+    insert current mtPayment;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteStr(Person);
+  WriteDate(Period);
+  WriteDate(Payed);
+  WriteWord(Sort);
+  WriteStr(Title);
+  WriteDouble(Value);
+  WriteByte(TaxCur);
+  WriteDouble(Rate);
+  WriteStr(Info);
 }
 
 end.

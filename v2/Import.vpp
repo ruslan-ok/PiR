@@ -14,7 +14,7 @@ Screen scImport ('',, sci13Esc);
   table mtPeriods;
 fields
   sFile ('xml-файл для импорта'): noProtect, pickButton;
-  wDetProt ('Формирование подробного протокола',, sci1Esc): noProtect;
+//  wDetProt ('Формирование подробного протокола',, sci1Esc): noProtect;
 buttons
   cmOk, default;
   cmCancel;
@@ -23,7 +23,8 @@ buttons
   `Файл для импорта`
    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-   [.] подробный протокол`          <.  Загрузить  .>      <.   Отмена    .>
+!   [.] подробный протокол`          <.  Загрузить  .>      <.   Отмена    .>
+                                    <.  Загрузить  .>      <.   Отмена    .>
 >>
 End;
 
@@ -37,7 +38,7 @@ cmInit:
 {
   sFile := '';
   ReadMyDsk(sFile, 'WageView_sFile', false);
-  wDetProt := 0;
+  wDetProt := 1;
   ReadMyDsk(wDetProt, 'WageView_wDetProt', false);
 }
 
@@ -45,7 +46,7 @@ cmPick:
   case CurField of
     #sFile:
     {
-      sFile := GetFileName('*.xml;*.xlsx', 'Выбор xml- или xlsx-файла для импорта');
+      sFile := GetFileName('*.xml;*.xlsx;*.rok', 'Выбор xml-, xlsx- или rok-файла для импорта');
       RedrawPanel(#mtPeriods);
     }
   end;
@@ -63,10 +64,8 @@ End;
 #include ImportXml.vpp
 #include ImportXlsx.vpp
 
-var bFromXml: boolean;
-
 // Проверки перед началом импорта
-function StartCheckImport: boolean;
+function StartCheckImport(var _ext: string): boolean;
 {
   result := false;
 
@@ -85,15 +84,15 @@ function StartCheckImport: boolean;
   var sPath, sName, sExt: string;
   ParseFileName(sFile, sPath, sName, sExt);
 
-  if (UpCase(sExt) <> 'XML') and (UpCase(sExt) <> 'XLSX')
+  _ext := UpCase(sExt);
+
+  if (_ext <> 'XML') and (_ext <> 'XLSX') and (_ext <> 'ROK')
   {
-    message('Импорт возможен только из файлов с расширениями xml и xlsx.');
+    message('Импорт возможен только из файлов с расширениями xml, xlsx и rok.');
     exit;
   }
 
-  bFromXml := (UpCase(sExt) = 'XML');
-
-  if bFromXml and isValid(#mtStruct)
+  if ((_ext = 'XML') or (_ext = 'ROK')) and isValid(#mtStruct)
     if (message('Текущие данные будут удалены.'#13#13 +
                 'Продолжить?', Confirmation + YesNo + mfSwapButtons) <> cmYes)
     {
@@ -103,21 +102,73 @@ function StartCheckImport: boolean;
   result := true;
 }
 
+File fRok;
+
+private function MyRead(_stream: TPtr; _len: byte): string;
+{
+  result := '';
+  var i: byte = 0;
+  var cc: char;
+  while (i < _len)
+  {
+    File_Read(cc, _stream);
+    i++;
+    result += cc;
+  }
+}
+
+private procedure DoImportRok;
+{
+  fRok.OpenFile(sFile, stOpenRead);
+  fRok.Seek(0);
+  var ss: string;
+  ss := MyRead(fRok.Handle, 49);
+  if (ss <> '<rok:Wage xmlns:rok="http://178.172.132.68/pir/">')
+  {
+    fRok.Close;
+    exit;
+  }
+
+  ss := MyRead(fRok.Handle, 2);
+  ss := MyRead(fRok.Handle, 13);
+  if (ss = '<rok:Periods>')
+  {
+    mtPeriods.SetStream(fRok.Handle);
+    while (mtPeriods.Load(NullRef))
+    {
+    }
+  }
+
+  fRok.Close;
+}
+
 private procedure DoImport;
 {
-  if (not StartCheckImport)
+  var sExt: string;
+  if (not StartCheckImport(sExt))
     exit;
 
-  if bFromXml
-  {
-    DoImportXml;
-    SaveMyDsk(sFile, 'WageView_sXmlFile');
-  }
-  else
-  {
-    DoImportXlsx;
-    SaveMyDsk(sFile, 'WageView_sXlsxFile');
-  }
+  case sExt of
+
+    'XML':
+    {
+      DoImportXml;
+      SaveMyDsk(sFile, 'WageView_sXmlFile');
+    }
+
+    'XLSX':
+    {
+      DoImportXlsx;
+      SaveMyDsk(sFile, 'WageView_sXlsxFile');
+    }
+
+    'ROK':
+    {
+      DoImportRok;
+      SaveMyDsk(sFile, 'WageView_sXlsxFile');
+    }
+
+  end;
 
   GetFirst mtPeriods;
   BuildTree;
@@ -130,6 +181,6 @@ private procedure AutoImport;
 {
   sFile := '';
   ReadMyDsk(sFile, 'WageView_sXmlFile', false);
-  if ExistFile(sFile)
-    DoImport;
+//  if ExistFile(sFile)
+//    DoImport;
 }

@@ -83,7 +83,7 @@ public procedure Clear;
   delete all mtAppoint2;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtAppoint);
   if _e.GetFirstAttr
@@ -105,7 +105,7 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Appoint');
@@ -118,6 +118,42 @@ public function Save(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:TabNum=' + TabNum);
   xnode.AddAttr('rok:TaxDed=' + DoubleToStr(TaxDed, '\2p[|-]3666~99'));
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtAppoint);
+    dBeg     := ReadDate;
+    dEnd     := ReadDate;
+    Depart   := ReadComp;
+    Person   := ReadStr;
+    Post     := ReadComp;
+    Salary   := ReadDouble;
+    Currency := ReadStr;
+    TabNum   := ReadStr;
+    TaxDed   := ReadDouble;
+    insert current mtAppoint;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteDate(dBeg);
+  WriteDate(dEnd);
+  WriteComp(Depart);
+  WriteStr(Person);
+  WriteComp(Post);
+  WriteDouble(Salary);
+  WriteStr(Currency);
+  WriteStr(TabNum);
+  WriteDouble(TaxDed);
 }
 
 end.

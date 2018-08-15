@@ -131,6 +131,22 @@ with index
   mtSpCol03 = Col + Name
 );
 
+#ifdef NoPiR
+Table struct KatSotr
+(
+  NRec: comp,
+  FIO: string,
+  EMail: string,
+  Name: string
+)
+with index
+(
+  KatSotr01 = NRec (surrogate),
+  KatSotr02 = FIO,
+  KatSotr03 = Name
+);
+#end
+
 Create view as select
 //  mtDepart.GetName(mtDepHist.Node) (FieldName = UpDepart),
   *
@@ -446,7 +462,6 @@ private procedure BuildTree;
   SetBounds(#mtStruct);
   GetFirst mtPeriods;
   RereadRecord;
-  StopVisual;
 
   if TreeGetFirst(trFilling)
   {
@@ -455,6 +470,12 @@ private procedure BuildTree;
     while TreeGetNext(trFilling) and (TreeLevel(trFilling) > 0);
     TreeGetFirst(trFilling);
   }
+
+  RereadRecord;
+  TreeGetFirst(trFilling);
+  RereadRecord;
+
+  StopVisual;
 }
 
 private function GetNachisl(_mode: byte): double;
@@ -633,8 +654,10 @@ cmExp:
 cmImp:
   RunWindowModal(wnImport);
 
+#ifndef NoPiR
 cmCtrlQ:
   BuildTree;
+#end
 
 cmValue9:
   ReportBySotr;

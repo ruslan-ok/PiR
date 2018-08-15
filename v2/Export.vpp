@@ -8,6 +8,7 @@ Const
   cgArch_None = 0;
   cgArch_Rar = 1;
   cgArch_7z = 2;
+  cgArch_Rok = 3;
 end;
 
 var
@@ -24,7 +25,7 @@ Window wnExport 'Параметры экспорта' ('',, sci13Esc);
 Screen scExport;
   table mtStruct;
 Fields
-  wToArchive ('Выполнять ли архивирование xml-файла'): [List cgArch_None 'нет', cgArch_Rar 'используя RAR', cgArch_7z 'используя 7-ZIP'], protect;
+  wToArchive ('Выполнять ли архивирование xml-файла'): [List cgArch_None 'нет', cgArch_Rar 'используя RAR', cgArch_7z 'используя 7-ZIP', cgArch_Rok 'формат ROK'], protect;
   sPassword ('Пароль для архива',, sci1Esc): NoProtect;
   sResFile ('Каталог (можно не указывать, тогда сохранит в OutputFilesDirectory) и/или имя файла (если не указывать, то Wage_DD.MM.YYYY_HH-MM-SS.xml)'): noProtect, pickButton;
 buttons
@@ -125,7 +126,7 @@ procedure ParseFileName(_file: string; var _path, _name, _ext: string);
   {
     _ext := SubStr(_name, p+1, 255);
 
-    if (UpCase(_ext) <> 'XML') and (UpCase(_ext) <> 'RAR') and (UpCase(_ext) <> '7Z') and (UpCase(_ext) <> 'XLSX')
+    if (UpCase(_ext) <> 'XML') and (UpCase(_ext) <> 'RAR') and (UpCase(_ext) <> '7Z') and (UpCase(_ext) <> 'XLSX') and (UpCase(_ext) <> 'ROK')
       _ext := '';
     else
       _name := SubStr(_name, 1, p-1);
@@ -146,8 +147,8 @@ File fTest;
 function CheckFileAccess: boolean;
 {
   result := false;
-  if not fTest.OpenFile(sXmlFile, stCreate)
-    message('Не удалось открыть на запись файл: ' + sXmlFile);
+  if not fTest.OpenFile(if(wToArchive = cgArch_Rok, sResFile, sXmlFile), stCreate)
+    message('Не удалось открыть на запись файл: ' + if(wToArchive = cgArch_Rok, sResFile, sXmlFile));
   else
   {
     result := true;
@@ -170,13 +171,14 @@ private procedure CheckFileName;
   if (sName = '')
     sName := DefaultFileName;
   else
-    if (SubStr(sName, 1, 8) = 'Wage_') and (length(sName) = 27)
+    if (SubStr(sName, 1, 5) = 'Wage_') and (length(sName) = 24)
       sName := DefaultFileName; // актуализация даты-времени
 
   case wToArchive of
     cgArch_None: sExt := 'xml';
     cgArch_Rar:  sExt := 'rar';
     cgArch_7z:   sExt := '7z';
+    cgArch_Rok:  sExt := 'rok';
   end;
 
   if (sPath <> '')
@@ -247,7 +249,7 @@ function GetErrorCodeDescr(_code: integer): string;
 // Архивация
 procedure Archivate;
 {
-  if (wToArchive = cgArch_None)
+  if (wToArchive = cgArch_None) or (wToArchive = cgArch_Rok)
     exit;
 
   message('Архивация');
@@ -303,6 +305,9 @@ procedure Archivate;
   }
 }
 
+#include ExportXml.vpp
+#include ExportRok.vpp
+
 // Старт экспорта
 private procedure doExport;
 {
@@ -316,111 +321,10 @@ private procedure doExport;
   StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
   SetVisualTitle('Сохранение в файл ' + sXmlFile);
 
-  _try
-  {
-    var doc: DomDoc new;
-    doc.CreateXmlDoc;
-    var xwage, xnode, xpers, xper: IDomNode;
-    xwage := doc.AddNode('rok:Wage');
-    xwage.AddAttr('xmlns:rok=http://178.172.132.68/pir/');
+  if (wToArchive = cgArch_Rok)
+    DoExportRok;
+  else
+    DoExportXml;
 
-      xnode := xwage.AddNode('rok:Periods');
-        _loop backward mtPeriods
-        {
-          if not NextVisual
-            _raise exUserBreaked;
-
-          mtPeriods.Save(xnode);
-        }
-
-      xnode := xwage.AddNode('rok:Departs');
-
-        ResetBounds(#mtDepart);
-        _loop mtDepart
-        {
-          if not NextVisual
-            _raise exUserBreaked;
-
-          mtDepart.Save(xnode);
-        }
-        SetBounds(#mtDepart);
-
-        _loop mtDepHist
-        {
-          if not NextVisual
-            _raise exUserBreaked;
-
-          mtDepHist.Save(xnode);
-        }
-
-        ResetBounds(#mtPost);
-        _loop mtPost
-        {
-          if not NextVisual
-            _raise exUserBreaked;
-
-          mtPost.Save(xnode);
-        }
-        SetBounds(#mtPost);
-
-      xnode := xwage.AddNode('rok:Persons');
-        _loop mtPerson
-        {
-          if not NextVisual
-            _raise exUserBreaked;
-
-          SetVisualHeader(mtPerson.FIO);
-          xpers := mtPerson.Save(xnode);
-
-          _loop mtAppoint where (( mtPerson.Login == mtAppoint.Person ))
-            mtAppoint.Save(xpers);
-
-          _loop mtPersPer where (( mtPerson.Login == mtPersPer.Person ))
-          {
-            if not NextVisual
-              _raise exUserBreaked;
-
-            SetVisualHeader(DateToStr(mtPersPer.Period, 'MM.YYYY') + ' ' + mtPerson.FIO);
-            xper := mtPersPer.Save(xpers);
-
-            if (GetFirst mtDebtIn where (( mtPersPer.Person == mtDebtIn.Person and
-                                           mtPersPer.Period == mtDebtIn.Period /*and
-                                           cgSum_DebtIn     == mtDebtIn.Mode*/ )) = tsOk)
-              mtDebtIn.Save(xper);
-
-            _loop mtNachisl where (( mtPersPer.Person == mtNachisl.Person and
-                                     mtPersPer.Period == mtNachisl.Period /*and
-                                     cgSum_Nachisl    == mtNachisl.Mode*/ ))
-              mtNachisl.Save(xper);
-
-            _loop mtPayment where (( mtPersPer.Person == mtPayment.Person and
-                                     mtPersPer.Period == mtPayment.Period /*and
-                                     cgSum_Payment    == mtPayment.Mode*/ ))
-              mtPayment.Save(xper);
-
-            if (GetFirst mtDebtOut where (( mtPersPer.Person == mtDebtOut.Person and
-                                            mtPersPer.Period == mtDebtOut.Period /*and
-                                            cgSum_DebtOut    == mtDebtOut.Mode*/ )) = tsOk)
-              mtDebtOut.Save(xper);
-          }
-        }
-
-    doc.Save(sXmlFile);
-    doc.Free;
-  }
-  _except
-    on exUserBreaked:
-    {
-    }
-  _finally
-  {
-    StopVisual;
-    Archivate;
-    SaveMyDsk(sResFile, 'WageView_sResFile');
-    SaveMyDsk(wToArchive, 'WageView_wToArchive');
-    if (CurFormatInArea(scInfo) = scInfo)
-      PushConditionForLeave(tcCurAppoint, tnmtAppoint);
-    PopPos(#mtPeriods);
-    CloseWindow(wnExport);
-  }
+  CloseWindow(wnExport);
 }

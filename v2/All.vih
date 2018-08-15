@@ -60,8 +60,13 @@ end;
 
 private ObjInterface ISerializable;
   procedure Clear;
-  function Load(_e: IDomNode): boolean;
-  function Save(_e: IDomNode): IDomNode;
+  procedure SetStream(_stream: TPtr);
+  function Load(_e: IDomNode = NullRef): boolean;
+  function Save(_e: IDomNode = NullRef): IDomNode;
+  function LoadXml(_e: IDomNode): boolean;
+  function SaveXml(_e: IDomNode): IDomNode;
+  function LoadRok: boolean;
+  function SaveRok: boolean;
 end;
 
 ObjInterface IPeriods(ISerializable);
@@ -212,62 +217,109 @@ end;
 
 #include IModify.vih
 
-VipInterface Periods
-  implements IModify, IPeriods
+VipInterface Rok
+  implements ISerializable
   licensed(free);
 public:
   constructor Init;
 end;
 
-VipInterface DepHist
+VipInterface Periods(Rok)
+  implements IModify, IPeriods
+  licensed(free);
+public:
+  constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
+end;
+
+VipInterface DepHist(Rok)
   implements IModify, IDepHist
   licensed(free);
 public:
   constructor Init;
   constructor Init2(_dep: IDepart);
   destructor Done;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface Depart
+VipInterface Depart(Rok)
   implements IModify, IDepart
   licensed(free);
 public:
   constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface Post
+VipInterface Post(Rok)
   implements IModify, IPost
   licensed(free);
 public:
   constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface Person
+VipInterface Person(Rok)
   implements IModify, IPerson
   licensed(free);
 public:
   constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface Appoint
+VipInterface Appoint(Rok)
   implements IModify, IAppoint
   licensed(free);
 public:
   constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface PersPer
+VipInterface PersPer(Rok)
   implements IModify, IPersPer
   licensed(free);
 public:
   constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface Payment
+VipInterface Payment(Rok)
   implements IModify, IPayment
   licensed(free);
 public:
   constructor Init;
+  procedure ISerializable.Clear;
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
 end;
 
 VipInterface DebtIn(Payment)

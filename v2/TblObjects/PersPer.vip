@@ -65,7 +65,7 @@ public procedure Clear;
   delete all mtPersPer;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPersPer);
   if _e.GetFirstAttr
@@ -81,13 +81,37 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:PersPer');
   xnode.AddAttr('rok:Period='   + string(Period));
   xnode.AddAttr('rok:FactDays=' + string(FactDays));
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPersPer);
+    Person   := ReadStr;
+    Period   := ReadDate;
+    FactDays := ReadByte;
+    insert current mtPersPer;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteStr(Person);
+  WriteDate(Period);
+  WriteByte(FactDays);
 }
 
 end.

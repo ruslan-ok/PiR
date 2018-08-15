@@ -133,7 +133,7 @@ public procedure Clear;
   delete all mtPeriods;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPeriods);
   if _e.GetFirstAttr
@@ -153,7 +153,7 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Period');
@@ -164,6 +164,45 @@ public function Save(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:AvansRate='   + DoubleToStr(AvansRate, '\4p[|-]3666666666~9999'));
   xnode.AddAttr('rok:PaymentRate=' + DoubleToStr(PaymentRate, '\4p[|-]3666666666~9999'));
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPeriods);
+    dBeg        := ReadDate;
+    PlanDays    := ReadByte;
+    AvansDate   := ReadDate;
+    PaymentDate := ReadDate;
+    AvansRate   := ReadDouble;
+    PaymentRate := ReadDouble;
+    insert current mtPeriods;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  var b, b1, b2: byte;
+  b := byte((((Year(dBeg) - 2000) * 12 + Month(dBeg) - 1) shl 5) + (PlanDays or 31));
+  WriteByte(b);
+  if (Day(AvansDate) < 18) or (Month(AvansDate) <> Month(dBeg)) or (Year(AvansDate) <> Year(dBeg))
+    b1 := 0;
+  else
+    b1 := (Day(AvansDate) - 18);
+  if (Day(PaymentDate) < 1) or (Day(PaymentDate) > 15) or (Month(PaymentDate) <> Month(Add_Months(dBeg, 1))) or (Year(PaymentDate) <> Year(Add_Months(dBeg, 1)))
+    b2 := 0;
+  else
+    b2 := Day(PaymentDate);
+  b := (b1 shl 4) + b2;
+  WriteByte(b);
+  WriteDouble(AvansRate);
+  WriteDouble(PaymentRate);
 }
 
 end.

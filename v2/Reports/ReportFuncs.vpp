@@ -61,16 +61,11 @@ private function GetSumTitle(_row: byte): string;
 
 private function GetSumAbbr(_row: byte): string;
 {
-  result := '';
-
   case _row of
-    R02: result := 'Премия Отдела  (код 83)';
-    R03: result := 'Премия Управления (код 84)';
-    R04: result := 'Проектный бизнес (код 84)';
-
-    R10: result := 'Аванс';
     R11: result := 'Межрасчеты';
     R13: result := 'Зарплата';
+  else
+    result := GetSumTitle(_row);
   end;
 }
 

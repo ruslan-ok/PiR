@@ -64,7 +64,7 @@ public procedure Clear;
   delete all mtPerson;
 }
 
-public function Load(_e: IDomNode): boolean;
+public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPerson);
   if _e.GetFirstAttr
@@ -83,7 +83,7 @@ public function Load(_e: IDomNode): boolean;
   result := true;
 }
 
-public function Save(_e: IDomNode): IDomNode;
+public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Person');
@@ -93,6 +93,36 @@ public function Save(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Passw=' + Passw);
   xnode.AddAttr('rok:Sort='  + Sort);
   result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPerson);
+    NRec  := ReadComp;
+    Login := ReadStr;
+    FIO   := ReadStr;
+    EMail := ReadStr;
+    Passw := ReadStr;
+    Sort  := ReadLong;
+    insert current mtPerson;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteComp(NRec);
+  WriteStr(Login);
+  WriteStr(FIO);
+  WriteStr(EMail);
+  WriteStr(Passw);
+  WriteLong(Sort);
 }
 
 end.
