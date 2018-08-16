@@ -29,67 +29,67 @@ private procedure DoExportRok;
     mtPeriods.Save;
   mtPeriods.Stop;
 
-  fRok.WriteLine('<Dp>');
   ResetBounds(#mtDepart);
+  mtDepart.Start;
   _loop mtDepart
     mtDepart.Save;
+  mtDepart.Stop;
   SetBounds(#mtDepart);
-  fRok.WriteLn('</Dp>');
 
-  fRok.WriteLine('<Dh>');
+  mtDepHist.Start;
   _loop mtDepHist
     mtDepHist.Save;
-  fRok.WriteLn('</Dh>');
+  mtDepHist.Stop;
 
-  fRok.WriteLine('<Pt>');
   ResetBounds(#mtPost);
+  mtPost.Start;
   _loop mtPost
     mtPost.Save;
+  mtPost.Stop;
   SetBounds(#mtPost);
-  fRok.WriteLn('</Pt>');
 
-  fRok.WriteLine('<Ps>');
+  mtPerson.Start;
   _loop mtPerson
   {
     mtPerson.Save;
 
-    fRok.WriteLn('<Ap>');
+    mtAppoint.Start;
     _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
       mtAppoint.Save;
-    fRok.WriteLn('</Ap>');
+    mtAppoint.Stop;
 
-    fRok.WriteLn('<PP>');
+    mtPersPer.Start;
     _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
     {
       mtPersPer.Save;
 
-      fRok.WriteLn('<DI>');
+      mtDebtIn.Start;
       if (GetFirst mtDebtIn where (( mtPersPer.Person == mtDebtIn.Person and
                                      mtPersPer.Period == mtDebtIn.Period )) = tsOk)
         mtDebtIn.Save;
-      fRok.WriteLn('</DI>');
+      mtDebtIn.Stop;
 
-      fRok.WriteLn('<Na>');
+      mtNachisl.Start;
       _loop mtNachisl where (( mtPersPer.Person == mtNachisl.Person and
                                mtPersPer.Period == mtNachisl.Period ))
         mtNachisl.Save;
-      fRok.WriteLn('</Na>');
+      mtNachisl.Stop;
 
-      fRok.WriteLine('<Pm>');
+      mtPayment.Start;
       _loop mtPayment where (( mtPersPer.Person == mtPayment.Person and
                                mtPersPer.Period == mtPayment.Period ))
         mtPayment.Save;
-      fRok.WriteLn('</Pm>');
+      mtPayment.Stop;
 
-      fRok.WriteLine('<DO>');
+      mtDebtOut.Start;
       if (GetFirst mtDebtOut where (( mtPersPer.Person == mtDebtOut.Person and
                                       mtPersPer.Period == mtDebtOut.Period )) = tsOk)
         mtDebtOut.Save;
-      fRok.WriteLn('</DO>');
+      mtDebtOut.Stop;
     }
-    fRok.WriteLn('</PP>');
+    mtPersPer.Stop;
   }
-  fRok.WriteLn('</Ps>');
+  mtPerson.Stop;
 
   fRok.Close;
   StopVisual;

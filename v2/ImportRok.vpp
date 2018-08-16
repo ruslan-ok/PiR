@@ -1,0 +1,40 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из rok
+//------------------------------------------------------------------------------
+
+File fRok;
+
+private function MyRead(_stream: TPtr; _len: byte): string;
+{
+  result := '';
+  var i: byte = 0;
+  var cc: char;
+  while (i < _len)
+  {
+    File_Read(cc, _stream);
+    i++;
+    result += cc;
+  }
+}
+
+private procedure DoImportRok;
+{
+  fRok.OpenFile(sFile, stOpenRead);
+  fRok.Seek(0);
+  var ss: string;
+  ss := MyRead(fRok.Handle, 1);
+  if (ss <> '{')
+  {
+    fRok.Close;
+    exit;
+  }
+
+  mtPeriods.SetStream(fRok.Handle);
+  while (mtPeriods.Load(NullRef))
+  {
+  }
+
+  fRok.Close;
+}

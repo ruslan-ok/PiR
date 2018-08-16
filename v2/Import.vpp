@@ -63,6 +63,7 @@ End;
 
 #include ImportXml.vpp
 #include ImportXlsx.vpp
+#include ImportRok.vpp
 
 // Проверки перед началом импорта
 function StartCheckImport(var _ext: string): boolean;
@@ -100,46 +101,6 @@ function StartCheckImport(var _ext: string): boolean;
     }
 
   result := true;
-}
-
-File fRok;
-
-private function MyRead(_stream: TPtr; _len: byte): string;
-{
-  result := '';
-  var i: byte = 0;
-  var cc: char;
-  while (i < _len)
-  {
-    File_Read(cc, _stream);
-    i++;
-    result += cc;
-  }
-}
-
-private procedure DoImportRok;
-{
-  fRok.OpenFile(sFile, stOpenRead);
-  fRok.Seek(0);
-  var ss: string;
-  ss := MyRead(fRok.Handle, 49);
-  if (ss <> '<rok:Wage xmlns:rok="http://178.172.132.68/pir/">')
-  {
-    fRok.Close;
-    exit;
-  }
-
-  ss := MyRead(fRok.Handle, 2);
-  ss := MyRead(fRok.Handle, 13);
-  if (ss = '<rok:Periods>')
-  {
-    mtPeriods.SetStream(fRok.Handle);
-    while (mtPeriods.Load(NullRef))
-    {
-    }
-  }
-
-  fRok.Close;
 }
 
 private procedure DoImport;

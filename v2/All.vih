@@ -85,6 +85,7 @@ private ObjInterface ISerializable;
 end;
 
 ObjInterface IPeriods(ISerializable);
+  property Id: byte;
   property dBeg: date;
   property PlanDays: byte;
   property AvansDate: date;
@@ -92,6 +93,7 @@ ObjInterface IPeriods(ISerializable);
   property AvansRate: double;
   property PaymentRate: double;
 
+  index ById = Id (unique);
   index Sort = dBeg (desc);
 
   function PlanDaysPrev: byte;

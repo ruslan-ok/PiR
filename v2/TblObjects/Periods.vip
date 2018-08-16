@@ -9,7 +9,7 @@ Interface Periods;
 // Список периодов с данными
 Table struct mtPeriods
 (
-  NRec:        comp,
+  Id:          byte,
   dBeg:        date,
   PlanDays:    byte,
   AvansDate:   date,
@@ -19,13 +19,14 @@ Table struct mtPeriods
 )
 With index
 (
-  ByNRec = NRec (unique, surrogate),
+  ById   = Id (unique),
   ByDate = dBeg (desc)
 );
 
 
 Create view from mtPeriods, mtPeriods mtPeriods2;
 
+property Id:          byte   absolute mtPeriods.Id;
 property dBeg:        date   absolute mtPeriods.dBeg;
 property PlanDays:    byte   absolute mtPeriods.PlanDays;
 property AvansDate:   date   absolute mtPeriods.AvansDate;
@@ -33,6 +34,7 @@ property PaymentDate: date   absolute mtPeriods.PaymentDate;
 property AvansRate:   double absolute mtPeriods.AvansRate;
 property PaymentRate: double absolute mtPeriods.PaymentRate;
 
+index ById auto;
 index Sort auto;
 
 public function PlanDaysPrev: byte;
@@ -48,7 +50,7 @@ public function Next: date;
   if (GetFirst mtPeriods2 ordered by index ByDate = tsOk)
     result := Add_Months(mtPeriods2.dBeg, 1);
   else
-    result := date(1, 1, 2000);
+    result := date(1, 1, 2013);
 }
 
 public function CanDelete: boolean;
@@ -73,7 +75,7 @@ public function Correct: boolean;
     exit;
   }
 
-  if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) >> mtPeriods2.dBeg )) = tsOk)
+  if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) >> mtPeriods2.dBeg and (mtPeriods2.Id <> mtPeriods.Id) )) = tsOk)
     if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) == mtPeriods2.dBeg )) <> tsOk)
     {
       message('В списке периодов не должно быть разрывов.');
@@ -81,7 +83,7 @@ public function Correct: boolean;
       exit;
     }
 
-  if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) << mtPeriods2.dBeg )) = tsOk)
+  if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) << mtPeriods2.dBeg and (mtPeriods2.Id <> mtPeriods.Id) )) = tsOk)
     if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) == mtPeriods2.dBeg )) <> tsOk)
     {
       message('В списке периодов не должно быть разрывов.');
@@ -89,7 +91,7 @@ public function Correct: boolean;
       exit;
     }
 
-  if (GetFirst mtPeriods2 where (( mtPeriods.NRec == mtPeriods2.NRec )) = tsOk)
+  if (GetFirst mtPeriods2 where (( mtPeriods.Id == mtPeriods2.Id )) = tsOk)
   {
     var dTmp: date;
     dTmp := mtPeriods2.dBeg;
@@ -107,11 +109,13 @@ public function Correct: boolean;
 
 function IModify.doInsert : word;
 {
+  Id := byte((Year(dBeg) - 2013) * 12 + Month(dBeg) - 1);
   result := insert current mtPeriods;
 }
 
 function IModify.doUpdate : word;
 {
+  Id := byte((Year(dBeg) - 2013) * 12 + Month(dBeg) - 1);
   result := update current mtPeriods;
 }
 
@@ -141,7 +145,11 @@ public function LoadXml(_e: IDomNode): boolean;
     do
     {
       case _e.FndAttr.Name of
-        'rok:dBeg':        dBeg        := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:dBeg':
+        {
+          dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+          Id := byte((Year(dBeg) - 2013) * 12 + Month(dBeg) - 1);
+        }
         'rok:PlanDays':    PlanDays    := byte(_e.FndAttr.Value);
         'rok:AvansDate':   AvansDate   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
         'rok:PaymentDate': PaymentDate := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
@@ -174,11 +182,19 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPeriods);
-    dBeg        := ReadDate;
-    PlanDays    := ReadByte;
-    AvansDate   := ReadDate;
-    PaymentDate := ReadDate;
-    AvansRate   := ReadDouble;
+    var m, r1, r2: byte;
+    var y: word;
+    Id := ReadByte;
+    y := word(Id div 12) + 2013;
+    m := (Id mod 12) + 1;
+    dBeg := date(1, m, y);
+    PlanDays := ReadByte;
+    r1 := ReadByte;
+    r2 := r1 - ((r1 shr 4) shl 4);
+    r1 := (r1 - r2) shr 4;
+    AvansDate   := if(r1 = 0, ZeroDate, date(r1 + 18, Month(dBeg), Year(dBeg)));
+    PaymentDate := if(r2 = 0, ZeroDate, date(r2, Month(Add_Months(dBeg, 1)), Year(Add_Months(dBeg, 1))));
+    AvansRate := ReadDouble;
     PaymentRate := ReadDouble;
     insert current mtPeriods;
     result := true;
@@ -189,11 +205,10 @@ public function SaveRok: boolean;
 {
   result := true;
   StartNewRec;
-  var b, b1, b2: byte = 0;
+  WriteByte(Id);
+  WriteByte(PlanDays);
 
-  b := byte((((Year(dBeg) - 2000) * 12 + Month(dBeg) - 1) shl 5) + (PlanDays or 31));
-  WriteByte(b);
-
+  var b, b1, b2: byte;
   if (Day(AvansDate) < 18) or (Month(AvansDate) <> Month(dBeg)) or (Year(AvansDate) <> Year(dBeg))
     b1 := 0;
   else
