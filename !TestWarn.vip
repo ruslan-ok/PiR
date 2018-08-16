@@ -1,0 +1,62 @@
+VipInterface TestWarn licensed(free);
+
+Interface TestWarn;
+
+procedure StartNewRec;
+{
+}
+
+var AvansDate, PaymentDate, dBeg: date;
+
+function prTestWarn: boolean;
+{
+  result := true;
+  StartNewRec;
+
+  var b, b1, b2: byte;
+  if true
+    b1 := 0;
+  else
+    b1 := Day(Cur_Date);
+
+  if true
+    b2 := 0;
+  else
+    b2 := Day(Cur_Date);
+
+  b := (b1 shl 4) + b2;
+}
+
+/*
+function prTestWarn: boolean;
+{
+  result := true;
+  StartNewRec;
+
+  var b, b1, b2: byte;
+  if (Day(AvansDate) < 18) or (Month(AvansDate) <> Month(dBeg)) or (Year(AvansDate) <> Year(dBeg))
+    b1 := 0;
+  else
+    b1 := (Day(AvansDate) - 18);
+
+  if (Day(PaymentDate) < 1) or (Day(PaymentDate) > 15) or (Month(PaymentDate) <> Month(Add_Months(dBeg, 1))) or (Year(PaymentDate) <> Year(Add_Months(dBeg, 1)))
+    b2 := 0;
+  else
+    b2 := Day(PaymentDate);
+
+  b := (b1 shl 4) + b2;
+}
+*/
+
+HandleEvent
+
+cmInit:
+{
+  AvansDate := PaymentDate := date(1,1,2000);
+  dBeg := Cur_Date;
+  prTestWarn;
+}
+
+End;
+
+End.

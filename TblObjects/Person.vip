@@ -1,0 +1,138 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект сотрудников
+//------------------------------------------------------------------------------
+
+Interface Person;
+
+// Работник
+Table struct mtPerson
+(
+  Id:     byte,
+  Login:  s50,
+  FIO:    s100,
+  EMail:  s100,
+  Passw:  s50,
+  Sort:   byte
+)
+With index
+(
+  PersId  = Id (unique),
+  ByLogin = Login,
+  ByFIO   = FIO
+);
+
+Create view from mtPerson, mtPerson mtPerson2;
+
+property Id:    byte absolute mtPerson.Id;
+property Login: s50  absolute mtPerson.Login;
+property FIO:   s100 absolute mtPerson.FIO;
+property EMail: s100 absolute mtPerson.EMail;
+property Passw: s50  absolute mtPerson.Passw;
+property Sort:  byte absolute mtPerson.Sort;
+
+index PersId  auto;
+index ByLogin auto;
+index ByFIO   auto;
+
+private function GenerateNewId: byte;
+{
+  if (GetLast mtPerson2 ordered by index PersId <> tsOk)
+    result := 1;
+  else
+    result := mtPerson2.Id + 1;
+}
+
+function IModify.doInsert: word;
+{
+  result := insert current mtPerson;
+}
+
+function IModify.doUpdate: word;
+{
+  result := update current mtPerson;
+}
+
+function IModify.doDelete: word;
+{
+  result := delete current mtPerson;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtPerson;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtPerson;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtPerson);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:Login':  Login  := _e.FndAttr.Value;
+        'rok:FIO':    FIO    := _e.FndAttr.Value;
+        'rok:EMail':  EMail  := _e.FndAttr.Value;
+        'rok:Passw':  Passw  := _e.FndAttr.Value;
+        'rok:Sort':   Sort   := longint(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  mtPerson.Id := GenerateNewId;
+  insert current mtPerson;
+  result := true;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Person');
+  xnode.AddAttr('rok:Login=' + Login);
+  xnode.AddAttr('rok:FIO='   + FIO);
+  xnode.AddAttr('rok:EMail=' + EMail);
+  xnode.AddAttr('rok:Passw=' + Passw);
+  xnode.AddAttr('rok:Sort='  + Sort);
+  result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPerson);
+    Id    := ReadByte;
+    Login := ReadStr;
+    FIO   := ReadStr;
+    EMail := ReadStr;
+    Passw := ReadStr;
+    Sort  := ReadLong;
+    insert current mtPerson;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteStr(Login);
+  WriteStr(FIO);
+  WriteStr(EMail);
+  WriteStr(Passw);
+  WriteLong(Sort);
+}
+
+end.

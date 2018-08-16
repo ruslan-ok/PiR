@@ -1,0 +1,123 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект зарплат сотрудников по месяцам
+//------------------------------------------------------------------------------
+
+Interface PersPer;
+
+Table struct mtPersPer
+(
+  Person:     byte,
+  Period:     byte,
+  FactDays:   byte,
+  dBeg:       date
+)
+With index
+(
+  ByPerson = Person + Period,
+  ByPeriod = Period
+);
+
+Create view from mtPersPer, mtPersPer mtPersPer2;
+
+property Person:     byte   absolute mtPersPer.Person;
+property Period:     byte   absolute mtPersPer.Period;
+property FactDays:   byte   absolute mtPersPer.FactDays;
+property dBeg:       date   absolute mtPersPer.dBeg;
+
+
+index ByPerson auto;
+index ByPeriod auto;
+
+public function FactDaysPrev: byte;
+{
+  result := mtPersPer.FactDays;
+
+  if (GetLast mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
+                                  mtPersPer.Period >> mtPersPer2.Period )) = tsOk)
+    result := mtPersPer2.FactDays;
+}
+
+function IModify.doInsert: word;
+{
+  result := insert current mtPersPer;
+}
+
+function IModify.doUpdate: word;
+{
+  result := update current mtPersPer;
+}
+
+function IModify.doDelete: word;
+{
+  result := delete current mtPersPer;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtPersPer;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtPersPer;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtPersPer);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:Period':
+        {
+          dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+          Period := PeriodToId(dBeg);
+        }
+        'rok:FactDays': FactDays := byte(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtPersPer;
+  result := true;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:PersPer');
+  xnode.AddAttr('rok:Period='   + string(Period));
+  xnode.AddAttr('rok:FactDays=' + string(FactDays));
+  result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPersPer);
+    Period   := ReadByte;
+    dBeg := IdToPeriod(Period);
+    FactDays := ReadByte;
+    insert current mtPersPer;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteByte(Period);
+  WriteByte(FactDays);
+}
+
+end.

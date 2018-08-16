@@ -1,0 +1,133 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект наименований начислений и выплат
+//------------------------------------------------------------------------------
+
+Interface PayTitle;
+
+// Наименования начислений и выплат
+Table struct mtPayTitle
+(
+  Id:   byte,
+  Name: s100
+)
+With index
+(
+  ById = Id (unique),
+  ByName = Name
+);
+
+Create view from mtPayTitle, mtPayTitle mtPayTitle2;
+
+property Id:   byte absolute mtPayTitle.Id;
+property Name: s100 absolute mtPayTitle.Name;
+
+index ById   auto;
+index ByName auto;
+
+private function GenerateNewId: byte;
+{
+  if (GetLast mtPayTitle2 ordered by index ById <> tsOk)
+    result := 1;
+  else
+    result := mtPayTitle2.Id + 1;
+}
+
+public function GetId(_title: string): byte;
+{
+  if (GetFirst mtPayTitle where (( _title == mtPayTitle.Name )) <> tsOk)
+  {
+    ClearBuffer(#mtPayTitle);
+    mtPayTitle.Name := _title;
+    mtPayTitle.Id := GenerateNewId;
+    insert current mtPayTitle;
+  }
+  result := mtPayTitle.Id;
+}
+
+public function GetTitle(_title: byte): string;
+{
+  result := '';
+
+  if (GetFirst mtPayTitle where (( _title == mtPayTitle.Id )) = tsOk)
+    result := mtPayTitle.Name;
+}
+
+function IModify.doInsert: word;
+{
+  result := insert current mtPayTitle;
+}
+
+function IModify.doUpdate: word;
+{
+  result := update current mtPayTitle;
+}
+
+function IModify.doDelete: word;
+{
+  result := delete current mtPayTitle;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtPayTitle;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtPayTitle;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtPayTitle);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:Id':   Id   := byte(_e.FndAttr.Value);
+        'rok:Name': Name := _e.FndAttr.Value;
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtPayTitle;
+  result := true;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Post');
+  xnode.AddAttr('rok:Id='   + string(Id));
+  xnode.AddAttr('rok:Name=' + Name);
+  result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPayTitle);
+    Id   := ReadByte;
+    Name := ReadStr;
+    insert current mtPayTitle;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteStr(Name);
+}
+
+end.

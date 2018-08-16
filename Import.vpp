@@ -1,0 +1,147 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно параметров импорта
+//------------------------------------------------------------------------------
+
+var sFile: string;
+var wDetProt: word;
+
+Window wnImport 'Параметры импорта';
+  show at(,, 82, 8);
+
+Screen scImport ('',, sci13Esc);
+  table mtPeriods;
+fields
+  sFile ('xml-файл для импорта'): noProtect, pickButton;
+//  wDetProt ('Формирование подробного протокола',, sci1Esc): noProtect;
+buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+  `Файл для импорта`
+   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+!   [.] подробный протокол`          <.  Загрузить  .>      <.   Отмена    .>
+                                    <.  Загрузить  .>      <.   Отмена    .>
+>>
+End;
+
+End;
+
+private procedure DoImport; forward;
+
+WindowEvent wnImport;
+
+cmInit:
+{
+  sFile := '';
+  ReadMyDsk(sFile, 'WageView_sFile', false);
+  wDetProt := 1;
+  ReadMyDsk(wDetProt, 'WageView_wDetProt', false);
+}
+
+cmPick:
+  case CurField of
+    #sFile:
+    {
+      sFile := GetFileName('*.xml;*.xlsx;*.rok', 'Выбор xml-, xlsx- или rok-файла для импорта');
+      RedrawPanel(#mtPeriods);
+    }
+  end;
+
+cmOk:
+{
+  DoImport;
+  SaveMyDsk(sFile, 'WageView_sFile');
+  SaveMyDsk(wDetProt, 'WageView_wDetProt');
+  CloseWindow(wnImport);
+}
+
+End;
+
+#include ImportXml.vpp
+#include ImportXlsx.vpp
+#include ImportRok.vpp
+
+// Проверки перед началом импорта
+function StartCheckImport(var _ext: string): boolean;
+{
+  result := false;
+
+  if (sFile = '')
+  {
+    message('Не задан файл');
+    exit;
+  }
+
+  if not ExistFile(sFile)
+  {
+    message('Указанный файл не найден');
+    exit;
+  }
+
+  var sPath, sName, sExt: string;
+  ParseFileName(sFile, sPath, sName, sExt);
+
+  _ext := UpCase(sExt);
+
+  if (_ext <> 'XML') and (_ext <> 'XLSX') and (_ext <> 'ROK')
+  {
+    message('Импорт возможен только из файлов с расширениями xml, xlsx и rok.');
+    exit;
+  }
+
+  if ((_ext = 'XML') or (_ext = 'ROK')) and isValid(#mtStruct)
+    if (message('Текущие данные будут удалены.'#13#13 +
+                'Продолжить?', Confirmation + YesNo + mfSwapButtons) <> cmYes)
+    {
+      exit;
+    }
+
+  result := true;
+}
+
+private procedure DoImport;
+{
+  var sExt: string;
+  if (not StartCheckImport(sExt))
+    exit;
+
+  case sExt of
+
+    'XML':
+    {
+      DoImportXml;
+      SaveMyDsk(sFile, 'WageView_sXmlFile');
+    }
+
+    'XLSX':
+    {
+      DoImportXlsx;
+      SaveMyDsk(sFile, 'WageView_sXlsxFile');
+    }
+
+    'ROK':
+    {
+      DoImportRok;
+      SaveMyDsk(sFile, 'WageView_sXlsxFile');
+    }
+
+  end;
+
+  GetFirst mtPeriods;
+  BuildTree;
+
+  if isValid(#mtPeriods)
+    SelectFormat(trFilling);
+}
+
+private procedure AutoImport;
+{
+  sFile := '';
+  ReadMyDsk(sFile, 'WageView_sXmlFile', false);
+//  if ExistFile(sFile)
+//    DoImport;
+}

@@ -1,0 +1,220 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Создание подразделения или сотрудника
+//------------------------------------------------------------------------------
+
+var wAddMode: word;
+var sDepCode, sDepName: string;
+var dCreateDep, dCreateApp, dContract: date;
+var cSotrDep, cSotrPost: byte;
+var sPassw, sSort: string;
+var fSalary, fTaxDed: double;
+var wCurrency: word;
+
+Window wnNewStruct 'Создание подразделения или сотрудника' ('',, sci1EnEsc);
+  show at(,, 110, 16);
+
+Screen scNewStructLeft;
+  show at(,, 25, 12) Fixed_X;
+  table mtStruct;
+Fields
+  wAddMode: noprotect;
+<<
+
+   `Что добавляем`
+   (.) Подразделение`
+   (.) Сотрудник`
+>>
+End;
+
+Screen scNewDepart;
+  show at(26,,, 12);
+  table mtStruct;
+Fields
+  sDepCode: noprotect, {font = {backColor = if(sDepCode = '', ColorNeed, 0)}};
+  sDepName: noprotect, {font = {backColor = if(sDepName = '', ColorNeed, 0)}};
+  dCreateDep: noprotect, {font = {backColor = if(dCreateDep = ZeroDate, ColorNeed, 0)}};
+<<
+
+   `Код`          .@@@@@@@@@@@@
+   `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Дата создания`.@@@@@@@@@@@@
+>>
+End;
+
+Screen scNewPerson;
+  show at(26,,, 12);
+  table mtStruct;
+Fields
+  KatSotr.FIO ('',, sci13Esc): Protect, {font = {backColor = if(cSotr = 0, ColorNeed, 0)}};
+  KatSotr.Name:  Protect;
+  KatSotr.EMail: Protect;
+  sPassw: noProtect;
+  sSort:  noProtect;
+  sDepart ('',, sci13Esc): protect, {font = {backColor = if(cSotrDep = 0, ColorNeed, 0)}};
+  sPost   ('',, sci13Esc): protect, {font = {backColor = if(cSotrPost = 0, ColorNeed, 0)}};
+  dCreateApp: noProtect, {font = {backColor = if(dCreateApp = ZeroDate, ColorNeed, 0)}};
+  dContract: noProtect;
+  fSalary: noProtect;
+  wCurrency: [List 0 'USD', 1 'BYN'], Protect;
+  fTaxDed: noProtect;
+<<
+
+   `ФИО`            .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Логин`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `e-mail`         .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Пароль`         .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Сортировка`     .@@@@@@@@@@@@
+   `Подразделение`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Должность`      .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Дата назначения`.@@@@@@@@@@@@                `Контракт до`.@@@@@@@@@@@@
+   `Оклад`          .@@@@@@@@@@@@ .@@@@@@@@           `Вычеты`.@@@@@@@@@@@@
+>>
+End;
+
+Screen scNewStruct;
+  show at(, 13,,) Fixed_Y;
+  table mtStruct;
+Buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+      <. Создать .>      <. Отмена .>
+>>
+End;
+
+End;
+
+WindowEvent wnNewStruct;
+
+cmInit:
+{
+  sDepCode := sDepName := '';
+  dCreateDep := dCreateApp := mtPeriods.dBeg;
+  dContract := ZeroDate;
+  cSotr := cSotrDep := cSotrPost := 0;
+  sPassw := sSort := sDepart := sPost := '';
+}
+
+cmPick:
+  case CurField of
+
+    #KatSotr.FIO:
+      RunInterface('GetSotr', cSotr);
+
+    #sDepart:
+    {
+      cSelectedDep := cSotrDep;
+      RunWindowModal(wnPickDepart);
+      if (cSelectedDep <> 0)
+        set cSotrDep := cSelectedDep;
+    }
+
+    #sPost:
+    {
+      cSelectedPost := cSotrPost;
+      RunWindowModal(wnPickPost);
+      if (cSelectedPost <> 0)
+        set cSotrPost := cSelectedPost;
+    }
+
+  end;
+
+cmDelOnProtect:
+  case CurField of
+    #KatSotr.FIO: set cSotr := 0;
+    #sDepart: set cSotrDep := 0;
+    #sPost: set cSotrPost := 0;
+  end;
+
+cmOk:
+  case wAddMode of
+
+    0:
+    {
+      if (sDepCode = '')
+        message('Не задан код подразделения.');
+      else
+        if (sDepName = '')
+          message('Не задано наименование подразделения.');
+        else
+          if (dCreateDep = ZeroDate)
+            message('Не задана дата создания подразделения.');
+          else
+            if (GetFirst mtDepart where (( sDepName == mtDepart.Name )) = tsOk)
+              message('Подразделение с таким наименованием уже есть.');
+            else
+            {
+              insert mtDepart set mtDepart.Code := sDepCode,
+                                  mtDepart.Name := sDepName;
+
+              insert mtDepHist set mtDepHist.Depart := mtDepart.Id,
+                                   mtDepHist.Sort   := sDepCode,
+                                   mtDepHist.dBeg   := dCreateDep;
+
+              CloseWindow(wnNewStruct);
+            }
+    }
+
+    1:
+    {
+      if (cSotr = 0)
+        message('Не выбран сотрудник.');
+      else
+        if (cSotrDep = 0)
+          message('Не задано подразделение сотрудника.');
+        else
+          if (cSotrPost = 0)
+            message('Не задана должность сотрудника.');
+          else
+            if (dCreateApp = ZeroDate)
+              message('Не задана дата назначения.');
+            else
+              if (GetFirst mtPerson where (( KatSotr.Name == mtPerson.Login )) = tsOk)
+                message('Этот сотрудник уже добавлен ранее.');
+              else
+              {
+                insert mtPerson set mtPerson.Login := KatSotr.Name,
+                                    mtPerson.FIO   := KatSotr.FIO,
+                                    mtPerson.EMail := KatSotr.EMail,
+                                    mtPerson.Passw := sPassw;
+
+                insert mtAppoint set mtAppoint.Person   := KatSotr.Name,
+                                     mtAppoint.Depart   := cSotrDep,
+                                     mtAppoint.Post     := cSotrPost,
+                                     mtAppoint.dBeg     := dCreateApp,
+                                     mtAppoint.dEnd     := dContract,
+                                     mtAppoint.Salary   := fSalary,
+                                     mtAppoint.Currency := if(wCurrency = 0, 'USD', 'BYN'),
+                                     mtAppoint.TaxDed   := fTaxDed;
+                CloseWindow(wnNewStruct);
+              }
+    }
+
+  end;
+
+End;
+
+
+TableEvent
+  table mtStruct;
+
+cmCheckField:
+  if (CurField = #wAddMode)
+    SetFormat(if(wAddMode = 0, scNewDepart, scNewPerson));
+
+cmDeleteRecord:
+  if isValid(#mtStruct)
+  {
+    var ret: boolean = false;
+    case mtStruct.Mode of
+      1: ret := DelDepart(mtStruct.Rec);
+      2: ret := DelPerson(mtStruct.Rec);
+    end;
+    if ret
+      BuildTree;
+  }
+
+End;

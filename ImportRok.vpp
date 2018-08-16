@@ -1,0 +1,158 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из rok
+//------------------------------------------------------------------------------
+
+File fRok;
+
+private function MyRead(_stream: TPtr; _len: byte): string;
+{
+  result := '';
+  var i: byte = 0;
+  var cc: char;
+  while (i < _len)
+  {
+    File_Read(cc, _stream);
+    i++;
+    result += cc;
+  }
+}
+
+private function CheckNewList: boolean;
+{
+  var ss: string;
+  ss := MyRead(fRok.Handle, 1);
+  result := (ss = '{');
+}
+
+var ret: boolean;
+
+#declare LoadTable(_table)
+private procedure MyLoad#_table;
+{
+  if CheckNewList
+    while (true)
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      ret := mt#_table.Load(NullRef);
+      if (not ret)
+        break;
+    }
+}
+#end
+
+#LoadTable(Periods)
+#LoadTable(Depart)
+#LoadTable(DepHist)
+#LoadTable(Post)
+#LoadTable(PayTitle)
+
+private procedure DoImportRok;
+{
+  fRok.OpenFile(sFile, stOpenRead);
+  fRok.Seek(0);
+
+  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
+  mtPeriods.SetStream(fRok.Handle);
+  mtDepart.SetStream(fRok.Handle);
+  mtDepHist.SetStream(fRok.Handle);
+  mtPost.SetStream(fRok.Handle);
+  mtPayTitle.SetStream(fRok.Handle);
+  mtPerson.SetStream(fRok.Handle);
+  mtAppoint.SetStream(fRok.Handle);
+  mtPersPer.SetStream(fRok.Handle);
+  mtDebtIn.SetStream(fRok.Handle);
+  mtNachisl.SetStream(fRok.Handle);
+  mtPayment.SetStream(fRok.Handle);
+  mtDebtOut.SetStream(fRok.Handle);
+
+  MyLoadPeriods;
+  MyLoadDepart;
+  MyLoadDepHist;
+  MyLoadPost;
+  MyLoadPayTitle;
+
+  if CheckNewList
+    while (true)
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      ret := mtPerson.Load(NullRef);
+      if (not ret)
+        break;
+
+      if CheckNewList
+        while (true)
+        {
+          ret := mtAppoint.Load(NullRef);
+          if (not ret)
+            break;
+          mtAppoint.Person := mtPerson.Id;
+          update current mtAppoint;
+        }
+
+      if CheckNewList
+        while (true)
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          ret := mtPersPer.Load(NullRef);
+          if (not ret)
+            break;
+          mtPersPer.Person := mtPerson.Id;
+          update current mtPersPer;
+
+          if CheckNewList
+            while (true)
+            {
+              ret := mtDebtIn.Load(NullRef);
+              if (not ret)
+                break;
+              mtDebtIn.Person := mtPerson.Id;
+              mtDebtIn.Period := mtPersPer.Period;
+              update current mtDebtIn;
+            }
+
+          if CheckNewList
+            while (true)
+            {
+              ret := mtNachisl.Load(NullRef);
+              if (not ret)
+                break;
+              mtNachisl.Person := mtPerson.Id;
+              mtNachisl.Period := mtPersPer.Period;
+              update current mtNachisl;
+            }
+
+          if CheckNewList
+            while (true)
+            {
+              ret := mtPayment.Load(NullRef);
+              if (not ret)
+                break;
+              mtPayment.Person := mtPerson.Id;
+              mtPayment.Period := mtPersPer.Period;
+              update current mtPayment;
+            }
+
+          if CheckNewList
+            while (true)
+            {
+              ret := mtDebtOut.Load(NullRef);
+              if (not ret)
+                break;
+              mtDebtOut.Person := mtPerson.Id;
+              mtDebtOut.Period := mtPersPer.Period;
+              update current mtDebtOut;
+            }
+        }
+    }
+
+  fRok.Close;
+  StopVisual;
+}

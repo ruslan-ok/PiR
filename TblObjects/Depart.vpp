@@ -1,0 +1,173 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования подразделения
+//------------------------------------------------------------------------------
+
+var cSelectedDep: byte;
+var sDepart: string;
+
+Window wnPickDepart 'Выбор подразделения' ('',, sci1EnEsc) DoAccept;
+  show at(,, 60, 15);
+
+Browse brDepart;
+  table mtDepart;
+Fields
+  mtDepart.Code 'Код':          [20], protect;
+  mtDepart.Name 'Наименование': [40], protect;
+End;
+
+End;
+
+WindowEvent wnPickDepart;
+
+cmInit:
+{
+  PushPos(#mtDepart);
+  ResetBounds(#mtDepart);
+
+  if (GetFirst mtDepart where (( cSelectedDep == mtDepart.Id )) = tsOk)
+    RescanPanel(#mtDepart);
+
+  cSelectedDep := 0;
+}
+
+cmDefault:
+{
+  cSelectedDep := mtDepart.Id;
+  set sDepart := mtDepart.Name;
+}
+
+cmDone:
+{
+  SetBounds(#mtDepart);
+  PopPos(#mtDepart);
+}
+
+End;
+
+//------------------------------------------------------------------------
+
+Window wnDepart 'Подразделение';
+  show at(,, 80, 15);
+
+Screen scDepart ('',, sci178Esc);
+  show at(,,, 4);
+  table mtDepart;
+Fields
+  mtDepart.Code (''): noprotect;
+  mtDepart.Name (''): noprotect;
+<<
+
+   `Код`          .@@@@@@@@@@@@
+   `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+Browse brDepHist ('',, sci178Esc);
+  show at(, 5,,);
+  table mtDepHist;
+Fields
+  mtDepHist.dBeg     'Начало':    [12], noprotect, noAutoSize;
+  mtDepHist.dEnd     'Окончание': [12], noprotect, noAutoSize;
+  mtDepHist.UpDepart 'Вышестоящее' ('',, sci1378Esc): [25], protect;
+  mtDepHist.Sort     'Для сортировки': [15], noprotect;
+End;
+
+End;
+
+WindowEvent wnDepart;
+
+cmInit:
+{
+  PushPos(#mtDepart);
+  ResetBounds(#mtDepart);
+  PushBounds(tbViewDepHist);
+
+  var cGoto: byte;
+  cGoto := 0;
+  if isValid(#mtStruct)
+    if (mtStruct.Mode = 1)
+      cGoto := mtStruct.Rec;
+
+  if (GetFirst mtDepart where (( cGoto == mtDepart.Id )) = tsOk)
+    RescanPanel(#mtDepart);
+}
+
+cmDone:
+{
+  UpdateTable;
+  PopBounds(tbViewDepHist);
+  SetBounds(#mtDepart);
+  PopPos(#mtDepart);
+  BuildTree;
+}
+
+cmPick:
+  if (CurField = #mtDepHist.UpDepart)
+  {
+    cSelectedDep := mtDepHist.Node;
+    RunWindowModal(wnPickDepart);
+    if (cSelectedDep <> 0)
+      if mtDepHist.ValidNode(cSelectedDep)
+        set mtDepHist.Node := cSelectedDep;
+  }
+
+End;
+
+private function DelDepart(_rec: byte): boolean;
+{
+  result := false;
+
+  if (GetFirst mtAppoint where (( _rec == mtAppoint.Depart )) = tsOk)
+    message('Удаление невозможно, так как есть назначения для этого подразделения.');
+  else
+    if (message('Удалить подразделение?', Confirmation + YesNo) = cmYes)
+    {
+      delete mtDepHist where (( _rec == mtDepHist.Depart ));
+      delete mtDepart where (( _rec == mtDepart.Id ));
+      RescanPanel(#mtDepart);
+      result := true;
+    }
+}
+
+TableEvent
+  table mtDepart;
+
+cmInsertRecord:
+  insert current mtDepart;
+
+cmUpdateRecord:
+  update current mtDepart;
+
+cmDeleteRecord:
+  DelDepart(mtDepart.Id);
+
+end;
+
+
+TableEvent
+  table mtDepHist;
+
+cmCheckRecord:
+  if mtDepHist.FindOther(mtDepHist.Id, mtDepHist.Depart, mtDepHist.dBeg, mtDepHist.dEnd)
+  {
+    message('Периоды записей истории подразделения не должны пересекаться.');
+    abort;
+  }
+
+cmDelOnProtect:
+  if (CurField = #mtDepHist.UpDepart)
+    set mtDepHist.Node := 0;
+
+cmInsertRecord:
+  insert current mtDepHist;
+
+cmUpdateRecord:
+  update current mtDepHist;
+
+cmDeleteRecord:
+  if (message('Удалить запись истории подразделения?', Confirmation + YesNo) = cmYes)
+    delete current mtDepHist;
+
+end;

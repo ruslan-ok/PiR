@@ -1,0 +1,226 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект расчетных периодов
+//------------------------------------------------------------------------------
+
+Interface Periods;
+
+// Список периодов с данными
+Table struct mtPeriods
+(
+  Id:          byte,
+  dBeg:        date,
+  PlanDays:    byte,
+  AvansDate:   date,
+  PaymentDate: date,
+  AvansRate:   double,
+  PaymentRate: double
+)
+With index
+(
+  ById   = Id (unique),
+  ByDate = dBeg (desc)
+);
+
+
+Create view from mtPeriods, mtPeriods mtPeriods2;
+
+property Id:          byte   absolute mtPeriods.Id;
+property dBeg:        date   absolute mtPeriods.dBeg;
+property PlanDays:    byte   absolute mtPeriods.PlanDays;
+property AvansDate:   date   absolute mtPeriods.AvansDate;
+property PaymentDate: date   absolute mtPeriods.PaymentDate;
+property AvansRate:   double absolute mtPeriods.AvansRate;
+property PaymentRate: double absolute mtPeriods.PaymentRate;
+
+index ById auto;
+index Sort auto;
+
+public function PlanDaysPrev: byte;
+{
+  result := mtPeriods.PlanDays;
+
+  if (GetFirst mtPeriods2 where (( mtPeriods.dBeg >> mtPeriods2.dBeg )) = tsOk)
+    result := mtPeriods2.PlanDays;
+}
+
+public function Next: date;
+{
+  if (GetFirst mtPeriods2 ordered by index ByDate = tsOk)
+    result := Add_Months(mtPeriods2.dBeg, 1);
+  else
+    result := date(1, 1, StartYear);
+}
+
+public function CanDelete: boolean;
+{
+  if (GetFirst mtPeriods2 where (( mtPeriods.dBeg << mtPeriods2.dBeg )) = tsOk)
+    if (GetFirst mtPeriods2 where (( mtPeriods.dBeg >> mtPeriods2.dBeg )) = tsOk)
+    {
+      message('Можно удалять только крайние периоды в списке.');
+      result := false;
+      exit;
+    }
+
+  result := (message('Удалить период?', Confirmation + YesNo) = cmYes);
+}
+
+public function Correct: boolean;
+{
+  if (mtPeriods.PlanDays < 18) or (mtPeriods.PlanDays > 22)
+  {
+    message('Количество рабочих дней должно быть в диапазоне от 18 до 22');
+    result := false;
+    exit;
+  }
+
+  if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) >> mtPeriods2.dBeg and (mtPeriods2.Id <> mtPeriods.Id) )) = tsOk)
+    if (GetFirst mtPeriods2 where (( Sub_Months(mtPeriods.dBeg, 1) == mtPeriods2.dBeg )) <> tsOk)
+    {
+      message('В списке периодов не должно быть разрывов.');
+      result := false;
+      exit;
+    }
+
+  if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) << mtPeriods2.dBeg and (mtPeriods2.Id <> mtPeriods.Id) )) = tsOk)
+    if (GetFirst mtPeriods2 where (( Add_Months(mtPeriods.dBeg, 1) == mtPeriods2.dBeg )) <> tsOk)
+    {
+      message('В списке периодов не должно быть разрывов.');
+      result := false;
+      exit;
+    }
+
+  if (GetFirst mtPeriods2 where (( mtPeriods.Id == mtPeriods2.Id )) = tsOk)
+  {
+    var dTmp: date;
+    dTmp := mtPeriods2.dBeg;
+    if (GetFirst mtPeriods2 where (( Sub_Months(dTmp, 1) == mtPeriods2.dBeg )) = tsOk)
+      if (GetFirst mtPeriods2 where (( Add_Months(dTmp, 1) == mtPeriods2.dBeg )) = tsOk)
+      {
+        message('В списке периодов не должно быть разрывов.');
+        result := false;
+        exit;
+      }
+  }
+
+  result := true;
+}
+
+function IModify.doInsert : word;
+{
+  Id := PeriodToId(dBeg);
+  result := insert current mtPeriods;
+}
+
+function IModify.doUpdate : word;
+{
+  Id := PeriodToId(dBeg);
+  result := update current mtPeriods;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtPeriods;
+}
+
+implementation IModify.doFlush  abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtPeriods;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtPeriods;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtPeriods);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:dBeg':
+        {
+          dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+          Id := PeriodToId(dBeg);
+        }
+        'rok:PlanDays':    PlanDays    := byte(_e.FndAttr.Value);
+        'rok:AvansDate':   AvansDate   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:PaymentDate': PaymentDate := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:AvansRate':   AvansRate   := double(_e.FndAttr.Value);
+        'rok:PaymentRate': PaymentRate := double(_e.FndAttr.Value);
+      end;
+    }
+    while (_e.GetNextAttr);
+  insert current mtPeriods;
+  result := true;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Period');
+  xnode.AddAttr('rok:dBeg='        + string(dBeg));
+  xnode.AddAttr('rok:PlanDays='    + string(PlanDays));
+  xnode.AddAttr('rok:AvansDate='   + string(AvansDate));
+  xnode.AddAttr('rok:PaymentDate=' + string(PaymentDate));
+  xnode.AddAttr('rok:AvansRate='   + DoubleToStr(AvansRate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:PaymentRate=' + DoubleToStr(PaymentRate, '\4p[|-]3666666666~9999'));
+  result := xnode;
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtPeriods);
+    Id := ReadByte;
+    dBeg := IdToPeriod(Id);
+    PlanDays := ReadByte;
+    var r1, r2: byte;
+    r1 := ReadByte;
+    r2 := r1 - ((r1 shr 4) shl 4);
+    r1 := (r1 - r2) shr 4;
+    AvansDate   := if(r1 = 0, ZeroDate, date(r1 + 18, Month(dBeg), Year(dBeg)));
+    PaymentDate := if(r2 = 0, ZeroDate, date(r2, Month(Add_Months(dBeg, 1)), Year(Add_Months(dBeg, 1))));
+    AvansRate := ReadDouble;
+    PaymentRate := ReadDouble;
+    insert current mtPeriods;
+    result := true;
+  }
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteByte(PlanDays);
+
+  var b, b1, b2: byte;
+  if (Day(AvansDate) < 18) or (Month(AvansDate) <> Month(dBeg)) or (Year(AvansDate) <> Year(dBeg))
+    b1 := 0;
+  else
+    b1 := (Day(AvansDate) - 18);
+
+  if (Day(PaymentDate) < 1) or (Day(PaymentDate) > 15) or (Month(PaymentDate) <> Month(Add_Months(dBeg, 1))) or (Year(PaymentDate) <> Year(Add_Months(dBeg, 1)))
+    b2 := 0;
+  else
+    b2 := Day(PaymentDate);
+
+  b := (b1 shl 4) + b2;
+
+  WriteByte(b);
+  WriteDouble(AvansRate);
+  WriteDouble(PaymentRate);
+}
+
+end.

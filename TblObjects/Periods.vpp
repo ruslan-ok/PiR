@@ -1,0 +1,54 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования периода
+//------------------------------------------------------------------------------
+
+Window wnPeriods 'Период';
+  show at(,, 90, 6);
+
+Screen scPeriods ('',, sci178Esc);
+  table mtPeriods;
+Fields
+  mtPeriods.dBeg        (''): [15, 'MM.YYYY'], noprotect;
+  mtPeriods.PlanDays    (''): noprotect, {font = {backColor = if(mtPeriods.PlanDays = 0, ColorNeed, if((mtPeriods.PlanDays < 18) or (mtPeriods.PlanDays > 22), ColorError, 0))}};
+  mtPeriods.AvansDate   (''): noprotect;
+  mtPeriods.AvansRate   (''): [9.4, '\4p[|-]3666666666~9999'], noprotect;
+  mtPeriods.PaymentDate (''): noprotect;
+  mtPeriods.PaymentRate (''): [9.4, '\4p[|-]3666666666~9999'], noprotect;
+<<
+
+               `Период` .@@@@@@@@@@@@          `Количество раб. дней` .@@@@@@@@@@@@
+
+  `Дата выплаты аванса` .@@@@@@@@@@@@  `Курс на дату выплаты аванса`  .@@@@@@@@@@@@
+`Дата выплаты зарплаты` .@@@@@@@@@@@@  `Курс на дату выплаты зарплаты`.@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+
+TableEvent
+  table mtPeriods;
+
+cmSetDefault:
+  mtPeriods.dBeg := mtPeriods.Next;
+
+cmCheckRecord:
+  if not mtPeriods.Correct
+    abort;
+
+cmInsertRecord:
+  insert current mtPeriods;
+
+cmUpdateRecord:
+  update current mtPeriods;
+
+cmDeleteRecord:
+  if (GetFirst mtPersPer where (( mtPeriods.Id == mtPersPer.Period )) = tsOk)
+    message('Удаление невозможно, так как за этот период есть данные расчета.');
+  else
+    if mtPeriods.CanDelete
+      delete current mtPeriods;
+
+end;
