@@ -4,6 +4,8 @@
 // Табличный объект истории подразделений
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface DepHist;
 
 // Структура подразделений на дату
@@ -182,6 +184,19 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtDepHist;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:DepHist');
+  xnode.AddAttr('rok:Id='     + string(Id));
+  xnode.AddAttr('rok:dBeg='   + string(dBeg));
+  xnode.AddAttr('rok:dEnd='   + string(dEnd));
+  xnode.AddAttr('rok:Node='   + string(Node));
+  xnode.AddAttr('rok:Sort='   + Sort);
+  xnode.AddAttr('rok:Depart=' + string(Depart));
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtDepHist);
@@ -199,21 +214,25 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtDepHist;
+
+  if (GetFirst mtDepHist2 where (( mtDepHist.Id == mtDepHist2.Id )) <> tsOk)
+  {
+    insert current mtDepHist;
+    oWage.Log(APE_INFO, string(mtDepHist.Depart) + ' ' + string(mtDepHist.dBeg) + if(mtDepHist.dEnd = ZeroDate, '', '-' + string(mtDepHist.dEnd)));
+  }
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode('rok:DepHist');
-  xnode.AddAttr('rok:Id='     + string(Id));
-  xnode.AddAttr('rok:dBeg='   + string(dBeg));
-  xnode.AddAttr('rok:dEnd='   + string(dEnd));
-  xnode.AddAttr('rok:Node='   + string(Node));
-  xnode.AddAttr('rok:Sort='   + Sort);
-  xnode.AddAttr('rok:Depart=' + string(Depart));
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteDate(dBeg);
+  WriteDate(dEnd);
+  WriteByte(Node);
+  WriteStr(Sort);
+  WriteByte(Depart);
 }
 
 public function LoadRok: boolean;
@@ -229,21 +248,13 @@ public function LoadRok: boolean;
     Node   := ReadByte;
     Sort   := ReadStr;
     Depart := ReadByte;
-    insert current mtDepHist;
+    if (GetFirst mtDepHist2 where (( mtDepHist.Id == mtDepHist2.Id )) <> tsOk)
+    {
+      insert current mtDepHist;
+      oWage.Log(APE_INFO, string(mtDepHist.Depart) + ' ' + string(mtDepHist.dBeg) + if(mtDepHist.dEnd = ZeroDate, '', '-' + string(mtDepHist.dEnd)));
+    }
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteByte(Id);
-  WriteDate(dBeg);
-  WriteDate(dEnd);
-  WriteByte(Node);
-  WriteStr(Sort);
-  WriteByte(Depart);
 }
 
 end.

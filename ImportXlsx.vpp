@@ -5,7 +5,6 @@
 //------------------------------------------------------------------------------
 
 var wbNum: longint = 0;
-var wlog: AtlProtocol;
 var lSheetsCount, lSheetNum: longint;
 var sSheetName: string;
 var row, col, maxRow, maxCol: longint = 0;
@@ -733,8 +732,8 @@ private procedure DoImportXlsx;
   if not bOk
   {
     wlog.LogCommit;
-    wlog.Refresh;
-    wlog.Visible := true;
+    //wlog.Refresh;
+    //wlog.Visible := true;
     exit;
   }
 

@@ -4,6 +4,8 @@
 // Табличный объект подразделений
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface Depart;
 
 // Подразделения
@@ -67,6 +69,16 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtDepart2;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Depart');
+  xnode.AddAttr('rok:Id='   + string(Id));
+  xnode.AddAttr('rok:Code=' + Code);
+  xnode.AddAttr('rok:Name=' + Name);
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtDepart);
@@ -81,18 +93,23 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtDepart;
+
+  if (GetFirst mtDepart2 where (( mtDepart.Id == mtDepart2.Id )) <> tsOk)
+  {
+    insert current mtDepart;
+    oWage.Log(APE_INFO, string(Id) + '. ' + Name);
+  }
+
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode('rok:Depart');
-  xnode.AddAttr('rok:Id='   + string(Id));
-  xnode.AddAttr('rok:Code=' + Code);
-  xnode.AddAttr('rok:Name=' + Name);
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteStr(Code);
+  WriteStr(Name);
 }
 
 public function LoadRok: boolean;
@@ -105,18 +122,13 @@ public function LoadRok: boolean;
     Id   := ReadByte;
     Code := ReadStr;
     Name := ReadStr;
-    insert current mtDepart;
+    if (GetFirst mtDepart2 where (( mtDepart.Id == mtDepart2.Id )) <> tsOk)
+    {
+      insert current mtDepart;
+      oWage.Log(APE_INFO, string(Id) + '. ' + Name);
+    }
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteByte(Id);
-  WriteStr(Code);
-  WriteStr(Name);
 }
 
 end.

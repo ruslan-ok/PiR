@@ -4,6 +4,8 @@
 // Табличный объект наименований начислений и выплат
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface PayTitle;
 
 // Наименования начислений и выплат
@@ -18,7 +20,7 @@ With index
   ByName = Name
 );
 
-Create view from mtPayTitle, mtPayTitle mtPayTitle2;
+Create view from mtPayTitle, mtPayTitle mtPayTitle2, mtPayTitle mtPayTitle3;
 
 property Id:   byte absolute mtPayTitle.Id;
 property Name: s100 absolute mtPayTitle.Name;
@@ -28,22 +30,33 @@ index ByName auto;
 
 private function GenerateNewId: byte;
 {
+  SiLogDll_LogDebug('GenerateNewId');
   if (GetLast mtPayTitle2 ordered by index ById <> tsOk)
     result := 1;
   else
     result := mtPayTitle2.Id + 1;
+  SiLogDll_LogDebug('= ' + string(result));
 }
 
 public function GetId(_title: string): byte;
 {
-  if (GetFirst mtPayTitle where (( _title == mtPayTitle.Name )) <> tsOk)
+  SiLogDll_LogDebug('GetId(' + _title + ')');
+  if (GetFirst mtPayTitle3 where (( _title == mtPayTitle3.Name )) <> tsOk)
   {
-    ClearBuffer(#mtPayTitle);
-    mtPayTitle.Name := _title;
-    mtPayTitle.Id := GenerateNewId;
-    insert current mtPayTitle;
+    SiLogDll_LogDebug('not tsOk');
+    ClearBuffer(#mtPayTitle3);
+    mtPayTitle3.Name := _title;
+    mtPayTitle3.Id := GenerateNewId;
+    SiLogDll_LogDebug('before insert ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
+    var res: word;
+    res := insert current mtPayTitle3;
+    if (res <> tsOk)
+      oWage.Log(APE_WARNING, 'GetId: Error on insert: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
+    else
+      oWage.Log(APE_INFO, string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
   }
-  result := mtPayTitle.Id;
+  result := mtPayTitle3.Id;
+  SiLogDll_LogDebug('= ' + string(result));
 }
 
 public function GetTitle(_title: byte): string;
@@ -83,6 +96,15 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtPayTitle;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Post');
+  xnode.AddAttr('rok:Id='   + string(Id));
+  xnode.AddAttr('rok:Name=' + Name);
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPayTitle);
@@ -95,17 +117,25 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtPayTitle;
+
+  if (GetFirst mtPayTitle2 where (( mtPayTitle.Id == mtPayTitle2.Id )) <> tsOk)
+  {
+    var res: word;
+    res := insert current mtPayTitle;
+    if (res <> tsOk)
+      oWage.Log(APE_WARNING, 'Error on insert: ' + string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+    else
+      oWage.Log(APE_INFO, string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+  }
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode('rok:Post');
-  xnode.AddAttr('rok:Id='   + string(Id));
-  xnode.AddAttr('rok:Name=' + Name);
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteStr(Name);
 }
 
 public function LoadRok: boolean;
@@ -117,17 +147,17 @@ public function LoadRok: boolean;
     ClearBuffer(#mtPayTitle);
     Id   := ReadByte;
     Name := ReadStr;
-    insert current mtPayTitle;
+    if (GetFirst mtPayTitle2 where (( mtPayTitle.Id == mtPayTitle2.Id )) <> tsOk)
+    {
+      var res: word;
+      res := insert current mtPayTitle;
+      if (res <> tsOk)
+        oWage.Log(APE_WARNING, 'Error on insert: ' + string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+      else
+        oWage.Log(APE_INFO, string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+    }
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteByte(Id);
-  WriteStr(Name);
 }
 
 end.

@@ -4,6 +4,8 @@
 // Табличный объект должностей
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface Post;
 
 // Должности
@@ -59,6 +61,16 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtPost2;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Post');
+  xnode.AddAttr('rok:Id='   + string(Id));
+  xnode.AddAttr('rok:Code=' + Code);
+  xnode.AddAttr('rok:Name=' + Name);
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPost);
@@ -73,18 +85,22 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtPost;
+
+  if (GetFirst mtPost2 where (( mtPost.Id == mtPost2.Id )) <> tsOk)
+  {
+    insert current mtPost;
+    oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
+  }
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode('rok:Post');
-  xnode.AddAttr('rok:Id='   + string(Id));
-  xnode.AddAttr('rok:Code=' + Code);
-  xnode.AddAttr('rok:Name=' + Name);
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteStr(Code);
+  WriteStr(Name);
 }
 
 public function LoadRok: boolean;
@@ -97,18 +113,13 @@ public function LoadRok: boolean;
     Id   := ReadByte;
     Code := ReadStr;
     Name := ReadStr;
-    insert current mtPost;
+    if (GetFirst mtPost2 where (( mtPost.Id == mtPost2.Id )) <> tsOk)
+    {
+      insert current mtPost;
+      oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
+    }
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteByte(Id);
-  WriteStr(Code);
-  WriteStr(Name);
 }
 
 end.

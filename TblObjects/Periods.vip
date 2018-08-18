@@ -4,6 +4,8 @@
 // Табличный объект расчетных периодов
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface Periods;
 
 // Список периодов с данными
@@ -68,6 +70,14 @@ public function CanDelete: boolean;
 
 public function Correct: boolean;
 {
+  mtPeriods.Id := PeriodToId(dBeg);
+
+  if (mtPeriods.Id = 0)
+  {
+    result := false;
+    exit;
+  }
+
   if (mtPeriods.PlanDays < 18) or (mtPeriods.PlanDays > 22)
   {
     message('Количество рабочих дней должно быть в диапазоне от 18 до 22');
@@ -107,24 +117,28 @@ public function Correct: boolean;
   result := true;
 }
 
-function IModify.doInsert : word;
+function IModify.doInsert: word;
 {
-  Id := PeriodToId(dBeg);
-  result := insert current mtPeriods;
+  if (Id = 0)
+    result := tsOk;
+  else
+    result := insert current mtPeriods;
 }
 
-function IModify.doUpdate : word;
+function IModify.doUpdate: word;
 {
-  Id := PeriodToId(dBeg);
-  result := update current mtPeriods;
+  if (Id = 0)
+    result := tsOk;
+  else
+    result := update current mtPeriods;
 }
 
-function IModify.doDelete : word;
+function IModify.doDelete: word;
 {
   result := delete current mtPeriods;
 }
 
-implementation IModify.doFlush  abstract;
+implementation IModify.doFlush abstract;
 
 constructor Init;
 {
@@ -158,7 +172,12 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtPeriods;
+
+  if (Id <> 0) and (GetFirst mtPeriods2 where (( mtPeriods.Id == mtPeriods2.Id )) <> tsOk)
+  {
+    insert current mtPeriods;
+    oWage.Log(APE_INFO, string(Id) + ' ' + string(dBeg));
+  }
   result := true;
 }
 
@@ -193,7 +212,11 @@ public function LoadRok: boolean;
     PaymentDate := if(r2 = 0, ZeroDate, date(r2, Month(Add_Months(dBeg, 1)), Year(Add_Months(dBeg, 1))));
     AvansRate := ReadDouble;
     PaymentRate := ReadDouble;
-    insert current mtPeriods;
+    if (Id <> 0) and (GetFirst mtPeriods2 where (( mtPeriods.Id == mtPeriods2.Id )) <> tsOk)
+    {
+      insert current mtPeriods;
+      oWage.Log(APE_INFO, string(Id) + ' ' + string(dBeg));
+    }
     result := true;
   }
 }

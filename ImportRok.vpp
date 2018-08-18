@@ -14,9 +14,26 @@ private function MyRead(_stream: TPtr; _len: byte): string;
   while (i < _len)
   {
     File_Read(cc, _stream);
+    if (cc = chr(10)) or (cc = chr(13))
+      continue;
     i++;
     result += cc;
   }
+}
+
+var lPos, lStr, lCol: longint;
+
+public function GetStrByPos: string;
+{
+  lPos := fRok.GetPos;
+  lStr := (lPos div 182) + 1;
+  lCol := (lPos mod 182);
+  result := string(lStr);
+}
+
+public function GetColByPos: string;
+{
+  result := string(lCol);
 }
 
 private function CheckNewList: boolean;
@@ -24,23 +41,24 @@ private function CheckNewList: boolean;
   var ss: string;
   ss := MyRead(fRok.Handle, 1);
   result := (ss = '{');
+  if (not result)
+    wlog.LogLine(APE_ERROR, 'Во входном потоке (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ') не обнаружен ожидаемый символ начала списка.');
 }
 
-var ret: boolean;
-
 #declare LoadTable(_table)
-private procedure MyLoad#_table;
+private procedure MyLoad#_table(_mess: string);
 {
+  wlog.LogMessage(APE_INFO, _mess);
+
+  ResetBounds(#mt#_table);
   if CheckNewList
-    while (true)
+    while (mt#_table.LoadRok)
     {
       if not NextVisual
         _raise exUserBreaked;
-
-      ret := mt#_table.Load(NullRef);
-      if (not ret)
-        break;
     }
+  SetBounds(#mt#_table);
+  wlog.LogCommit;
 }
 #end
 
@@ -50,109 +68,98 @@ private procedure MyLoad#_table;
 #LoadTable(Post)
 #LoadTable(PayTitle)
 
-private procedure DoImportRok;
+private function DoImportRok: boolean;
 {
   fRok.OpenFile(sFile, stOpenRead);
-  fRok.Seek(0);
 
-  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
-  mtPeriods.SetStream(fRok.Handle);
-  mtDepart.SetStream(fRok.Handle);
-  mtDepHist.SetStream(fRok.Handle);
-  mtPost.SetStream(fRok.Handle);
-  mtPayTitle.SetStream(fRok.Handle);
-  mtPerson.SetStream(fRok.Handle);
-  mtAppoint.SetStream(fRok.Handle);
-  mtPersPer.SetStream(fRok.Handle);
-  mtDebtIn.SetStream(fRok.Handle);
-  mtNachisl.SetStream(fRok.Handle);
-  mtPayment.SetStream(fRok.Handle);
-  mtDebtOut.SetStream(fRok.Handle);
+  _try
+  {
+    wlog.LogStartVisual('Чтение данных из файла ' + sFile, 0);
 
-  MyLoadPeriods;
-  MyLoadDepart;
-  MyLoadDepHist;
-  MyLoadPost;
-  MyLoadPayTitle;
+    mtPeriods.SetStream(fRok.Handle);
+    mtDepart.SetStream(fRok.Handle);
+    mtDepHist.SetStream(fRok.Handle);
+    mtPost.SetStream(fRok.Handle);
+    mtPayTitle.SetStream(fRok.Handle);
+    mtPerson.SetStream(fRok.Handle);
+    mtAppoint.SetStream(fRok.Handle);
+    mtPersPer.SetStream(fRok.Handle);
+    mtDebtIn.SetStream(fRok.Handle);
+    mtNachisl.SetStream(fRok.Handle);
+    mtPayment.SetStream(fRok.Handle);
+    mtDebtOut.SetStream(fRok.Handle);
 
-  if CheckNewList
-    while (true)
+    MyLoadPeriods('Периоды');
+    MyLoadDepart('Подразделения');
+    MyLoadDepHist('История подразделений');
+    MyLoadPost('Должности');
+    MyLoadPayTitle('Наименования начислений и выплат');
+
+    if CheckNewList
     {
-      if not NextVisual
-        _raise exUserBreaked;
+      wlog.LogMessage(APE_INFO, 'Сотрудники (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+      while (mtPerson.LoadRok)
+      {
+        if not NextVisual
+          _raise exUserBreaked;
 
-      ret := mtPerson.Load(NullRef);
-      if (not ret)
-        break;
+        wlog.LogMessage(APE_INFO, mtPerson.FIO);
 
-      if CheckNewList
-        while (true)
+        if CheckNewList
         {
-          ret := mtAppoint.Load(NullRef);
-          if (not ret)
-            break;
-          mtAppoint.Person := mtPerson.Id;
-          update current mtAppoint;
+          if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'Назначения (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+
+          while (mtAppoint.LoadRok) {}
+
+          if (wDetProt <> 0)
+            wlog.LogCommit;
         }
 
-      if CheckNewList
-        while (true)
+        if CheckNewList
         {
-          if not NextVisual
-            _raise exUserBreaked;
+          if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'Расчеты (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+          while (mtPersPer.LoadRok)
+          {
+            if (wDetProt <> 0)
+              wlog.LogMessage(APE_INFO, DateToStr(mtPersPer.dBeg, 'MM.YYYY'));
 
-          ret := mtPersPer.Load(NullRef);
-          if (not ret)
-            break;
-          mtPersPer.Person := mtPerson.Id;
-          update current mtPersPer;
+            if not NextVisual
+              _raise exUserBreaked;
 
-          if CheckNewList
-            while (true)
-            {
-              ret := mtDebtIn.Load(NullRef);
-              if (not ret)
-                break;
-              mtDebtIn.Person := mtPerson.Id;
-              mtDebtIn.Period := mtPersPer.Period;
-              update current mtDebtIn;
-            }
+            if CheckNewList
+              while (mtDebtIn.LoadRok) {}
 
-          if CheckNewList
-            while (true)
-            {
-              ret := mtNachisl.Load(NullRef);
-              if (not ret)
-                break;
-              mtNachisl.Person := mtPerson.Id;
-              mtNachisl.Period := mtPersPer.Period;
-              update current mtNachisl;
-            }
+            if CheckNewList
+              while (mtNachisl.LoadRok) {}
 
-          if CheckNewList
-            while (true)
-            {
-              ret := mtPayment.Load(NullRef);
-              if (not ret)
-                break;
-              mtPayment.Person := mtPerson.Id;
-              mtPayment.Period := mtPersPer.Period;
-              update current mtPayment;
-            }
+            if CheckNewList
+              while (mtPayment.LoadRok) {}
 
-          if CheckNewList
-            while (true)
-            {
-              ret := mtDebtOut.Load(NullRef);
-              if (not ret)
-                break;
-              mtDebtOut.Person := mtPerson.Id;
-              mtDebtOut.Period := mtPersPer.Period;
-              update current mtDebtOut;
-            }
+            if CheckNewList
+              while (mtDebtOut.LoadRok) {}
+
+            if (wDetProt <> 0)
+              wlog.LogCommit;
+          }
+          if (wDetProt <> 0)
+            wlog.LogCommit;
         }
+        wlog.LogCommit;
+      }
+      wlog.LogCommit;
     }
-
-  fRok.Close;
-  StopVisual;
+  }
+  _except
+    on exUserBreaked:
+    {
+      wlog.LogLine(APE_WARNING, 'Операция прервана.');
+      result := false;
+    }
+  _finally
+  {
+    fRok.Close;
+    result := (wlog.LogStopVisual = APE_INFO);
+  }
 }

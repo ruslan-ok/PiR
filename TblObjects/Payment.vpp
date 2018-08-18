@@ -11,7 +11,7 @@ Screen scPayment ('',, sci178Esc);
   table mtPayment;
 Fields
   mtStruct.Name: skip;
-  mtPayment.Period:  ['MM.YYYY'], skip;
+  mtPayment.dPeriod:  ['MM.YYYY'], skip;
   mtPayment.Sort:         noprotect;
   mtPayment.GetTitleName: noprotect;
   mtPayment.Payed:        noprotect;

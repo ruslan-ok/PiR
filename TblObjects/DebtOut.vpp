@@ -11,7 +11,7 @@ Screen scDebtOut ('',, sci178Esc);
   table mtDebtOut;
 Fields
   mtStruct.Name: skip;
-  mtDebtOut.Period:  ['MM.YYYY'], skip;
+  mtDebtOut.dPeriod:  ['MM.YYYY'], skip;
   mtDebtOut.Sort:         noprotect;
   mtDebtOut.GetTitleName: noprotect;
   mtDebtOut.Payed:        noprotect;

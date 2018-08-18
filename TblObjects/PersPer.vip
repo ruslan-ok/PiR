@@ -15,7 +15,7 @@ Table struct mtPersPer
 )
 With index
 (
-  ByPerson = Person + Period,
+  ByPerson = Person + Period (unique),
   ByPeriod = Period
 );
 
@@ -68,6 +68,15 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtPersPer;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:PersPer');
+  xnode.AddAttr('rok:Period='   + string(Period));
+  xnode.AddAttr('rok:FactDays=' + string(FactDays));
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtPersPer);
@@ -84,17 +93,23 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtPersPer;
+
+  Person := oWage.PersonId;
+
+  if (GetFirst mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
+                                   mtPersPer.Period == mtPersPer2.Period )) <> tsOk)
+  {
+    insert current mtPersPer;
+  }
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode('rok:PersPer');
-  xnode.AddAttr('rok:Period='   + string(Period));
-  xnode.AddAttr('rok:FactDays=' + string(FactDays));
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteByte(Period);
+  WriteByte(FactDays);
 }
 
 public function LoadRok: boolean;
@@ -105,19 +120,18 @@ public function LoadRok: boolean;
   {
     ClearBuffer(#mtPersPer);
     Period   := ReadByte;
-    dBeg := IdToPeriod(Period);
+    dBeg     := IdToPeriod(Period);
     FactDays := ReadByte;
-    insert current mtPersPer;
+    Person   := oWage.PersonId;
+
+    if (GetFirst mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
+                                     mtPersPer.Period == mtPersPer2.Period )) <> tsOk)
+    {
+      insert current mtPersPer;
+    }
+
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteByte(Period);
-  WriteByte(FactDays);
 }
 
 end.

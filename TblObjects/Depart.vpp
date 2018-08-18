@@ -88,7 +88,7 @@ cmInit:
   cGoto := 0;
   if isValid(#mtStruct)
     if (mtStruct.Mode = 1)
-      cGoto := mtStruct.Rec;
+      cGoto := mtStruct.Depart;
 
   if (GetFirst mtDepart where (( cGoto == mtDepart.Id )) = tsOk)
     RescanPanel(#mtDepart);

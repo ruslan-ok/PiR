@@ -65,9 +65,15 @@ end;
 
 
 ObjInterface IWageView;
+  property PersonId: byte read;
+  property PeriodId: byte read;
   function GetId(_table: word; _nrec: comp): byte;
   function GetTitleId(_title: string): byte;
   function GetTitleName(_title: byte): string;
+  function CheckLineLen: boolean;
+  procedure Log(_type: word; _mess: string);
+  function GetStrByPos: string;
+  function GetColByPos: string;
 End;
 
 
@@ -166,7 +172,7 @@ ObjInterface IAppoint(ISerializable);
   property TaxDed: double;
 
   index ByDepart = Depart, dBeg;
-  index ByPerson = Person, dBeg;
+  index ByPerson = Person, dBeg (unique);
   index ByPeriod = dBeg;
   index ByPost   = Post;
 
@@ -179,7 +185,7 @@ ObjInterface IPersPer(ISerializable);
   property FactDays: byte;
   property dBeg:     date;
 
-  index ByPerson = Person, Period;
+  index ByPerson = Person, Period (unique);
   index ByPeriod = Period;
 
   function FactDaysPrev: byte;
@@ -198,7 +204,7 @@ end;
 
 ObjInterface IPayment(ISerializable);
   property Person: byte;
-  property Period: date;
+  property Period: byte;
   property Payed:  date;
   property Sort:   byte;
   property Title:  byte;
@@ -211,9 +217,10 @@ ObjInterface IPayment(ISerializable);
   property NetUSD: double read;
   property TaxUSD: double read;
   property Error:  string read;
+  property dPeriod: date  read;
 
   index Sorted = Person, Period, Sort;
-  index Titled = Person, Period, Title;
+  index Titled = Person, Period, Title (unique);
   index ByTitle = Title;
 
   function GetValue(_pers: byte; _period: date; _title: byte; _NeededTaxCur: byte): double;
@@ -221,6 +228,7 @@ ObjInterface IPayment(ISerializable);
   function GetInfo(_pers: byte;  _period: date; _title: byte): string;
   function GetPayed(_pers: byte; _period: date; _title: byte): date;
   function GetTitleName: string;
+  function ToString: string;
 end;
 
 

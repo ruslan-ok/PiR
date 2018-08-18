@@ -4,6 +4,8 @@
 // Табличный объект назначений сотрудников
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface Appoint;
 
 // Назначение
@@ -22,7 +24,7 @@ Table struct mtAppoint
 With index
 (
   ByDepart = Depart + dBeg,
-  ByPerson = Person + dBeg,
+  ByPerson = Person + dBeg (unique),
   ByPeriod = dBeg,
   ByPost   = Post
 );
@@ -84,6 +86,21 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtAppoint2;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Appoint');
+  xnode.AddAttr('rok:Depart=' + string(Depart,0,0));
+  xnode.AddAttr('rok:Post='   + string(Post,0,0));
+  xnode.AddAttr('rok:dBeg='   + string(dBeg));
+  xnode.AddAttr('rok:dEnd='   + string(dEnd));
+  xnode.AddAttr('rok:Salary=' + DoubleToStr(Salary, '\2p[|-]3666666666666~99'));
+  xnode.AddAttr('rok:Currency=' + Currency);
+  xnode.AddAttr('rok:TabNum=' + TabNum);
+  xnode.AddAttr('rok:TaxDed=' + DoubleToStr(TaxDed, '\2p[|-]3666~99'));
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   ClearBuffer(#mtAppoint);
@@ -102,23 +119,31 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtAppoint;
+
+  Person := oWage.PersonId;
+
+  if (GetFirst mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and
+                                   mtAppoint.dBeg   == mtAppoint2.dBeg )) <> tsOk)
+  {
+    insert current mtAppoint;
+    oWage.Log(APE_INFO, string(mtAppoint.dBeg) + if(mtAppoint.dEnd = ZeroDate, '', '-' + string(mtAppoint.dEnd)) + ', Depart[' + string(mtAppoint.Depart) + '], Post[' + string(mtAppoint.Post) + ']');
+  }
+
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode('rok:Appoint');
-  xnode.AddAttr('rok:Depart=' + string(Depart,0,0));
-  xnode.AddAttr('rok:Post='   + string(Post,0,0));
-  xnode.AddAttr('rok:dBeg='   + string(dBeg));
-  xnode.AddAttr('rok:dEnd='   + string(dEnd));
-  xnode.AddAttr('rok:Salary=' + DoubleToStr(Salary, '\2p[|-]3666666666666~99'));
-  xnode.AddAttr('rok:Currency=' + Currency);
-  xnode.AddAttr('rok:TabNum=' + TabNum);
-  xnode.AddAttr('rok:TaxDed=' + DoubleToStr(TaxDed, '\2p[|-]3666~99'));
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteDate(dBeg);
+  WriteDate(dEnd);
+  WriteByte(Depart);
+  WriteByte(Post);
+  WriteDouble(Salary);
+  WriteStr(Currency);
+  WriteStr(TabNum);
+  WriteDouble(TaxDed);
 }
 
 public function LoadRok: boolean;
@@ -136,23 +161,17 @@ public function LoadRok: boolean;
     Currency := ReadStr;
     TabNum   := ReadStr;
     TaxDed   := ReadDouble;
-    insert current mtAppoint;
+    Person   := oWage.PersonId;
+
+    if (GetFirst mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and
+                                     mtAppoint.dBeg   == mtAppoint2.dBeg )) <> tsOk)
+    {
+      insert current mtAppoint;
+      oWage.Log(APE_INFO, string(mtAppoint.dBeg) + if(mtAppoint.dEnd = ZeroDate, '', '-' + string(mtAppoint.dEnd)) + ', Depart[' + string(mtAppoint.Depart) + '], Post[' + string(mtAppoint.Post) + ']');
+    }
+
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteDate(dBeg);
-  WriteDate(dEnd);
-  WriteByte(Depart);
-  WriteByte(Post);
-  WriteDouble(Salary);
-  WriteStr(Currency);
-  WriteStr(TabNum);
-  WriteDouble(TaxDed);
 }
 
 end.
