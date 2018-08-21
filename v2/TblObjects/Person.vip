@@ -48,6 +48,9 @@ private function GenerateNewId: byte;
 
 function IModify.doInsert: word;
 {
+  if (mtPerson.Id = 0)
+    mtPerson.Id := GenerateNewId;
+
   result := insert current mtPerson;
 }
 

@@ -1,0 +1,108 @@
+
+#include Base64.vih
+
+VipInterface TestBase64 licensed(free);
+
+Interface TestBase64;
+  Show at (,, 80, 14);
+
+var
+  b64: Base64;
+  sCode: string;
+  sValue: string;
+  yValue: byte;
+  wValue: word;
+  iValue: integer;
+  lValue: longint;
+  cValue: comp;
+  fValue: double;
+  dValue: date;
+
+Screen scTestBase64;
+Fields
+  sCode:  noProtect;  length(sCode):  skip;
+  sValue: noProtect;  length(sValue): skip;
+  yValue: noProtect;
+  wValue: noProtect;
+  iValue: noProtect;
+  lValue: noProtect;
+  cValue: noProtect;
+  fValue: [13.5,'\5p[|-]366`666`666`666~99999'], noProtect;
+  dValue: noProtect;
+<<
+
+     `Шифр`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  .@@@@@ символов
+
+     `String`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  .@@@@@ символов
+     `Byte`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     `Word`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     `Integer` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     `Longint` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     `Comp`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     `Double`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     `Date`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+>>
+End;
+
+procedure ClearAll(_fld: longint);
+{
+  if (_fld <> #sValue) sValue := '';
+  if (_fld <> #yValue) yValue := 0;
+  if (_fld <> #wValue) wValue := 0;
+  if (_fld <> #iValue) iValue := 0;
+  if (_fld <> #lValue) lValue := 0;
+  if (_fld <> #cValue) cValue := 0;
+  if (_fld <> #fValue) fValue := 0;
+  if (_fld <> #dValue) dValue := 0;
+}
+
+HandleEvent
+
+cmCheckField:
+{
+  case CurField of
+    #sCode:
+    {
+      ClearAll(#sCode);
+
+      sValue := b64.DecodeStr(sCode);
+
+      case length(sCode) of
+
+        2:
+          yValue := b64.DecodeByte(sCode);
+
+        3:
+        {
+          wValue := b64.DecodeWord(sCode);
+          iValue := b64.DecodeInt(sCode);
+        }
+
+        6:
+        {
+          lValue := b64.DecodeLong(sCode);
+          dValue := b64.DecodeDate(sCode);
+        }
+
+        12:
+        {
+          cValue := b64.DecodeComp(sCode);
+          fValue := b64.DecodeDouble(sCode);
+        }
+      end;
+    }
+    #sValue: { ClearAll(#sValue); sCode := b64.EncodeStr(sValue);    }
+    #yValue: { ClearAll(#yValue); sCode := b64.EncodeByte(yValue);   }
+    #wValue: { ClearAll(#wValue); sCode := b64.EncodeWord(wValue);   }
+    #iValue: { ClearAll(#iValue); sCode := b64.EncodeInt(iValue);    }
+    #lValue: { ClearAll(#lValue); sCode := b64.EncodeLong(lValue);   }
+    #cValue: { ClearAll(#cValue); sCode := b64.EncodeComp(cValue);   fValue := MoveCompToDouble(cValue); }
+    #fValue: { ClearAll(#fValue); sCode := b64.EncodeDouble(fValue); cValue := MoveDoubleToComp(fValue); }
+    #dValue: { ClearAll(#dValue); sCode := b64.EncodeDate(dValue);   }
+  end;
+  RereadRecord;
+}
+
+End;
+
+End.

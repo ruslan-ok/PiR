@@ -74,6 +74,7 @@ ObjInterface IWageView;
   procedure Log(_type: word; _mess: string);
   function GetStrByPos: string;
   function GetColByPos: string;
+
 End;
 
 
@@ -90,7 +91,7 @@ private ObjInterface ISerializable;
   procedure Stop;
 end;
 
-ObjInterface IPeriods(ISerializable);
+ObjInterface IPeriod(ISerializable);
   property Id: byte;
   property dBeg: date;
   property PlanDays: byte;
@@ -100,9 +101,8 @@ ObjInterface IPeriods(ISerializable);
   property PaymentRate: double;
 
   index ById = Id (unique);
-  index Sort = dBeg (desc);
+  index ByDate = dBeg (desc);
 
-  function PlanDaysPrev: byte;
   function Next: date;
   function Correct: boolean;
   function CanDelete: boolean;
@@ -110,11 +110,9 @@ end;
 
 ObjInterface IDepart(ISerializable);
   property Id: byte;
-  property Code: s50;
   property Name: s100;
 
   index DepId  = Id (unique);
-  index ByCode = Code;
   index ByName = Name;
 
   function GetName(_Id: byte): string;
@@ -139,11 +137,9 @@ end;
 
 ObjInterface IPost(ISerializable);
   property Id:   byte;
-  property Code: s50;
   property Name: s100;
 
   index PostId = Id (unique);
-  index ByCode = Code;
   index ByName = Name;
 end;
 
@@ -183,7 +179,10 @@ ObjInterface IPersPer(ISerializable);
   property Person:   byte;
   property Period:   byte;
   property FactDays: byte;
-  property dBeg:     date;
+  property DebtIn:   double;
+  property DebtOut:  double;
+  property PrevOut:  double read;
+  property dBeg:     date   read;
 
   index ByPerson = Person, Period (unique);
   index ByPeriod = Period;
@@ -263,8 +262,8 @@ public:
   constructor Init;
 end;
 
-VipInterface Periods(Rok)
-  implements IModify, IPeriods
+VipInterface Period(Rok)
+  implements IModify, IPeriod
   licensed(free);
 public:
   constructor Init;
@@ -373,24 +372,11 @@ public:
   function ISerializable.SaveRok: boolean;
 end;
 
-VipInterface DebtIn(Payment)
-  licensed(free);
-public:
-  constructor Init;
-end;
-
 VipInterface Nachisl(Payment)
   licensed(free);
 public:
   constructor Init;
 end;
-
-VipInterface DebtOut(Payment)
-  licensed(free);
-public:
-  constructor Init;
-end;
-
 
 
 VipInterface WageView

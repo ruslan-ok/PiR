@@ -13,7 +13,6 @@ Window wnPickDepart 'Выбор подразделения' ('',, sci1EnEsc) DoAccept;
 Browse brDepart;
   table mtDepart;
 Fields
-  mtDepart.Code 'Код':          [20], protect;
   mtDepart.Name 'Наименование': [40], protect;
 End;
 
@@ -55,11 +54,9 @@ Screen scDepart ('',, sci178Esc);
   show at(,,, 4);
   table mtDepart;
 Fields
-  mtDepart.Code (''): noprotect;
   mtDepart.Name (''): noprotect;
 <<
 
-   `Код`          .@@@@@@@@@@@@
    `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
@@ -82,7 +79,7 @@ cmInit:
 {
   PushPos(#mtDepart);
   ResetBounds(#mtDepart);
-  PushBounds(tbViewDepHist);
+//  PushBounds(tbViewDepHist);
 
   var cGoto: byte;
   cGoto := 0;
@@ -97,7 +94,7 @@ cmInit:
 cmDone:
 {
   UpdateTable;
-  PopBounds(tbViewDepHist);
+//  PopBounds(tbViewDepHist);
   SetBounds(#mtDepart);
   PopPos(#mtDepart);
   BuildTree;

@@ -1,0 +1,88 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Экспорт в rok
+//------------------------------------------------------------------------------
+
+File fRok;
+
+private procedure DoExportRok;
+{
+  fRok.OpenFile(sResFile, stCreate);
+//  fRok.WriteLn('<rok:Wage xmlns:rok="http://178.172.132.68/pir/">');
+//  fRok.WriteLine('<rok:Periods>');
+
+  mtPeriod.SetStream(fRok.Handle);
+  mtDepart.SetStream(fRok.Handle);
+  mtDepHist.SetStream(fRok.Handle);
+  mtPost.SetStream(fRok.Handle);
+  mtPayTitle.SetStream(fRok.Handle);
+  mtPerson.SetStream(fRok.Handle);
+  mtAppoint.SetStream(fRok.Handle);
+  mtPersPer.SetStream(fRok.Handle);
+  mtNachisl.SetStream(fRok.Handle);
+  mtPayment.SetStream(fRok.Handle);
+
+  mtPeriod.Start;
+  _loop backward mtPeriod
+    mtPeriod.Save;
+  mtPeriod.Stop;
+
+  ResetBounds(#mtDepart);
+  mtDepart.Start;
+  _loop mtDepart
+    mtDepart.Save;
+  mtDepart.Stop;
+  SetBounds(#mtDepart);
+
+  mtDepHist.Start;
+  _loop mtDepHist
+    mtDepHist.Save;
+  mtDepHist.Stop;
+
+  ResetBounds(#mtPost);
+  mtPost.Start;
+  _loop mtPost
+    mtPost.Save;
+  mtPost.Stop;
+  SetBounds(#mtPost);
+
+  mtPayTitle.Start;
+  _loop mtPayTitle
+    mtPayTitle.Save;
+  mtPayTitle.Stop;
+
+  mtPerson.Start;
+  _loop mtPerson
+  {
+    mtPerson.Save;
+
+    mtAppoint.Start;
+    _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
+      mtAppoint.Save;
+    mtAppoint.Stop;
+
+    mtPersPer.Start;
+    _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
+    {
+      mtPersPer.Save;
+
+      mtNachisl.Start;
+      _loop mtNachisl where (( mtPersPer.Person == mtNachisl.Person and
+                               mtPersPer.Period == mtNachisl.Period ))
+        mtNachisl.Save;
+      mtNachisl.Stop;
+
+      mtPayment.Start;
+      _loop mtPayment where (( mtPersPer.Person == mtPayment.Person and
+                               mtPersPer.Period == mtPayment.Period ))
+        mtPayment.Save;
+      mtPayment.Stop;
+    }
+    mtPersPer.Stop;
+  }
+  mtPerson.Stop;
+
+  fRok.Close;
+  StopVisual;
+}

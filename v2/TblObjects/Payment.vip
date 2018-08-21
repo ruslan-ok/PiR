@@ -230,7 +230,9 @@ public function LoadXml(_e: IDomNode): boolean;
   if (GetFirst mtPayment2 where (( mtPayment.Person == mtPayment2.Person and
                                    mtPayment.Period == mtPayment2.Period and
                                    mtPayment.Title  == mtPayment2.Title )) = tsOk)
+  {
     oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+  }
   else
   {
     var res: word;
@@ -277,7 +279,9 @@ public function LoadRok: boolean;
     if (GetFirst mtPayment2 where (( mtPayment.Person == mtPayment2.Person and
                                      mtPayment.Period == mtPayment2.Period and
                                      mtPayment.Title  == mtPayment2.Title )) = tsOk)
+    {
       oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+    }
     else
     {
       insert current mtPayment;

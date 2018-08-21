@@ -1,0 +1,332 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Экспорт в xml
+//------------------------------------------------------------------------------
+
+Const
+  cgArch_None = 0;
+  cgArch_Rar = 1;
+  cgArch_7z = 2;
+  cgArch_Rok = 3;
+end;
+
+var
+  wToArchive: word;
+  sPassword: string;
+  sXmlFile, sResFile: string;
+
+procedure doExport; forward;
+procedure CheckFileName; forward;
+
+Window wnExport 'Параметры экспорта' ('',, sci13Esc);
+  show at(,, 82, 9);
+
+Screen scExport;
+  table mtStruct;
+Fields
+  wToArchive ('Выполнять ли архивирование xml-файла'): [List cgArch_None 'нет', cgArch_Rar 'используя RAR', cgArch_7z 'используя 7-ZIP', cgArch_Rok 'формат ROK'], protect;
+  sPassword ('Пароль для архива',, sci1Esc): NoProtect;
+  sResFile ('Каталог (можно не указывать, тогда сохранит в OutputFilesDirectory) и/или имя файла (если не указывать, то Wage_DD.MM.YYYY_HH-MM-SS.xml)'): noProtect, pickButton;
+buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+        `Архивировать` .@@@@@@@@@@@@@@@    `Пароль`.@@@@@@@@@@@@@@@@@@@@@@@@@
+
+  `Куда сохранить`
+   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+                                 <.  Сохранить  .>      <.   Отмена    .>
+>>
+End;
+
+End;
+
+WindowEvent wnExport;
+
+cmInit:
+{
+  wToArchive := cgArch_None;
+  ReadMyDsk(wToArchive, 'WageView_wToArchive', false);
+  ReadMyDsk(sResFile, 'WageView_sResFile', false);
+  if (wToArchive <> cgArch_None)
+    SetFieldState(#sPassword, sfVisible);
+  else
+    ClearFieldState(#sPassword, sfVisible);
+}
+
+cmPick:
+  case CurField of
+    #sResFile:
+    {
+      var sTmp: string;
+      sTmp := GetDirName('Выбор каталога для сохраняемого файла');
+      if (sTmp <> '')
+        set sResFile := AddSlashToPath(sTmp);
+    }
+  end;
+
+cmOk:
+  doExport;
+
+End;
+
+TableEvent
+  table mtStruct;
+
+cmCheckField:
+  case CurField of
+
+    #wToArchive:
+    {
+      if (wToArchive <> cgArch_None)
+        SetFieldState(#sPassword, sfVisible);
+      else
+        ClearFieldState(#sPassword, sfVisible);
+      CheckFileName;
+    }
+
+    #sResFile:
+      CheckFileName;
+
+  end;
+
+End;
+
+exception exUserBreaked;
+
+// Поиск последнего вхождения подстроки
+function Last_Pos(_substr, _str: string): byte;
+{
+  result := 0;
+  var p: byte;
+  p := Pos(_substr, _str);
+  while (p > 0)
+  {
+    result += p;
+    _str := SubStr(_str, p+1, 255);
+    p := Pos(_substr, _str);
+  }
+}
+
+// Разбор пути и имени файла на составляющие
+procedure ParseFileName(_file: string; var _path, _name, _ext: string);
+{
+  _path := _name := _ext := '';
+  var p: byte;
+  p := Last_Pos('\', _file);
+  if (p > 0)
+    _path := SubStr(_file, 1, p);
+
+  _name := SubStr(_file, p+1, 255);
+  p := Last_Pos('.', _name);
+  if (p > 0)
+  {
+    _ext := SubStr(_name, p+1, 255);
+
+    if (UpCase(_ext) <> 'XML') and (UpCase(_ext) <> 'RAR') and (UpCase(_ext) <> '7Z') and (UpCase(_ext) <> 'XLSX') and (UpCase(_ext) <> 'ROK')
+      _ext := '';
+    else
+      _name := SubStr(_name, 1, p-1);
+  }
+}
+
+// Название файла для указанной части
+function GetFilePartName(_part: word; _file: string): string;
+{
+  var sPath, sName, sExt: string;
+  ParseFileName(_file, sPath, sName, sExt);
+  result := sPath + sName + if(_part = 0, '', '.Part' + string(_part+1)) + '.xml';
+}
+
+File fTest;
+
+// проверка прав доступа на запись в файл
+function CheckFileAccess: boolean;
+{
+  result := false;
+  if not fTest.OpenFile(if(wToArchive = cgArch_Rok, sResFile, sXmlFile), stCreate)
+    message('Не удалось открыть на запись файл: ' + if(wToArchive = cgArch_Rok, sResFile, sXmlFile));
+  else
+  {
+    result := true;
+    fTest.Close;
+  }
+}
+
+// Имя файла, используемое по умолчанию
+function DefaultFileName: string;
+{
+  result := 'Wage' + DateToStr(Cur_Date, '_DD.MM.YYYY_') + TimeToStr(Cur_Time, 'HH-MM-SS');
+}
+
+// Проверка имени файла
+private procedure CheckFileName;
+{
+  var sPath, sName, sExt: string;
+  ParseFileName(sResFile, sPath, sName, sExt);
+
+  if (sName = '')
+    sName := DefaultFileName;
+  else
+    if (SubStr(sName, 1, 5) = 'Wage_') and (length(sName) = 24)
+      sName := DefaultFileName; // актуализация даты-времени
+
+  case wToArchive of
+    cgArch_None: sExt := 'xml';
+    cgArch_Rar:  sExt := 'rar';
+    cgArch_7z:   sExt := '7z';
+    cgArch_Rok:  sExt := 'rok';
+  end;
+
+  if (sPath <> '')
+    sPath := AddSlashToPath(sPath);
+
+  set sResFile := sPath + sName + '.' + sExt;
+}
+
+// Проверки перед началом экспорта
+function StartCheckExport: boolean;
+{
+  result := false;
+
+  if (sResFile = '')
+    message('Не задан файл или путь');
+  else
+  {
+    CheckFileName;
+
+    var sPath, sName, sExt: string;
+    ParseFileName(sResFile, sPath, sName, sExt);
+
+    sResFile := sPath + sName + '.' + sExt;
+    sXmlFile := sPath + sName + '.xml';
+    result := true;
+  }
+
+  if (result)
+    result := CheckFileAccess;
+
+  RereadRecord;
+}
+
+// Описание кодов возврата функции ExecProgram
+function GetRetCodeDescr(_code: integer): string;
+{
+  case _code of
+    2:  result := 'Запускаемая программа не найдена';
+    5:  result := 'Нет прав на доступ к запускаемой программе или каталогу';
+    8:  result := 'Не хватает памяти для загрузки программы';
+    10: result := 'Не найдена одна из динамических библиотек запускаемой программы';
+    11: result := 'Запускаемый файл не является программой';
+  else  result := 'Неизвестная ошибка';
+  end;
+  result += '. Код возврата ' + string(_code) + '.';
+}
+
+// Описание кодов ошибок архиватора
+function GetErrorCodeDescr(_code: integer): string;
+{
+  case _code of
+      1: result := 'Произошла некритическая ошибка. Например, файл заблокирован другой программой.';
+      2: result := 'Критическая ошибка';
+      3: result := 'Ошибка контрольной суммы CRC';
+      4: result := 'Предпринята попытка изменить архив, заблокированный командой k';
+      5: result := 'Ошибка записи на диск';
+      6: result := 'Ошибка открытия файла';
+      7: result := 'Ошибка параметров командной строки';
+      8: result := 'Недостаточно памяти для выполнения операции';
+      9: result := 'Ошибка при создании файла';
+    255: result := 'Операция прервана пользователем';
+  else   result := 'Неизвестная ошибка';
+  end;
+
+  result += '. Код ошибки ' + string(_code) + '.';
+}
+
+// Архивация
+procedure Archivate;
+{
+  if (wToArchive = cgArch_None) or (wToArchive = cgArch_Rok)
+    exit;
+
+  message('Архивация');
+
+  var sXml, sArh, sCommand, sParams, sCmd: string = '';
+
+  case wToArchive of
+
+    cgArch_Rar:
+    {
+      sCommand := 'rar';
+      sParams  := 'm -ep1';
+    }
+
+    cgArch_7z:
+    {
+      sCommand := '7z';
+      sParams  := 'a';
+    }
+
+  end;
+
+  sXml := GetFilePartName(0, sXmlFile);
+  sArh := sResFile;
+
+  if (Pos(' ', sXml) > 0)
+    sXml := '"' + sXml + '"';
+
+  if (Pos(' ', sArh) > 0)
+    sArh := '"' + sArh + '"';
+
+  sCmd := sParams + if(sPassword <> '', ' -p' + sPassword, '') + ' ' + sArh + ' ' + sXml;
+
+  var retCode, aErrorCode: integer;
+  retCode := ExecProgram(sCommand, sCmd, 'Выполняется архивация данных', 0, aErrorCode);
+
+  if (retCode <> 0) or (aErrorCode <> 0)
+  {
+    if (retCode <> 0)
+      message(GetRetCodeDescr(retCode));
+    else
+      if (aErrorCode <> 0)
+        message(GetErrorCodeDescr(aErrorCode));
+
+    message('Использовалась команда: ' + sCommand + ' ' + sCmd);
+  }
+  else
+  {
+    message('Создан архив ' + sResFile);
+    //LogLine(APE_INFO, 'Использовалась команда: ' + sCommand + ' ' + sCmd);
+    if (wToArchive = cgArch_7z)
+      DeleteFileEx(sXml);
+  }
+}
+
+#include ExportXml.vpp
+#include ExportRok.vpp
+
+// Старт экспорта
+private procedure doExport;
+{
+  if (not StartCheckExport)
+    exit;
+
+  PushPos(#mtPeriod);
+  if (CurFormatInArea(scInfo) = scInfo)
+    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
+
+  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
+  SetVisualTitle('Сохранение в файл ' + sXmlFile);
+
+  if (wToArchive = cgArch_Rok)
+    DoExportRok;
+  else
+    DoExportXml;
+
+  PopPos(#mtPeriod);
+
+  CloseWindow(wnExport);
+}

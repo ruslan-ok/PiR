@@ -28,7 +28,7 @@ where ((
 Tree trStruct ('',, sci14EscTree);
   Table mtStruct;
 Fields
-  StructName  ''#3'Наименование элемента': [15], Protect;
+  StructName  'Наименование элемента': [15], Protect;
 End;
 
 TableEvent

@@ -45,8 +45,8 @@ End; // wnEdit
 Tree trGroups ('',, sci1478EscTree);
   Table mtGroup;
 Fields
-  mtGroup.Name ''#3'Название': [15], Protect;
-  mtGroup.Code ''#3'Код':      [5],  Protect;
+  mtGroup.Name 'Название': [15], Protect;
+  mtGroup.Code 'Код':      [5],  Protect;
 End;
 
 TableEvent

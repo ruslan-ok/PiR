@@ -1,0 +1,793 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из xlsx
+//------------------------------------------------------------------------------
+
+var wbNum: longint = 0;
+var lSheetsCount, lSheetNum: longint;
+var sSheetName: string;
+var row, col, maxRow, maxCol: longint = 0;
+var sCell, sCell2: string = '';
+var fCell: double;
+var pcDefDepart, pcDefPost: byte;
+
+private function OpenExcel: boolean;
+{
+  result := false;
+  sSheetName := '';
+
+  if (not xlOpenExcel(false))
+  {
+    wlog.LogLine(APE_ERROR, 'Не открылся Excel');
+    exit;
+  }
+
+  if (not xlIsExcelValid)
+  {
+    wlog.LogLine(APE_ERROR, 'Не инициализирован Excel');
+    xlKillExcel;
+    exit;
+  }
+
+  xlGetWorkBooksCount(wbNum);
+
+  if (not xlSetActiveWorkBookByName(sFile))
+    if (not xlOpenWorkBook(sFile))
+    {
+      wlog.LogLine(APE_ERROR, 'Не открылась книга Excel ' + sFile);
+      xlKillExcel;
+      exit;
+    }
+
+  wbNum++;
+
+  if (not xlGetSheetsCount(lSheetsCount))
+  {
+    wlog.LogLine(APE_ERROR, 'Не инициализирован Excel (ошибка вызова xlGetSheetsCount)');
+    xlKillExcel;
+    exit;
+  }
+
+  result := true;
+}
+
+private function NeedChangeParam(_src, _dst, _name: string): boolean;
+{
+  result := false;
+
+  if (_src = _dst)
+    exit;
+
+  if (_dst = string(word(0))) or (_dst = string(double(0))) or (_dst = string(ZeroDate))
+    exit;
+
+  result := true;
+
+  if (wDetProt <> 0)
+    if (_src = string(word(0))) or (_src = string(double(0))) or (_src = string(ZeroDate))
+      wlog.LogLine(APE_INFO, _name + ' ' + _dst);
+    else
+      wlog.LogLine(APE_INFO, _name + ' ' + _dst + ' (было ' + _src + ')');
+}
+
+private function CorrectBonusTitle(_title: string): string;
+{
+  case _title of
+    'Проектный бизнес (код 84)':  result := 'Проектный бизнес';
+    'Премия Отдела (код 83)':     result := 'Премия отдела';
+    'Премия Управления (код 84)': result := 'Премия Управления';
+  else result := _title;
+  end;
+}
+
+private procedure ReadColumns;
+{
+  delete all mtColTitle;
+  delete all mtSpCol;
+
+  xlGetCellValue(2, 3, sCell);
+
+  if (sCell <> 'ФИО')
+  {
+    wlog.LogLine(APE_WARNING, 'В ячейке C2 ожидался заголовок колонки "ФИО", а обнаружено значение "' + sCell + '"');
+    exit;
+  }
+
+  var lNum, lSp: longint = 1;
+  var sMainTitle: string = '';
+  row := 2;
+  col := 1;
+
+  do
+  {
+    xlGetCellValue(row-1, col, sCell);
+    xlGetCellValue(row, col, sCell2);
+    if (sCell <> '') or (sCell2 <> '')
+    {
+      if (sMainTitle = '') and (sCell = '') and (sCell2 <> '')
+      {
+        if (GetFirst mtColTitle where (( sCell2 == mtColTitle.Name )) <> tsOk)
+        {
+          ClearBuffer(#mtColTitle);
+          mtColTitle.Num := lNum++;
+          mtColTitle.Name := CorrectBonusTitle(sCell2);
+          insert current mtColTitle;
+        }
+      }
+
+      var _name1, _name2: string;
+
+      if (sCell <> '')
+      {
+        sMainTitle := sCell;
+
+        _name1 := sCell;
+        _name1 := Replace(_name1, ''#13#10, ' ');
+        _name1 := Replace(_name1, ''#10, ' ');
+        _name1 := Replace(_name1, ''#13, ' ');
+
+        if (length(_name1) > 10)
+        {
+          var ss: string = '';
+          ss := SubStr(_name1, length(_name1) - 9, 255);
+
+          var dt: date = ZeroDate;
+          dt := StrToDate(ss, 'DD.MM.YYYY');
+
+          if (dt <> ZeroDate)
+            _name1 := Trim(SubStr(_name1, 1, length(_name1) - 10));
+        }
+
+        if (GetFirst mtColTitle where (( _name1 == mtColTitle.Name )) <> tsOk)
+        {
+          ClearBuffer(#mtColTitle);
+          mtColTitle.Num := lNum++;
+          mtColTitle.Name := CorrectBonusTitle(_name1);
+          insert current mtColTitle;
+        }
+        lSp := 1;
+      }
+
+      _name2 := sCell2;
+      _name2 := Replace(_name2, ''#13#10, ' ');
+      _name2 := Replace(_name2, ''#10, ' ');
+      _name2 := Replace(_name2, ''#13, ' ');
+
+      if (sMainTitle = '') and (sCell = '') and (sCell2 <> '')
+        _name2 := '';
+
+      if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                    _name2         == mtSpCol.Name )) = tsOk)
+        lSp := mtSpCol.Num + 1;
+      else
+      {
+        ClearBuffer(#mtSpCol);
+        mtSpCol.Col := mtColTitle.Num;
+        mtSpCol.Num := lSp++;
+        mtSpCol.Name := _name2;
+        mtSpCol.ColNum := col;
+        insert current mtSpCol;
+//        if (_name2 <> '')
+//          wlog.LogLine(APE_INFO, 'Колонка: ' + mtColTitle.Name + if(mtSpCol.Name = '', '', ' - ' + mtSpCol.Name));
+      }
+    }
+    col++;
+  }
+  while ((col < 50) and ((col < 40) or (sCell <> '') or (sCell2 <> '')));
+  maxCol := col-1;
+
+  row := 3;
+  col := 3;
+
+  do
+  {
+    xlGetCellValue(row, col, sCell);
+    row++;
+  }
+  while (sCell <> '');
+  maxRow := row-1;
+
+  //----------------------------------------------
+  var wAttr: word = 0;
+
+  for (row := maxRow + 1; row <= maxRow + 20; row++)
+  {
+    var sName: string = '';
+    xlGetCellValue(row, 1, sName);
+    xlGetCellValue(row, 3, sCell);
+
+    var wTmp: word;
+    var dTmp: date;
+
+    if (sName <> '')
+    {
+      if (sCell = '')
+        wlog.LogLine(APE_WARNING, 'Нет значения для атрибута ' + sName);
+      else
+      {
+        case sName of
+
+          'план, дней':
+          {
+            wTmp := word(sCell);
+            if NeedChangeParam(string(mtPeriod.PlanDays), string(wTmp), 'Количество дней')
+              mtPeriod.PlanDays := wTmp;
+          }
+
+          'аванс':
+          {
+            dTmp := StrToDate(sCell, 'DD.MM.YYYY');
+            if NeedChangeParam(string(mtPeriod.AvansDate), string(dTmp), 'Дата аванса')
+              mtPeriod.AvansDate := dTmp;
+            wAttr := 1;
+          }
+
+          'з/п':
+          {
+            dTmp := StrToDate(sCell, 'DD.MM.YYYY');
+            if NeedChangeParam(string(mtPeriod.PaymentDate), string(dTmp), 'Дата выплаты зарплаты')
+              mtPeriod.PaymentDate := dTmp;
+            wAttr := 2;
+          }
+
+          'межрасчеты':
+          {
+          }
+
+          'курс':
+          {
+            fCell := double(Replace(sCell, ',', '.'));
+
+            if (fCell <> 0)
+              case wAttr of
+
+                1:
+                {
+                  if NeedChangeParam(DoubleToStr(mtPeriod.AvansRate, '\4p[|-]366 666.8888'), DoubleToStr(fCell, '\4p[|-]366 666.8888'), 'Курс выплаты аванса')
+                    mtPeriod.AvansRate := fCell;
+                }
+
+                2:
+                {
+                  if NeedChangeParam(DoubleToStr(mtPeriod.PaymentRate, '\4p[|-]366 666.8888'), DoubleToStr(fCell, '\4p[|-]366 666.8888'), 'Курс выплаты зарплаты')
+                    mtPeriod.PaymentRate := fCell;
+                }
+
+              end;
+            wAttr := 0;
+          }
+
+          'курс прошлого месяца':
+          {
+          }
+
+        else
+          wlog.LogLine(APE_WARNING, 'На листе "' + sSheetName + '" новый атрибут периода "' + sName + '".');
+        end;
+      }
+    }
+  }
+
+  update current mtPeriod;
+}
+
+
+private procedure CheckPerson(_npp: string);
+{
+  sCell := Replace(sCell, '.  ', '.');
+  sCell := Replace(sCell, '. ', '.');
+
+  if (GetFirst mtPerson where (( sCell == mtPerson.FIO )) = tsOk)
+    wlog.LogMessage(APE_INFO, sCell);
+  else
+  {
+    ClearBuffer(#mtPerson);
+    mtPerson.FIO   := sCell;
+    mtPerson.Login := sCell;
+    mtPerson.Sort  := LPadCh(_npp, '0', 6);
+    if (GetFirst KatSotr where (( sCell == KatSotr.FIO )) = tsOk)
+    {
+      mtPerson.Login := KatSotr.Name;
+      mtPerson.EMail := KatSotr.EMail;
+    }
+    insert current mtPerson;
+    wlog.LogMessage(APE_INFO, sCell);
+    wlog.LogLine(APE_WARNING, 'Добавлен сотрудник ' + sCell);
+  }
+}
+
+
+private procedure CheckAppoint(_tab: string);
+{
+  if (GetLast mtAppoint where (( mtPerson.Id   == mtAppoint.Person and
+                               ((mtPeriod.dBeg >= mtAppoint.dBeg) and
+                               ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg))) )) <> tsOk)
+  {
+    ClearBuffer(#mtAppoint);
+    mtAppoint.Person := mtPerson.Id;
+    mtAppoint.dBeg   := mtPeriod.dBeg;
+    mtAppoint.dEnd   := ZeroDate;
+    mtAppoint.Depart := pcDefDepart;
+    mtAppoint.Post   := pcDefPost;
+    mtAppoint.TabNum := _tab;
+    mtAppoint.Salary := fCell;
+    mtAppoint.Currency := 'USD';
+    insert current mtAppoint;
+    wlog.LogLine(APE_INFO, 'Добавлено назначение сотрудника (оклад ' + sCell + ' USD)');
+  }
+  else
+  {
+    if (mtAppoint.Salary = fCell) and (mtAppoint.Salary <> 0)
+    {
+      if (_tab <> '') and (mtAppoint.TabNum = '')
+      {
+        mtAppoint.TabNum := _tab;
+        mtAppoint.Salary := fCell;
+        update current mtAppoint;
+        wlog.LogLine(APE_INFO, 'Табельный номер: ' + _tab);
+      }
+    }
+    else
+    {
+      var dContract: date = mtAppoint.dEnd;
+
+      mtAppoint.dEnd := Sub_Day(mtPeriod.dBeg, 1);
+      update current mtAppoint;
+
+      wlog.LogLine(APE_INFO, 'Добавлено назначение сотрудника в связи с изменением оклада с ' + string(mtAppoint.Salary) + ' на ' + sCell + ' USD');
+      mtAppoint.Salary := fCell;
+      mtAppoint.dBeg := mtPeriod.dBeg;
+      mtAppoint.dEnd := dContract;
+      insert current mtAppoint;
+    }
+  }
+}
+
+private procedure CheckFactDays;
+{
+  if (GetFirst mtPersPer where (( mtPerson.Id == mtPersPer.Person and
+                                  mtPeriod.Id == mtPersPer.Period )) <> tsOk)
+  {
+    ClearBuffer(#mtPersPer);
+    mtPersPer.Person := mtPerson.Id;
+    mtPersPer.Period := mtPeriod.Id;
+    mtPersPer.FactDays := byte(sCell);
+    insert current mtPersPer;
+  }
+  else
+    if (mtPersPer.FactDays <> byte(sCell))
+    {
+      wlog.LogLine(APE_INFO, 'Факт, дней: ' + sCell + if(mtPersPer.FactDays = 0, '', ' (было ' + string(mtPersPer.FactDays) + ')'));
+      mtPersPer.FactDays := byte(sCell);
+      update current mtPersPer;
+    }
+}
+
+private procedure CheckNachisl;
+{
+  if (sCell = '')
+    exit;
+
+  if (GetFirst mtNachisl where (( mtPerson.Id     == mtNachisl.Person and
+                                  mtPeriod.dBeg   == mtNachisl.Period and
+                                  mtColTitle.Name == mtNachisl.Title )) = tsOk)
+  {
+    if (mtNachisl.Value <> fCell) or (mtNachisl.TaxCur <> cgNetUSD) or (mtNachisl.Rate <> mtPeriod.PaymentRate)
+    {
+      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD (было ' + string(mtNachisl.Value) + ' USD)');
+      mtNachisl.Value  := fCell;
+      mtNachisl.TaxCur := cgNetUSD;
+      mtNachisl.Rate   := mtPeriod.PaymentRate;
+      update current mtNachisl;
+    }
+  }
+  else
+  {
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD');
+    mtNachisl.Person := mtPerson.Id;
+    mtNachisl.Period := mtPeriod.dBeg;
+    mtNachisl.Title  := mtColTitle.Name;
+    mtNachisl.Value  := fCell;
+    mtNachisl.TaxCur := cgNetUSD;
+    mtNachisl.Rate   := mtPeriod.PaymentRate;
+    insert current mtNachisl;
+  }
+}
+
+private procedure CheckDebtIn;
+{
+  if (fCell = 0)
+    exit;
+
+  var fRate: double = 0;
+
+  PushPos(#mtPeriod);
+  if (GetFirst mtPeriod where (( Sub_Months(mtPeriod.dBeg, 1) == mtPeriod.dBeg )) = tsOk)
+    fRate := mtPeriod.PaymentRate;
+  PopPos(#mtPeriod);
+/*
+  if (GetFirst mtDebtIn where (( mtPerson.Id     == mtDebtIn.Person and
+                                 mtPeriod.dBeg  == mtDebtIn.Period )) = tsOk)
+  {
+    if (fRate = 0)
+    {
+      if (mtDebtIn.Value <> fCell) or (mtDebtIn.TaxCur <> cgNetBYN)
+      {
+        wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + '] (было ' + string(mtDebtIn.Value) + ' BYN [курс ' + DoubleToStr(mtDebtIn.Rate, '\4p[|-]366 666.8888') + '])');
+        mtDebtIn.Value  := fCell;
+        mtDebtIn.TaxCur := cgNetBYN;
+        update current mtDebtIn;
+      }
+    }
+    else
+    {
+      if (mtDebtIn.Value <> fCell) or (mtDebtIn.TaxCur <> cgNetBYN) or (mtDebtIn.Rate <> fRate)
+      {
+        wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + '] (было ' + string(mtDebtIn.Value) + ' BYN [курс ' + DoubleToStr(mtDebtIn.Rate, '\4p[|-]366 666.8888') + '])');
+        mtDebtIn.Value  := fCell;
+        mtDebtIn.TaxCur := cgNetBYN;
+        mtDebtIn.Rate   := fRate;
+        update current mtDebtIn;
+      }
+    }
+  }
+  else
+  {
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(fRate, '\4p[|-]366 666.8888') + ']');
+    mtDebtIn.Person := mtPerson.Id;
+    mtDebtIn.Period := mtPeriod.dBeg;
+    mtDebtIn.Value  := fCell;
+    mtDebtIn.TaxCur := cgNetBYN;
+    mtDebtIn.Rate   := fRate;
+    insert current mtDebtIn;
+  }
+*/
+}
+
+private procedure CheckPayment(_value, _rate: double; _payed: date);
+{
+  if (_value = 0)
+    exit;
+
+  if (GetFirst mtPayment where (( mtPerson.Id     == mtPayment.Person and
+                                  mtPeriod.dBeg  == mtPayment.Period and
+                                  mtColTitle.Name == mtPayment.Title )) = tsOk)
+  {
+    if (mtPayment.Value <> _value) or (mtPayment.TaxCur <> cgNetBYN) or (mtPayment.Rate <> _rate) or (mtPayment.Payed <> _payed)
+    {
+      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(_value) + ' BYN (было ' + string(mtPayment.Value) + ' BYN)');
+      mtPayment.Value  := _value;
+      mtPayment.TaxCur := cgNetBYN;
+      mtPayment.Rate   := _rate;
+      mtPayment.Payed  := _payed;
+      update current mtPayment;
+    }
+  }
+  else
+  {
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(_value) + ' BYN');
+    mtPayment.Person := mtPerson.Id;
+    mtPayment.Period := mtPeriod.dBeg;
+    mtPayment.Title  := mtColTitle.Name;
+    mtPayment.Value  := _value;
+    mtPayment.TaxCur := cgNetBYN;
+    mtPayment.Rate   := _rate;
+    mtPayment.Payed  := _payed;
+    insert current mtPayment;
+  }
+}
+
+private procedure CheckDebtOut;
+{
+  if (fCell = 0)
+    exit;
+/*
+  if (GetFirst mtDebtOut where (( mtPerson.Id    == mtDebtOut.Person and
+                                  mtPeriod.dBeg == mtDebtOut.Period )) = tsOk)
+  {
+    if (mtDebtOut.Value <> fCell) or (mtDebtOut.TaxCur <> cgNetBYN) or (mtDebtOut.Rate <> mtPeriod.PaymentRate)
+    {
+      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(mtPeriod.PaymentRate, '\4p[|-]366 666.8888') + '] (было ' + string(mtDebtOut.Value) + ' BYN [курс ' + DoubleToStr(mtDebtOut.Rate, '\4p[|-]366 666.8888') + '])');
+      mtDebtOut.Value  := fCell;
+      mtDebtOut.TaxCur := cgNetBYN;
+      mtDebtOut.Rate   := mtPeriod.PaymentRate;
+      update current mtDebtOut;
+    }
+  }
+  else
+  {
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' BYN [курс ' + DoubleToStr(mtPeriod.PaymentRate, '\4p[|-]366 666.8888') + ']');
+    mtDebtOut.Person := mtPerson.Id;
+    mtDebtOut.Period := mtPeriod.dBeg;
+    mtDebtOut.Value  := fCell;
+    mtDebtOut.TaxCur := cgNetBYN;
+    mtDebtOut.Rate   := mtPeriod.PaymentRate;
+    insert current mtDebtOut;
+  }
+*/
+}
+
+private procedure ReadPersons;
+{
+  row := 3;
+  var bHaveData: boolean = true;
+
+  while bHaveData
+  {
+    var sNpp, sTab: string = '';
+
+    _loop mtColTitle
+    {
+      if not bHaveData
+        break;
+
+      if (mtColTitle.Name = 'Начислено') or
+         (mtColTitle.Name = 'К выдаче "чистые" + вход. остаток') or
+         (mtColTitle.Name = 'Вычеты') or
+         (mtColTitle.Name = 'Льгота') or
+         (mtColTitle.Name = 'Доход') or
+         (mtColTitle.Name = 'Аванс и межрасчет') or
+         (mtColTitle.Name = 'К выплате') or
+         (mtColTitle.Name = 'Мой расчет зачета на след. месяц') or
+         (mtColTitle.Name = 'Расхождение с распечаткой, BYN') or
+         (mtColTitle.Name = 'Расхождение с распечаткой')
+        continue;
+
+      if (mtColTitle.Name = 'таб. №')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sTab);
+          continue;
+        }
+
+      if (mtColTitle.Name = '№')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sNpp);
+          continue;
+        }
+
+      if (mtColTitle.Name = 'ФИО')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          bHaveData := (sCell <> '');
+          if bHaveData
+            CheckPerson(sNpp);
+          continue;
+        }
+
+      if (Pos('оклад', mtColTitle.Name) > 0)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          fCell := double(Replace(sCell, ',', '.'));
+          CheckAppoint(sTab);
+          continue;
+        }
+
+      if (mtColTitle.Name = 'Факт, дней')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          CheckFactDays;
+          continue;
+        }
+
+      if (Pos('Премия', mtColTitle.Name) = 1) or (Pos('Проектный бизнес', mtColTitle.Name) = 1) or (Pos('Прочие премии', mtColTitle.Name) = 1)
+        if (GetFirst mtSpCol where (( mtColTitle.Num      == mtSpCol.Col and
+                                      'в валюте "чистая"' == mtSpCol.Name )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          fCell := double(Replace(sCell, ',', '.'));
+          CheckNachisl;
+          continue;
+        }
+
+      if (mtColTitle.Name = 'Зачет с прошлого месяца')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                      'BYN'          == mtSpCol.Name )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          fCell := double(Replace(sCell, ',', '.'));
+          CheckDebtIn;
+          continue;
+        }
+
+      if (Pos('Аванс', mtColTitle.Name) = 1) or (Pos('Межрасчеты', mtColTitle.Name) = 1) or (Pos('Зарплата', mtColTitle.Name) = 1)
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                      'Выдано, BYN'  == mtSpCol.Name )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          fCell := double(Replace(sCell, ',', '.'));
+          var dPayed: date = ZeroDate;
+          var fRate: double = 0;
+          case SubStr(mtColTitle.Name, 1, 5) of
+
+            'Аванс':
+            {
+              dPayed := mtPeriod.AvansDate;
+              fRate := mtPeriod.AvansRate;
+            }
+
+            'Межра':
+            {
+              dPayed := ZeroDate;
+              fRate := 0;
+              var sTmp: string = '';
+
+              if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                            'Дата выплаты' == mtSpCol.Name )) = tsOk)
+              {
+                xlGetCellValue(row, mtSpCol.ColNum, sTmp);
+                dPayed := StrToDate(sTmp, 'DD.MM.YYYY');
+              }
+              if (dPayed = ZeroDate)
+                dPayed := mtPeriod.AvansDate;
+
+              if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col and
+                                            'Курс выдачи'  == mtSpCol.Name )) = tsOk)
+              {
+                xlGetCellValue(row, mtSpCol.ColNum, sTmp);
+                fRate := double(Replace(sTmp, ',', '.'));
+              }
+              if (fRate = 0)
+                fRate := mtPeriod.AvansRate;
+            }
+
+            'Зарпл':
+            {
+              dPayed := mtPeriod.PaymentDate;
+              fRate := mtPeriod.PaymentRate;
+            }
+
+          end;
+
+          CheckPayment(fCell, fRate, dPayed);
+          continue;
+        }
+
+      if (mtColTitle.Name = 'Зачет на следующий месяц, BYN')
+        if (GetFirst mtSpCol where (( mtColTitle.Num == mtSpCol.Col )) <> tsOk)
+          wlog.LogLine(APE_WARNING, 'Для колонки [' + mtColTitle.Name + '] не найдена спецификация.');
+        else
+        {
+          xlGetCellValue(row, mtSpCol.ColNum, sCell);
+          fCell := double(Replace(sCell, ',', '.'));
+          CheckDebtOut;
+          continue;
+        }
+
+      wlog.LogLine(APE_WARNING, 'Не обработана колонка [' + mtColTitle.Name + ']');
+    }
+    row++;
+    if bHaveData
+      wlog.LogCommit;
+  }
+}
+
+private procedure CheckDepAndPost;
+{
+  pcDefDepart := pcDefPost := 0;
+
+  ResetBounds(#mtDepart);
+  if (GetFirst mtDepart <> tsOk)
+  {
+    ClearBuffer(#mtDepart);
+    mtDepart.Name := 'ОРУП Атл';
+    insert current mtDepart;
+    pcDefDepart := mtDepart.Id;
+    wlog.LogLine(APE_INFO, 'Добавлено подразделение "ОРУП Атл"');
+
+    ClearBuffer(#mtDepHist);
+    mtDepHist.dBeg := date(1,1,2000);
+    mtDepHist.Sort := '001';
+    mtDepHist.Depart := pcDefDepart;
+    insert current mtDepHist;
+  }
+  else
+    if (GetFirst mtDepart where (( 'ОРУП Атл' == mtDepart.Name )) = tsOk)
+      pcDefDepart := mtDepart.Id;
+  SetBounds(#mtDepart);
+
+  ResetBounds(#mtPost);
+  if (GetFirst mtPost <> tsOk)
+  {
+    ClearBuffer(#mtPost);
+    mtPost.Name := 'инженер-программист';
+    insert current mtPost;
+    pcDefPost := mtPost.Id;
+    wlog.LogLine(APE_INFO, 'Добавлена должность "инженер-программист"');
+  }
+  else
+    if (GetFirst mtPost where (( 'инженер-программист' == mtPost.Name )) = tsOk)
+      pcDefPost := mtPost.Id;
+  SetBounds(#mtPost);
+}
+
+private procedure DoImportXlsx;
+{
+  StartNewVisual(vtRotateVisual, vfTimer + vfConfirm, 'Открытие файла...', 1);
+  var bOk: boolean;
+  bOk := OpenExcel;
+  StopVisual;
+
+  if not bOk
+  {
+    wlog.LogCommit;
+    //wlog.Refresh;
+    //wlog.Visible := true;
+    exit;
+  }
+
+  CheckDepAndPost;
+
+  wlog.LogStartVisual('Чтение данных из файла ' + sFile, lSheetsCount);
+  wlog.LogMessage(APE_INFO, 'Этап 1. Формирование списка колонок.');
+
+  var bBreaked: boolean = false;
+
+  for (lSheetNum := lSheetsCount; lSheetNum >= 1; lSheetNum--)
+  {
+    if not wlog.LogNextVisual(sSheetName)
+    {
+      bBreaked := true;
+      break;
+    }
+
+    xlSetActiveSheet(lSheetNum);
+    xlGetSheetName(lSheetNum, sSheetName);
+
+    if (sSheetName = 'Курсы')
+      continue;
+
+    var m: byte = byte(SubStr(sSheetName, 1, 2));
+    var y: word = word(SubStr(sSheetName, 4, 4));
+
+    if (m >= 1) and (m <= 12) and (y > 2000)
+    {
+      bOk := true;
+      var dPeriod: date;
+      dPeriod := date(1, m, y);
+      if (GetFirst mtPeriod where (( dPeriod == mtPeriod.dBeg )) = tsOk)
+        wlog.LogMessage(APE_INFO, 'Обработка периода ' + DateToStr(dPeriod, 'MM.YYYY'));
+      else
+      {
+        ClearBuffer(#mtPeriod);
+        mtPeriod.dBeg := dPeriod;
+        insert current mtPeriod;
+        wlog.LogMessage(APE_INFO, 'Добавлен период ' + DateToStr(dPeriod, 'MM.YYYY'));
+      }
+      ReadColumns;
+      ReadPersons;
+      wlog.LogCommit;
+    }
+  }
+  wlog.LogCommit;
+  wlog.LogStopVisual;
+
+  xlCloseWorkBook(wbNum);
+  xlKillExcel;
+  wlog.Refresh;
+  wlog.Visible := true;
+
+  if (GetFirst mtPeriod = tsOk)
+    RereadRecord;
+}

@@ -1,0 +1,161 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из rok
+//------------------------------------------------------------------------------
+
+File fRok;
+
+private function MyRead(_stream: TPtr; _len: byte): string;
+{
+  result := '';
+  var i: byte = 0;
+  var cc: char;
+  while (i < _len)
+  {
+    File_Read(cc, _stream);
+    if (cc = chr(10)) or (cc = chr(13))
+      continue;
+    i++;
+    result += cc;
+  }
+}
+
+var lPos, lStr, lCol: longint;
+
+public function GetStrByPos: string;
+{
+  lPos := fRok.GetPos;
+  lStr := (lPos div 182) + 1;
+  lCol := (lPos mod 182);
+  result := string(lStr);
+}
+
+public function GetColByPos: string;
+{
+  result := string(lCol);
+}
+
+private function CheckNewList: boolean;
+{
+  var ss: string;
+  ss := MyRead(fRok.Handle, 1);
+  result := (ss = '{');
+  if (not result)
+    wlog.LogLine(APE_ERROR, 'Во входном потоке (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ') не обнаружен ожидаемый символ начала списка.');
+}
+
+#declare LoadTable(_table)
+private procedure MyLoad#_table(_mess: string);
+{
+  wlog.LogMessage(APE_INFO, _mess);
+
+  ResetBounds(#mt#_table);
+  if CheckNewList
+    while (mt#_table.LoadRok)
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+    }
+  SetBounds(#mt#_table);
+  wlog.LogCommit;
+}
+#end
+
+#LoadTable(Period)
+#LoadTable(Depart)
+#LoadTable(DepHist)
+#LoadTable(Post)
+#LoadTable(PayTitle)
+
+private function DoImportRok: boolean;
+{
+  fRok.OpenFile(sFile, stOpenRead);
+
+  _try
+  {
+    wlog.LogStartVisual('Чтение данных из файла ' + sFile, 0);
+
+    mtPeriod.SetStream(fRok.Handle);
+    mtDepart.SetStream(fRok.Handle);
+    mtDepHist.SetStream(fRok.Handle);
+    mtPost.SetStream(fRok.Handle);
+    mtPayTitle.SetStream(fRok.Handle);
+    mtPerson.SetStream(fRok.Handle);
+    mtAppoint.SetStream(fRok.Handle);
+    mtPersPer.SetStream(fRok.Handle);
+    mtNachisl.SetStream(fRok.Handle);
+    mtPayment.SetStream(fRok.Handle);
+
+    MyLoadPeriod('Периоды');
+    MyLoadDepart('Подразделения');
+    MyLoadDepHist('История подразделений');
+    MyLoadPost('Должности');
+    MyLoadPayTitle('Наименования начислений и выплат');
+
+    if CheckNewList
+    {
+      wlog.LogMessage(APE_INFO, 'Сотрудники (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+      while (mtPerson.LoadRok)
+      {
+        yPersonId := mtPerson.Id;
+
+        if not NextVisual
+          _raise exUserBreaked;
+
+        wlog.LogMessage(APE_INFO, mtPerson.FIO);
+
+        if CheckNewList
+        {
+          if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'Назначения (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+
+          while (mtAppoint.LoadRok) {}
+
+          if (wDetProt <> 0)
+            wlog.LogCommit;
+        }
+
+        if CheckNewList
+        {
+          if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'Расчеты (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+          while (mtPersPer.LoadRok)
+          {
+            yPeriodId := mtPersPer.Period;
+
+            if (wDetProt <> 0)
+              wlog.LogMessage(APE_INFO, DateToStr(mtPersPer.dBeg, 'MM.YYYY'));
+
+            if not NextVisual
+              _raise exUserBreaked;
+
+            if CheckNewList
+              while (mtNachisl.LoadRok) {}
+
+            if CheckNewList
+              while (mtPayment.LoadRok) {}
+
+            if (wDetProt <> 0)
+              wlog.LogCommit;
+          }
+          if (wDetProt <> 0)
+            wlog.LogCommit;
+        }
+        wlog.LogCommit;
+      }
+      wlog.LogCommit;
+    }
+  }
+  _except
+    on exUserBreaked:
+    {
+      wlog.LogLine(APE_WARNING, 'Операция прервана.');
+      result := false;
+    }
+  _finally
+  {
+    fRok.Close;
+    result := (wlog.LogStopVisual = APE_INFO);
+  }
+}

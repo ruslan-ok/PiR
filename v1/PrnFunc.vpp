@@ -33,7 +33,7 @@ function GetParamName(_row: byte): string;
     R01: result := 'Повременная оплата (оклад)';
     R02: result := 'Премия отдела';
     R03: result := 'Премия Управления';
-    R04: result := if(CurPeriod = 201610, 'Выплата отложенной части', 'Проектный бизнес');
+    R04: result := 'Проектный бизнес'; //if(CurPeriod = 201610, 'Выплата отложенной части', 'Проектный бизнес');
     R05: result := 'Компенсация разницы курсов';
     R06: result := 'Выплата отложенной части';
     R21: result := 'Льгота по подоходному налогу';
@@ -438,4 +438,3 @@ function PrintCell(_row, _col: byte): string;
   if IsBold(_row)
     result += '</strong>';
 }
-

@@ -160,6 +160,15 @@ public function DecodeComp(_data: string): comp;
   if CheckDataLength(_data, 12)
   {
     DecodeBytes(_data);
+
+    var b: boolean = false;
+
+    if ((a[1] and 080h) <> 0)
+    { // При сдвиге старший разряд теряется
+      b := true;
+      a[1] := a[1] - 080h;
+    }
+
     result := ((comp(a[1]) shl 56) and 0FF00000000000000h) or
               ((comp(a[2]) shl 48) and 000FF000000000000h) or
               ((comp(a[3]) shl 40) and 00000FF0000000000h) or
@@ -168,6 +177,8 @@ public function DecodeComp(_data: string): comp;
               ((comp(a[6]) shl 16) and 00000000000FF0000h) or
               ((comp(a[7]) shl 8)  and 0000000000000FF00h) or
               ( comp(a[8])         and 000000000000000FFh);
+    if b
+      result := result or 8000000000000000h;
   }
 }
 

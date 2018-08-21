@@ -13,11 +13,9 @@ Window wnPost 'Должность';
 Screen scPost ('',, sci178Esc);
   table mtPost;
 Fields
-  mtPost.Code (''): noprotect;
-  mtPost.Name (''): noprotect;
+  mtPost.Name: noprotect;
 <<
 
-   `Код`          .@@@@@@@@@@@@
    `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
@@ -49,7 +47,6 @@ Window wnPickPost 'Выбор должности' ('',, sci1478EnEsc) DoAccept;
 Browse brPost;
   table mtPost;
 Fields
-  mtPost.Code 'Код':          [20], protect;
   mtPost.Name 'Наименование': [40], protect;
 End;
 

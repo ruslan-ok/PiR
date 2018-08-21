@@ -1,0 +1,103 @@
+VipInterface TestBound_v1 licensed(free);
+
+Interface TestBound_v1;
+
+Table struct t1
+(
+  Id: byte,
+  Code: string,
+  Name: string
+)
+with index
+(
+  ById1 = Id (unique)
+);
+
+Table struct t2
+(
+  Id: byte,
+  Name: string
+)
+with index
+(
+  ById2 = Id (unique)
+);
+
+Table struct t3
+(
+  t1: byte,
+  t2: byte,
+  Name: string
+)
+with index
+(
+  ByT1T2 = t1 + t2 (unique)
+);
+
+
+Create view as select * from t1, t2, t3
+where ((
+  t1.Id == t3.t1 and
+  t2.Id == t3.t2
+));
+
+private function GetPrevCode: string;
+{
+  result := '';
+  PushPos(#t1);
+  var prevId: byte;
+  prevId := t1.Id - 1;
+  if (GetFirst t1 where (( prevId == t1.Id )) = tsOk)
+    result := t1.Code;
+  PopPos(#t1);
+}
+
+Browse br1;
+  show at(,, 20,);
+  table t1;
+Fields
+  t1.Code 'Code': [10], Protect;
+  t1.Name 'Name': [10], Protect;
+End;
+
+Browse br2;
+  show at(21,, 30,);
+  table t2;
+Fields
+  t2.Name 'Name': [10], Protect;
+End;
+
+Browse br3;
+  show at(31,,,);
+  table t3;
+Fields
+  t3.Name 'T3_Name': [10], Protect;
+  GetPrevCode 'Prev_T1_Code': [10], Protect;
+End;
+
+HandleEvent
+
+cmInit:
+{
+  insert t1 set t1.Id := 1, t1.Code := 'C1', t1.Name := 'T1-1';
+  insert t1 set t1.Id := 2, t1.Code := 'C2', t1.Name := 'T1-2';
+  insert t1 set t1.Id := 3, t1.Code := 'C3', t1.Name := 'T1-3';
+
+  insert t2 set t2.Id := 1, t2.Name := 'T2-1';
+  insert t2 set t2.Id := 2, t2.Name := 'T2-2';
+  insert t2 set t2.Id := 3, t2.Name := 'T2-3';
+
+  insert t3 set t3.t1 := 1, t3.t2 := 1, t3.Name := 'T3-1.1';
+  insert t3 set t3.t1 := 1, t3.t2 := 2, t3.Name := 'T3-1.2';
+  insert t3 set t3.t1 := 1, t3.t2 := 3, t3.Name := 'T3-1.3';
+  insert t3 set t3.t1 := 2, t3.t2 := 1, t3.Name := 'T3-2.1';
+  insert t3 set t3.t1 := 2, t3.t2 := 2, t3.Name := 'T3-2.2';
+  insert t3 set t3.t1 := 2, t3.t2 := 3, t3.Name := 'T3-2.3';
+  insert t3 set t3.t1 := 3, t3.t2 := 1, t3.Name := 'T3-3.1';
+  insert t3 set t3.t1 := 3, t3.t2 := 2, t3.Name := 'T3-3.2';
+  insert t3 set t3.t1 := 3, t3.t2 := 3, t3.Name := 'T3-3.3';
+}
+
+End;
+
+End.

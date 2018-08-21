@@ -4,6 +4,52 @@
 // Окно редактирования расчета за месяц
 //------------------------------------------------------------------------------
 
+Window wnDebtIn 'Входящий остаток';
+  show at(,, 80, 7);
+
+Screen scDebtIn ('',, sci178Esc);
+  table mtPersPer;
+Fields
+  mtStruct.Name:        skip;
+  mtPersPer.dBeg:       ['MM.YYYY'], skip;
+  mtPersPer.DebtIn:     [13.2,'\2p[|-]366`666`666~99'], noProtect;
+//  mtPeriod.PaymentRate: [13.4,'\4p[|-]366`666~9999'],   Skip;
+  GetDebtInRate: [13.4,'\4p[|-]366`666~9999'],   Skip;
+//  (mtPersPer.DebtIn / mtPeriod.PaymentRate): [13.2,'\2p[|-]366`666`666~99'], Skip;
+  (mtPersPer.DebtIn / GetDebtInRate): [13.2,'\2p[|-]366`666`666~99'], Skip;
+<<
+
+   `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Период`       .@@@@@@@@@@@@
+
+   `Сумма в BYN`  .@@@@@@@@@@@@ `Курс`.@@@@@@@@@@@@  `В USD`.@@@@@@@@@@@@
+>>
+End;
+
+End;
+
+Window wnDebtOut 'Исходящий остаток';
+  show at(,, 80, 7);
+
+Screen scDebtOut ('',, sci178Esc);
+  table mtPersPer;
+Fields
+  mtStruct.Name:         skip;
+  mtPersPer.dBeg:        ['MM.YYYY'], skip;
+  mtPersPer.DebtOut:     [13.2,'\2p[|-]366`666`666~99'], noProtect;
+  mtPeriod.PaymentRate: [13.4,'\4p[|-]366`666~9999'],   Skip;
+  (mtPersPer.DebtOut / mtPeriod.PaymentRate): [13.2,'\2p[|-]366`666`666~99'], Skip;
+<<
+
+   `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Период`       .@@@@@@@@@@@@
+
+   `Сумма в BYN`  .@@@@@@@@@@@@ `Курс`.@@@@@@@@@@@@  `В USD`.@@@@@@@@@@@@
+>>
+End;
+
+End;
+
 TableEvent
   table mtPersPer;
 

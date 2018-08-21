@@ -303,8 +303,8 @@ Tree trDepart;
   Table mtStruct;
   recMarker = pMarker {mtStruct.NRec};
 Fields
-  StructName ''#3'Наименование элемента' ('Наименование элемента иерархической структуры'): [20];
-  mtStaff.Contract ''#3'Контракт': [12], {font = {backcolor = GetContractTerm;}};
+  StructName 'Наименование элемента' ('Наименование элемента иерархической структуры'): [20];
+  mtStaff.Contract 'Контракт': [12], {font = {backcolor = GetContractTerm;}};
 End;
 
 Screen scEmpty;
@@ -407,19 +407,19 @@ Browse brMoney ('',, sci178Esc);
   Show at(, 22,,);
   Table mtMoney;
 Fields
-  mtMoney.Year         ''#3'Год': [5];
-  mtMoney.Month        ''#3'Месяц': [5];
-  mtMoney.SalaryUE     ''#3'Оклад' ('Оклад'): [5, '\0p[|-]36`666`666`666`666'];
-  mtMoney.DaysFact     ''#3'Дней' ('Фактически отработано дней'): [6.1, '\1p[|-]36`666.8'];
-  mtMoney.DepBonusUE   ''#3'Премия отдела' ('Премия отдела'): [8.2, '\2p[|-]36`666`666`666`666.88'];
-  mtMoney.GovBonusUE   ''#3'Премия Управления' ('Премия Управления'): [8.2, '\2p[|-]36`666`666`666`666.88'];
-  mtMoney.PrBisnesUE   ''#3'Проектный бизнес' ('Проектный бизнес'): [8.2, '\2p[|-]36`666`666`666`666.88'];
-  mtMoney.PrepaymentRB ''#3'Аванс' ('Аванс'): [12.2, '\2p[|-]36`666`666`666`666.88'];
-  mtMoney.PaymBetwinRB ''#3'Межрасчет' ('Межрасчетные выплаты'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.Year         'Год': [5];
+  mtMoney.Month        'Месяц': [5];
+  mtMoney.SalaryUE     'Оклад' ('Оклад'): [5, '\0p[|-]36`666`666`666`666'];
+  mtMoney.DaysFact     'Дней' ('Фактически отработано дней'): [6.1, '\1p[|-]36`666.8'];
+  mtMoney.DepBonusUE   'Премия отдела' ('Премия отдела'): [8.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.GovBonusUE   'Премия Управления' ('Премия Управления'): [8.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PrBisnesUE   'Проектный бизнес' ('Проектный бизнес'): [8.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PrepaymentRB 'Аванс' ('Аванс'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+  mtMoney.PaymBetwinRB 'Межрасчет' ('Межрасчетные выплаты'): [12.2, '\2p[|-]36`666`666`666`666.88'];
   mtMoney.TransferedRB + mtMoney.Transfered2RB
-                       ''#3'Перечислено' ('Перечислено'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+                       'Перечислено' ('Перечислено'): [12.2, '\2p[|-]36`666`666`666`666.88'];
   mtMoney.PrepaymentRB + mtMoney.PaymBetwinRB + mtMoney.TransferedRB + mtMoney.Transfered2RB
-                       ''#3'Доход' ('Итого перечислено за месяц'): [12.2, '\2p[|-]36`666`666`666`666.88'];
+                       'Доход' ('Итого перечислено за месяц'): [12.2, '\2p[|-]36`666`666`666`666.88'];
 End;
 
 TableEvent
@@ -1432,9 +1432,9 @@ Window wnAssociate 'Сопоставление полей';
 Browse brAssoc ('',, sci1Esc);
   Table mtAssoc;
 Fields
-  mtAssoc.Npp ''#3'№':       [2],  Protect;
-  GetDescr()  ''#3'Коммент': [10], Protect;
-  mtAssoc.Fld ''#3'Поле':    [10], [List '?',
+  mtAssoc.Npp '№':       [2],  Protect;
+  GetDescr()  'Коммент': [10], Protect;
+  mtAssoc.Fld 'Поле':    [10], [List '?',
                                          'таб. №',
                                          '№',
                                          'ФИО',
@@ -1536,41 +1536,41 @@ Browse brImport;
   Show at (, 11,,);
   Table mtImport;
 Fields
-  mtImport.Fld[01] ''#3'01': [10], Protect;
-  mtImport.Fld[02] ''#3'02': [10], Protect;
-  mtImport.Fld[03] ''#3'03': [10], Protect;
-  mtImport.Fld[04] ''#3'04': [10], Protect;
-  mtImport.Fld[05] ''#3'05': [10], Protect;
-  mtImport.Fld[06] ''#3'06': [10], Protect;
-  mtImport.Fld[07] ''#3'07': [10], Protect;
-  mtImport.Fld[08] ''#3'08': [10], Protect;
-  mtImport.Fld[09] ''#3'09': [10], Protect;
-  mtImport.Fld[10] ''#3'10': [10], Protect;
-  mtImport.Fld[11] ''#3'11': [10], Protect;
-  mtImport.Fld[12] ''#3'12': [10], Protect;
-  mtImport.Fld[13] ''#3'13': [10], Protect;
-  mtImport.Fld[14] ''#3'14': [10], Protect;
-  mtImport.Fld[15] ''#3'15': [10], Protect;
-  mtImport.Fld[16] ''#3'16': [10], Protect;
-  mtImport.Fld[17] ''#3'17': [10], Protect;
-  mtImport.Fld[18] ''#3'18': [10], Protect;
-  mtImport.Fld[19] ''#3'19': [10], Protect;
-  mtImport.Fld[20] ''#3'20': [10], Protect;
-  mtImport.Fld[21] ''#3'21': [10], Protect;
-  mtImport.Fld[22] ''#3'22': [10], Protect;
-  mtImport.Fld[23] ''#3'23': [10], Protect;
-  mtImport.Fld[24] ''#3'24': [10], Protect;
-  mtImport.Fld[25] ''#3'25': [10], Protect;
-  mtImport.Fld[26] ''#3'26': [10], Protect;
-  mtImport.Fld[27] ''#3'27': [10], Protect;
-  mtImport.Fld[28] ''#3'28': [10], Protect;
-  mtImport.Fld[29] ''#3'29': [10], Protect;
-  mtImport.Fld[30] ''#3'30': [10], Protect;
-  mtImport.Fld[31] ''#3'31': [10], Protect;
-  mtImport.Fld[32] ''#3'32': [10], Protect;
-  mtImport.Fld[33] ''#3'33': [10], Protect;
-  mtImport.Fld[34] ''#3'34': [10], Protect;
-  mtImport.Fld[35] ''#3'35': [10], Protect;
+  mtImport.Fld[01] '01': [10], Protect;
+  mtImport.Fld[02] '02': [10], Protect;
+  mtImport.Fld[03] '03': [10], Protect;
+  mtImport.Fld[04] '04': [10], Protect;
+  mtImport.Fld[05] '05': [10], Protect;
+  mtImport.Fld[06] '06': [10], Protect;
+  mtImport.Fld[07] '07': [10], Protect;
+  mtImport.Fld[08] '08': [10], Protect;
+  mtImport.Fld[09] '09': [10], Protect;
+  mtImport.Fld[10] '10': [10], Protect;
+  mtImport.Fld[11] '11': [10], Protect;
+  mtImport.Fld[12] '12': [10], Protect;
+  mtImport.Fld[13] '13': [10], Protect;
+  mtImport.Fld[14] '14': [10], Protect;
+  mtImport.Fld[15] '15': [10], Protect;
+  mtImport.Fld[16] '16': [10], Protect;
+  mtImport.Fld[17] '17': [10], Protect;
+  mtImport.Fld[18] '18': [10], Protect;
+  mtImport.Fld[19] '19': [10], Protect;
+  mtImport.Fld[20] '20': [10], Protect;
+  mtImport.Fld[21] '21': [10], Protect;
+  mtImport.Fld[22] '22': [10], Protect;
+  mtImport.Fld[23] '23': [10], Protect;
+  mtImport.Fld[24] '24': [10], Protect;
+  mtImport.Fld[25] '25': [10], Protect;
+  mtImport.Fld[26] '26': [10], Protect;
+  mtImport.Fld[27] '27': [10], Protect;
+  mtImport.Fld[28] '28': [10], Protect;
+  mtImport.Fld[29] '29': [10], Protect;
+  mtImport.Fld[30] '30': [10], Protect;
+  mtImport.Fld[31] '31': [10], Protect;
+  mtImport.Fld[32] '32': [10], Protect;
+  mtImport.Fld[33] '33': [10], Protect;
+  mtImport.Fld[34] '34': [10], Protect;
+  mtImport.Fld[35] '35': [10], Protect;
 End;
 End;
 

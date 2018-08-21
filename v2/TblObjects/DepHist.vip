@@ -143,8 +143,19 @@ public function ValidNode(_node: byte): boolean;
   result := true;
 }
 
+private function GenerateNewId: byte;
+{
+  result := 1;
+
+  if (GetLast mtDepHist2 ordered by index DhId = tsOk)
+    result := mtDepHist2.Id + 1;
+}
+
 function IModify.doInsert: word;
 {
+  if (mtDepHist.Id = 0)
+    mtDepHist.Id := GenerateNewId;
+
   result := insert current mtDepHist;
 }
 

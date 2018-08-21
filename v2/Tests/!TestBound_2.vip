@@ -1,0 +1,150 @@
+#include IModify.vih
+
+ObjInterface IT1;
+  property Id: byte;
+  property Code: string;
+  property Name: string;
+  property PrevCode: string read;
+
+  index ById = Id (unique);
+End;
+
+VipInterface VT1
+  implements IModify, IT1
+  licensed(free);
+
+Interface VT1;
+
+Table struct t1
+(
+  Id: byte,
+  Code: string,
+  Name: string
+)
+with index
+(
+  ById1 = Id (unique)
+);
+
+
+Create view from t1, t1 t1_;
+
+function GetPrevCode: string;
+{
+  result := '';
+
+  var prevId: byte;
+  prevId := t1.Id - 1;
+  if (GetFirst t1_ where (( prevId == t1_.Id )) = tsOk)
+    result := t1_.Code;
+ }
+
+property Id:       byte   absolute t1.Id;
+property Code:     string absolute t1.Code;
+property Name:     string absolute t1.Name;
+property PrevCode: string read GetPrevCode;
+index ById auto;
+
+function IModify.doInsert: word;
+{
+  result := insert current t1;
+}
+
+function IModify.doUpdate: word;
+{
+  result := update current t1;
+}
+
+function IModify.doDelete: word;
+{
+  result := delete current t1;
+}
+
+implementation IModify.doFlush abstract;
+
+End.
+
+VipInterface TestBound_v2 licensed(free);
+
+Interface TestBound_v2;
+
+var t1: IT1(VT1) new;
+
+Table struct t2
+(
+  Id: byte,
+  Name: string
+)
+with index
+(
+  ById2 = Id (unique)
+);
+
+Table struct t3
+(
+  t1: byte,
+  t2: byte,
+  Name: string
+)
+with index
+(
+  ByT1T2 = t1 + t2 (unique)
+);
+
+
+Create view as select * from t1, t2, t3
+where ((
+  t1.Id == t3.t1 and
+  t2.Id == t3.t2
+));
+
+Browse br1;
+  show at(,, 20,);
+  table t1;
+Fields
+  t1.Code 'Code': [10], Protect;
+  t1.Name 'Name': [10], Protect;
+End;
+
+Browse br2;
+  show at(21,, 30,);
+  table t2;
+Fields
+  t2.Name 'Name': [10], Protect;
+End;
+
+Browse br3;
+  show at(31,,,);
+  table t3;
+Fields
+  t3.Name 'T3_Name': [10], Protect;
+  t1.PrevCode 'Prev_T1_Code': [10], Protect;
+End;
+
+HandleEvent
+
+cmInit:
+{
+  insert t1 set t1.Id := 1, t1.Code := 'C1', t1.Name := 'T1-1';
+  insert t1 set t1.Id := 2, t1.Code := 'C2', t1.Name := 'T1-2';
+  insert t1 set t1.Id := 3, t1.Code := 'C3', t1.Name := 'T1-3';
+
+  insert t2 set t2.Id := 1, t2.Name := 'T2-1';
+  insert t2 set t2.Id := 2, t2.Name := 'T2-2';
+  insert t2 set t2.Id := 3, t2.Name := 'T2-3';
+
+  insert t3 set t3.t1 := 1, t3.t2 := 1, t3.Name := 'T3-1.1';
+  insert t3 set t3.t1 := 1, t3.t2 := 2, t3.Name := 'T3-1.2';
+  insert t3 set t3.t1 := 1, t3.t2 := 3, t3.Name := 'T3-1.3';
+  insert t3 set t3.t1 := 2, t3.t2 := 1, t3.Name := 'T3-2.1';
+  insert t3 set t3.t1 := 2, t3.t2 := 2, t3.Name := 'T3-2.2';
+  insert t3 set t3.t1 := 2, t3.t2 := 3, t3.Name := 'T3-2.3';
+  insert t3 set t3.t1 := 3, t3.t2 := 1, t3.Name := 'T3-3.1';
+  insert t3 set t3.t1 := 3, t3.t2 := 2, t3.Name := 'T3-3.2';
+  insert t3 set t3.t1 := 3, t3.t2 := 3, t3.Name := 'T3-3.3';
+}
+
+End;
+
+End.
+

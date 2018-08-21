@@ -53,9 +53,9 @@ End; // wnEdit
 Tree trStaff ('',, sci1478EscTree);
   Table mtStaff;
 Fields
-  KatSotr.FIO  ''#3'Сотрудник':   [15], Protect;
-  mtGroup.Name ''#3'Группа':      [10], Protect;
-  KatSotr.Name ''#3'Сетевое имя': [10], Protect;
+  KatSotr.FIO  'Сотрудник':   [15], Protect;
+  mtGroup.Name 'Группа':      [10], Protect;
+  KatSotr.Name 'Сетевое имя': [10], Protect;
 End;
 
 TableEvent

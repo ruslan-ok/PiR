@@ -12,28 +12,35 @@ Interface Post;
 Table struct mtPost
 (
   Id:   byte,
-  Code: s50,
   Name: s100
 )
 With index
 (
   PostId = Id (unique),
-  ByCode = Code,
   ByName = Name
 );
 
 Create view from mtPost, mtPost mtPost2;
 
 property Id:   byte absolute mtPost.Id;
-property Code: s50  absolute mtPost.Code;
 property Name: s100 absolute mtPost.Name;
 
 index PostId auto;
-index ByCode auto;
 index ByName auto;
+
+private function GenerateNewId: byte;
+{
+  result := 1;
+
+  if (GetLast mtPost2 ordered by index PostId = tsOk)
+    result := mtPost2.Id + 1;
+}
 
 function IModify.doInsert : word;
 {
+  if (mtPost.Id = 0)
+    mtPost.Id := GenerateNewId;
+
   result := insert current mtPost;
 }
 
@@ -66,7 +73,6 @@ public function SaveXml(_e: IDomNode): IDomNode;
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Post');
   xnode.AddAttr('rok:Id='   + string(Id));
-  xnode.AddAttr('rok:Code=' + Code);
   xnode.AddAttr('rok:Name=' + Name);
   result := xnode;
 }
@@ -80,7 +86,6 @@ public function LoadXml(_e: IDomNode): boolean;
       case _e.FndAttr.Name of
         'rok:NRec': Id   := GetId(cgPost, comp(_e.FndAttr.Value));
         'rok:Id':   Id   := GetId(cgPost, comp(_e.FndAttr.Value));
-        'rok:Code': Code := _e.FndAttr.Value;
         'rok:Name': Name := _e.FndAttr.Value;
       end;
     }
@@ -89,7 +94,7 @@ public function LoadXml(_e: IDomNode): boolean;
   if (GetFirst mtPost2 where (( mtPost.Id == mtPost2.Id )) <> tsOk)
   {
     insert current mtPost;
-    oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
+    //oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
   }
   result := true;
 }
@@ -99,7 +104,6 @@ public function SaveRok: boolean;
   result := true;
   StartNewRec;
   WriteByte(Id);
-  WriteStr(Code);
   WriteStr(Name);
 }
 
@@ -111,12 +115,11 @@ public function LoadRok: boolean;
   {
     ClearBuffer(#mtPost);
     Id   := ReadByte;
-    Code := ReadStr;
     Name := ReadStr;
     if (GetFirst mtPost2 where (( mtPost.Id == mtPost2.Id )) <> tsOk)
     {
       insert current mtPost;
-      oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
+      //oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
     }
     result := true;
   }

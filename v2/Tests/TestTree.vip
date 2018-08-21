@@ -1,0 +1,87 @@
+VipInterface TestTree licensed(free);
+
+Interface TestTree;
+
+var cNode: comp;
+
+Table struct mtStruct
+(
+  NRec:   comp,
+  Node:   comp,
+  dBeg:   date,
+  dEnd:   date,
+  Name:   string,
+  Mode:   byte,
+  Depart: byte,
+  Person: byte,
+  Sort:   s100
+)
+with index
+(
+  mtStruct1 = NRec (unique, surrogate),
+  mtStruct2 = Node + Mode(desc) + Sort,
+  mtStruct3 = Mode + Depart,
+  mtStruct4 = Mode + Person
+);
+
+Create view as select
+  *
+From
+  mtStruct,
+  mtStruct SubStruct
+Where ((
+  cNode         == mtStruct.Node and
+  mtStruct.NRec == SubStruct.Node
+));
+
+Tree trFilling ('',, sci1478EscTree);
+  Table mtStruct;
+Fields
+  mtStruct.Name 'Подразделение или ФИО' ('Наименование подразделения или ФИО работника'): [20], Protect;
+  mtStruct.Person 'Pers': [5], Protect;
+End;
+
+TableEvent
+  Table mtStruct;
+
+cmTreeTop:
+  cNode := 0;
+
+cmTreeUp:
+  cNode := mtStruct.Node;
+
+cmTreeDown:
+  cNode := mtStruct.NRec;
+
+cmTreeNodeType:
+{
+  var yType: byte; // лист или папка (открытая или закрытая)
+  yType := ntfText;
+  if (isValid(tnmtStruct) and isValid(tnSubStruct))
+    if (TreeNodeIsOpen(trFilling))
+      yType := ntfOpen;
+    else
+      yType := ntfClose;
+
+  TreeSetNodeType(trFilling, yType);
+}
+
+cmTreeNeedOwner:
+  TreeJumpToRecord(trFilling, mtStruct.Node);
+
+End;
+
+HandleEvent
+
+cmInit:
+{
+  insert mtStruct set mtStruct.Mode := 1, mtStruct.Name := 'Depart-1', mtStruct.Depart := 1;
+  cNode := mtStruct.NRec;
+  insert mtStruct set mtStruct.Mode := 2, mtStruct.Name := 'Person-1', mtStruct.Person := 1, mtStruct.Node := cNode;
+  insert mtStruct set mtStruct.Mode := 2, mtStruct.Name := 'Person-2', mtStruct.Person := 2, mtStruct.Node := cNode;
+}
+
+End;
+
+End.
+

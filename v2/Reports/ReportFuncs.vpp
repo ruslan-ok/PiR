@@ -155,7 +155,7 @@ private function UE(_row: byte): double;
         result += mtNachisl.NetUSD;
     }
 
-    R08: result := mtDebtIn.NetUSD; // Зачет с прошлого месяца
+    R08: result := RB(R08) / Rate(R08); // Зачет с прошлого месяца
     R09: result := UE(R07) + UE(R08) + UE(R21); // К выдаче
 
     R10, R11, R13:
@@ -174,7 +174,7 @@ private function UE(_row: byte): double;
       }
     }
 
-    R15: result := mtDebtOut.NetUSD; // Зачет на следующий месяц
+    R15: result := RB(R15) / Rate(R15); // Зачет на следующий месяц
 
     R16:
     { // Выдано
@@ -201,13 +201,14 @@ private function Rate(_row: byte): double;
     R02, R03, R04:
       result := mtNachisl.GetRate(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
 
-    R08: result := mtDebtIn.Rate; // Зачет с прошлого месяца
+    R08: result := mtPeriods.DebtInRate; // Зачет с прошлого месяца
 
     R10, R11, R13:
       result := mtPayment.GetRate(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
 
-    R21: // Льгота по подоходному налогу
-      result := mtPeriods.PaymentRate;
+    R15: result := mtPeriods.PaymentRate; // Зачет на следующий месяц
+
+    R21: result := mtPeriods.PaymentRate; // Льгота по подоходному налогу
 
   end;
 }
@@ -243,7 +244,7 @@ private function RB(_row: byte): double;
         result += mtNachisl.NetBYN;
     }
 
-    R08: result := mtDebtIn.NetBYN; // Зачет с прошлого месяца
+    R08: result := mtPersPer.DebtIn; // Зачет с прошлого месяца
     R09: result := RB(R07) + RB(R08) + RB(R21); // К выдаче
 
     R10, R11, R13:
@@ -262,7 +263,7 @@ private function RB(_row: byte): double;
       }
     }
 
-    R15: result := mtDebtOut.NetBYN; // Зачет на следующий месяц
+    R15: result := mtPersPer.DebtOut; // Зачет на следующий месяц
 
     R16:
     { // Выдано

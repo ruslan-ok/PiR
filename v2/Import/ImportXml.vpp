@@ -1,0 +1,141 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Импорт из xml
+//------------------------------------------------------------------------------
+
+private procedure LoadPeriods(_e: IDomNode);
+{
+  wlog.LogMessage(APE_INFO, 'Периоды');
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Period': mtPeriod.LoadXml(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+  wlog.LogCommit;
+}
+
+private procedure LoadDeparts(_e: IDomNode);
+{
+  wlog.LogMessage(APE_INFO, 'Подразделения и должности');
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Depart':  mtDepart.LoadXml(_e.FndNode);
+        'rok:DepHist': mtDepHist.LoadXml(_e.FndNode);
+        'rok:Post':    mtPost.LoadXml(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+  wlog.LogCommit;
+}
+
+private procedure LoadPersPer(_e: IDomNode);
+{
+  mtPersPer.LoadXml(_e);
+  yPeriodId := mtPersPer.Period;
+
+  if (wDetProt <> 0)
+    wlog.LogMessage(APE_INFO, DateToStr(mtPersPer.dBeg, 'MM.YYYY'));
+
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Nachisl': mtNachisl.LoadXml(_e.FndNode);
+        'rok:Payment': mtPayment.LoadXml(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+
+  if (wDetProt <> 0)
+    wlog.LogCommit;
+}
+
+private procedure LoadOnePerson(_e: IDomNode);
+{
+  mtPerson.LoadXml(_e);
+  yPersonId := mtPerson.Id;
+  wlog.LogMessage(APE_INFO, mtPerson.FIO);
+
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      SetVisualHeader(mtPerson.FIO);
+
+      case _e.FndNode.Name of
+        'rok:Appoint': mtAppoint.LoadXml(_e.FndNode);
+        'rok:PersPer': LoadPersPer(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+
+  wlog.LogCommit;
+}
+
+private procedure LoadPersons(_e: IDomNode);
+{
+  if _e.GetFirstNode
+    do
+    {
+      if not NextVisual
+        _raise exUserBreaked;
+
+      case _e.FndNode.Name of
+        'rok:Person': LoadOnePerson(_e.FndNode);
+      end;
+    }
+    while (_e.GetNextNode);
+}
+
+private function DoImportXml: boolean;
+{
+  wlog.LogStartVisual('Загрузка из файла ' + sFile, 0);
+  var doc: DomDoc new;
+  doc.Load(sFile);
+
+  if (doc.RootNode <> NullRef)
+  {
+    _try
+    {
+      if doc.RootNode.GetFirstNode
+        do
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          case doc.RootNode.FndNode.Name of
+            'rok:Periods': LoadPeriods(doc.RootNode.FndNode);
+            'rok:Departs': LoadDeparts(doc.RootNode.FndNode);
+            'rok:Persons': LoadPersons(doc.RootNode.FndNode);
+          end;
+        }
+        while (doc.RootNode.GetNextNode);
+    }
+    _except
+      on exUserBreaked:
+      {
+      }
+    _finally
+    {
+    }
+  }
+  doc.Free;
+  result := (wlog.LogStopVisual = APE_INFO);
+}

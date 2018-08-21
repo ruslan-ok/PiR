@@ -5,12 +5,15 @@
 //------------------------------------------------------------------------------
 
 var wAddMode: word;
-var sDepCode, sDepName: string;
+var sDepName: string;
 var dCreateDep, dCreateApp, dContract: date;
 var cSotrDep, cSotrPost: byte;
 var sPassw, sSort: string;
 var fSalary, fTaxDed: double;
 var wCurrency: word;
+#ifdef NoPiR
+var sFIO, sLogin, sEmail: string;
+#end
 
 Window wnNewStruct 'Создание подразделения или сотрудника' ('',, sci1EnEsc);
   show at(,, 110, 16);
@@ -32,12 +35,10 @@ Screen scNewDepart;
   show at(26,,, 12);
   table mtStruct;
 Fields
-  sDepCode: noprotect, {font = {backColor = if(sDepCode = '', ColorNeed, 0)}};
   sDepName: noprotect, {font = {backColor = if(sDepName = '', ColorNeed, 0)}};
   dCreateDep: noprotect, {font = {backColor = if(dCreateDep = ZeroDate, ColorNeed, 0)}};
 <<
 
-   `Код`          .@@@@@@@@@@@@
    `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Дата создания`.@@@@@@@@@@@@
 >>
@@ -47,9 +48,15 @@ Screen scNewPerson;
   show at(26,,, 12);
   table mtStruct;
 Fields
+#ifdef NoPiR
+  sFIO:   NoProtect, {font = {backColor = if(sFIO = '', ColorNeed, 0)}};
+  sLogin: NoProtect, {font = {backColor = if(sLogin = '', ColorNeed, 0)}};
+  sEmail: NoProtect;
+#else
   KatSotr.FIO ('',, sci13Esc): Protect, {font = {backColor = if(cSotr = 0, ColorNeed, 0)}};
   KatSotr.Name:  Protect;
   KatSotr.EMail: Protect;
+#end
   sPassw: noProtect;
   sSort:  noProtect;
   sDepart ('',, sci13Esc): protect, {font = {backColor = if(cSotrDep = 0, ColorNeed, 0)}};
@@ -91,11 +98,12 @@ WindowEvent wnNewStruct;
 
 cmInit:
 {
-  sDepCode := sDepName := '';
-  dCreateDep := dCreateApp := mtPeriods.dBeg;
+  sDepName := sFIO := sLogin := sEmail := '';
+  dCreateDep := dCreateApp := mtPeriod.dBeg;
   dContract := ZeroDate;
   cSotr := cSotrDep := cSotrPost := 0;
   sPassw := sSort := sDepart := sPost := '';
+  fSalary := 0;
 }
 
 cmPick:
@@ -126,7 +134,9 @@ cmPick:
 
 cmDelOnProtect:
   case CurField of
+#ifndef NoPiR
     #KatSotr.FIO: set cSotr := 0;
+#end
     #sDepart: set cSotrDep := 0;
     #sPost: set cSotrPost := 0;
   end;
@@ -136,32 +146,64 @@ cmOk:
 
     0:
     {
-      if (sDepCode = '')
-        message('Не задан код подразделения.');
+      if (sDepName = '')
+        message('Не задано наименование подразделения.');
       else
-        if (sDepName = '')
-          message('Не задано наименование подразделения.');
+        if (dCreateDep = ZeroDate)
+          message('Не задана дата создания подразделения.');
         else
-          if (dCreateDep = ZeroDate)
-            message('Не задана дата создания подразделения.');
+          if (GetFirst mtDepart where (( sDepName == mtDepart.Name )) = tsOk)
+            message('Подразделение с таким наименованием уже есть.');
           else
-            if (GetFirst mtDepart where (( sDepName == mtDepart.Name )) = tsOk)
-              message('Подразделение с таким наименованием уже есть.');
-            else
-            {
-              insert mtDepart set mtDepart.Code := sDepCode,
-                                  mtDepart.Name := sDepName;
+          {
+            insert mtDepart set mtDepart.Name := sDepName;
 
-              insert mtDepHist set mtDepHist.Depart := mtDepart.Id,
-                                   mtDepHist.Sort   := sDepCode,
-                                   mtDepHist.dBeg   := dCreateDep;
+            insert mtDepHist set mtDepHist.Depart := mtDepart.Id,
+                                 mtDepHist.Sort   := string(mtDepart.Id),
+                                 mtDepHist.dBeg   := dCreateDep;
 
-              CloseWindow(wnNewStruct);
-            }
+            CloseWindow(wnNewStruct);
+          }
     }
 
     1:
     {
+#ifdef NoPiR
+      if (sFIO = '')
+        message('Не задано ФИО сотрудника.');
+      else
+        if (sLogin = '')
+          message('Не задан логин сотрудника.');
+        else
+          if (cSotrDep = 0)
+            message('Не задано подразделение сотрудника.');
+          else
+            if (cSotrPost = 0)
+              message('Не задана должность сотрудника.');
+            else
+              if (dCreateApp = ZeroDate)
+                message('Не задана дата назначения.');
+              else
+                if (GetFirst mtPerson where (( sLogin == mtPerson.Login )) = tsOk)
+                  message('Этот сотрудник уже добавлен ранее.');
+                else
+                {
+                  insert mtPerson set mtPerson.Login := sLogin,
+                                      mtPerson.FIO   := sFIO,
+                                      mtPerson.EMail := sEMail,
+                                      mtPerson.Passw := sPassw;
+
+                  insert mtAppoint set mtAppoint.Person   := mtPerson.Id,
+                                       mtAppoint.Depart   := cSotrDep,
+                                       mtAppoint.Post     := cSotrPost,
+                                       mtAppoint.dBeg     := dCreateApp,
+                                       mtAppoint.dEnd     := dContract,
+                                       mtAppoint.Salary   := fSalary,
+                                       mtAppoint.Currency := if(wCurrency = 0, 'USD', 'BYN'),
+                                       mtAppoint.TaxDed   := fTaxDed;
+                  CloseWindow(wnNewStruct);
+                }
+#else
       if (cSotr = 0)
         message('Не выбран сотрудник.');
       else
@@ -183,7 +225,7 @@ cmOk:
                                     mtPerson.EMail := KatSotr.EMail,
                                     mtPerson.Passw := sPassw;
 
-                insert mtAppoint set mtAppoint.Person   := KatSotr.Name,
+                insert mtAppoint set mtAppoint.Person   := mtPerson.Id,
                                      mtAppoint.Depart   := cSotrDep,
                                      mtAppoint.Post     := cSotrPost,
                                      mtAppoint.dBeg     := dCreateApp,
@@ -193,6 +235,7 @@ cmOk:
                                      mtAppoint.TaxDed   := fTaxDed;
                 CloseWindow(wnNewStruct);
               }
+#end
     }
 
   end;

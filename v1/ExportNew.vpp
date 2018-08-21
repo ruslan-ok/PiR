@@ -397,6 +397,19 @@ private procedure doExport;
     xwage.AddAttr('xmlns:rok=http://178.172.132.68/pir/');
 
       xpers := xwage.AddNode('rok:Periods');
+
+        _loop mtMoney2
+        {
+          if (GetFirst mtPeriod where (( mtMoney2.Year  == mtPeriod.Year and
+                                         mtMoney2.Month == mtPeriod.Month )) <> tsOk)
+          {
+            ClearBuffer(#mtPeriod);
+            mtPeriod.Year  := mtMoney2.Year;
+            mtPeriod.Month := mtMoney2.Month;
+            insert current mtPeriod;
+          }
+        }
+
         _loop mtPeriod
         {
           if not NextVisual
@@ -520,14 +533,16 @@ private procedure doExport;
                 if (GetFirst mtPeriod where (( mtMoney.Year == mtPeriod.Year and
                                                mtMoney.Month == mtPeriod.Month )) <> tsOk)
                 {
+                  message('oops');
                 }
 
                 lSumNpp := 1;
                 xpp := xper.AddNode('rok:PersPer');
                 xpp.AddAttr('rok:Period='   + string(date(1, mtMoney.Month, mtMoney.Year)));
                 xpp.AddAttr('rok:FactDays=' + string(byte(mtMoney.DaysFact)));
-
-                AddSum(xpp, 'DebtIn',  cgNetBYN, RB(R08), Rate(R08), GetParamName(R08), GetComment(R08)); // Зачет с прошлого месяца
+                xpp.AddAttr('rok:DebtIn=' + string(RB(R08)));
+                xpp.AddAttr('rok:RateIn=' + string(RB(R08)));
+                xpp.AddAttr('rok:DebtOut=' + string(RB(R15)));
 
                 AddNachisl(xpp, R02); // Премия отдела
                 AddNachisl(xpp, R03); // Премия Управления
@@ -539,8 +554,6 @@ private procedure doExport;
                 AddPayment(xpp, R11); // Межрасчетные выплаты
                 AddPayment(xpp, R13); // Перечислено
                 AddPayment(xpp, R14); // 2 часть
-
-                AddSum(xpp, 'DebtOut', cgNetBYN, RB(R15), Rate(R15), GetParamName(R15), GetComment(R15)); // Зачет на следующий месяц
               }
             }
 

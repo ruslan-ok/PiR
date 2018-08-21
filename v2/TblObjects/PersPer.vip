@@ -4,14 +4,17 @@
 // Табличный объект зарплат сотрудников по месяцам
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface PersPer;
 
 Table struct mtPersPer
 (
-  Person:     byte,
-  Period:     byte,
-  FactDays:   byte,
-  dBeg:       date
+  Person:   byte,
+  Period:   byte,
+  FactDays: byte,
+  DebtIn:   double,
+  DebtOut:  double
 )
 With index
 (
@@ -21,10 +24,15 @@ With index
 
 Create view from mtPersPer, mtPersPer mtPersPer2;
 
-property Person:     byte   absolute mtPersPer.Person;
-property Period:     byte   absolute mtPersPer.Period;
-property FactDays:   byte   absolute mtPersPer.FactDays;
-property dBeg:       date   absolute mtPersPer.dBeg;
+private function GetPrevOut: double; forward;
+
+property Person:   byte   absolute mtPersPer.Person;
+property Period:   byte   absolute mtPersPer.Period;
+property FactDays: byte   absolute mtPersPer.FactDays;
+property DebtIn:   double absolute mtPersPer.DebtIn;
+property DebtOut:  double absolute mtPersPer.DebtOut;
+property PrevOut:  double read GetPrevOut;
+property dBeg:     date   read IdToPeriod(mtPersPer.Period);
 
 
 index ByPerson auto;
@@ -37,6 +45,15 @@ public function FactDaysPrev: byte;
   if (GetLast mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
                                   mtPersPer.Period >> mtPersPer2.Period )) = tsOk)
     result := mtPersPer2.FactDays;
+}
+
+private function GetPrevOut: double;
+{
+  result := 0;
+
+  if (GetFirst mtPersPer2 where (( mtPersPer.Person    == mtPersPer2.Person and
+                              byte(mtPersPer.Period-1) == mtPersPer2.Period )) = tsOk)
+    result := mtPersPer2.DebtOut;
 }
 
 function IModify.doInsert: word;
@@ -74,11 +91,14 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode := _e.AddNode('rok:PersPer');
   xnode.AddAttr('rok:Period='   + string(Period));
   xnode.AddAttr('rok:FactDays=' + string(FactDays));
+  xnode.AddAttr('rok:DebtIn=' + string(DebtIn));
+  xnode.AddAttr('rok:DebtOut=' + string(DebtOut));
   result := xnode;
 }
 
 public function LoadXml(_e: IDomNode): boolean;
 {
+  var dTmp: date = ZeroDate;
   ClearBuffer(#mtPersPer);
   if _e.GetFirstAttr
     do
@@ -86,10 +106,12 @@ public function LoadXml(_e: IDomNode): boolean;
       case _e.FndAttr.Name of
         'rok:Period':
         {
-          dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-          Period := PeriodToId(dBeg);
+          dTmp := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+          Period := PeriodToId(dTmp);
         }
         'rok:FactDays': FactDays := byte(_e.FndAttr.Value);
+        'rok:DebtIn': DebtIn := double(_e.FndAttr.Value);
+        'rok:DebtOut': DebtOut := double(_e.FndAttr.Value);
       end;
     }
     while (_e.GetNextAttr);
@@ -100,6 +122,8 @@ public function LoadXml(_e: IDomNode): boolean;
                                    mtPersPer.Period == mtPersPer2.Period )) <> tsOk)
   {
     insert current mtPersPer;
+    if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
+      oWage.Log(APE_INFO, string(dTmp) + ': DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
   }
   result := true;
 }
@@ -110,6 +134,8 @@ public function SaveRok: boolean;
   StartNewRec;
   WriteByte(Period);
   WriteByte(FactDays);
+  WriteDouble(DebtIn);
+  WriteDouble(DebtOut);
 }
 
 public function LoadRok: boolean;
@@ -120,14 +146,17 @@ public function LoadRok: boolean;
   {
     ClearBuffer(#mtPersPer);
     Period   := ReadByte;
-    dBeg     := IdToPeriod(Period);
     FactDays := ReadByte;
+    DebtIn   := ReadDouble;
+    DebtOut  := ReadDouble;
     Person   := oWage.PersonId;
 
     if (GetFirst mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
                                      mtPersPer.Period == mtPersPer2.Period )) <> tsOk)
     {
       insert current mtPersPer;
+      if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
+        oWage.Log(APE_INFO, 'DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
     }
 
     result := true;
