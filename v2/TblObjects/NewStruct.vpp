@@ -101,8 +101,10 @@ cmInit:
 cmPick:
   case CurField of
 
+#ifndef NoPiR
     #KatSotr.FIO:
       RunInterface('GetSotr', cSotr);
+#end
 
     #sDepart:
     {
@@ -210,8 +212,8 @@ cmDeleteRecord:
   {
     var ret: boolean = false;
     case mtStruct.Mode of
-      1: ret := DelDepart(mtStruct.Rec);
-      2: ret := DelPerson(mtStruct.Rec);
+      1: ret := DelDepart(mtStruct.Depart);
+      2: ret := DelPerson(mtStruct.Person);
     end;
     if ret
       BuildTree;

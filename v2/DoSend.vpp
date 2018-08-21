@@ -95,7 +95,7 @@ private procedure PrintString(_row, _debug: word);
 
 Procedure SendThis;
 {
-  if (GetFirst mtPerson where (( mtStruct.Rec == mtPerson.Id )) <> tsOk)
+  if (GetFirst mtPerson where (( mtStruct.Person == mtPerson.Id )) <> tsOk)
     exit;
 
   if (sPath[length(sPath)] <> '\')

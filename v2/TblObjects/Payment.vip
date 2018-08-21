@@ -4,6 +4,8 @@
 // Табличный объект отдельной выплаты
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface Payment;
 
 var mPrev: IPayment;
@@ -11,7 +13,7 @@ var mPrev: IPayment;
 Table struct mtPayment
 (
   Person: byte,
-  Period: date,
+  Period: byte,
   Payed:  date,
   Sort:   byte,
   Title:  byte,
@@ -23,7 +25,7 @@ Table struct mtPayment
 With index
 (
   Sorted = Person + Period + Sort,
-  Titled = Person + Period + Title,
+  Titled = Person + Period + Title (unique),
   ByTitle = Title
 );
 
@@ -41,7 +43,7 @@ from
   mtPayment mtPayment2;
 
 property Person: byte   absolute mtPayment.Person;
-property Period: date   absolute mtPayment.Period;
+property Period: byte   absolute mtPayment.Period;
 property Payed:  date   absolute mtPayment.Payed;
 property Sort:   byte   absolute mtPayment.Sort;
 property Title:  byte   absolute mtPayment.Title;
@@ -54,6 +56,7 @@ property TaxBYN: double read fTaxBYN;
 property NetUSD: double read fNetUSD;
 property TaxUSD: double read fTaxUSD;
 property Error:  string read sError;
+property dPeriod: date  read IdToPeriod(mtPayment.Period);
 
 index Sorted auto;
 index Titled auto;
@@ -106,6 +109,11 @@ public function GetTitleName: string;
   result := '';
   if (oWage <> NullRef)
     result := oWage.GetTitleName(mtPayment.Title);
+}
+
+public function ToString: string;
+{
+  result := string(Value) + ' ' + if(TaxCur = cgNetUSD or TaxCur = cgTaxUSD, 'USD', 'BYN') + ' ' + GetTitleName;
 }
 
 function IModify.doInsert : word;
@@ -179,6 +187,20 @@ public procedure Clear(_wage: IWageView = NullRef);
   delete all mtPayment;
 }
 
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode(TagName);
+  xnode.AddAttr('rok:Payed='  + string(Payed));
+  xnode.AddAttr('rok:Sort='   + string(Sort));
+  xnode.AddAttr('rok:Title='  + string(Title));
+  xnode.AddAttr('rok:Value='  + DoubleToStr(Value, '\2p[|-]3666666666666~99'));
+  xnode.AddAttr('rok:TaxCur=' + string(TaxCur));
+  xnode.AddAttr('rok:Rate='   + DoubleToStr(Rate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:Info='   + Info);
+  result := xnode;
+}
+
 public function LoadXml(_e: IDomNode): boolean;
 {
   result := false;
@@ -202,22 +224,37 @@ public function LoadXml(_e: IDomNode): boolean;
     }
     while (_e.GetNextAttr);
 
-  insert current mtPayment;
+  Person := oWage.PersonId;
+  Period := oWage.PeriodId;
+
+  if (GetFirst mtPayment2 where (( mtPayment.Person == mtPayment2.Person and
+                                   mtPayment.Period == mtPayment2.Period and
+                                   mtPayment.Title  == mtPayment2.Title )) = tsOk)
+    oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+  else
+  {
+    var res: word;
+    res := insert current mtPayment;
+    if (res <> tsOk)
+      oWage.Log(APE_WARNING, 'Error on insert: ' + ToString);
+    else
+      oWage.Log(APE_INFO, ToString);
+  }
+
   result := true;
 }
 
-public function SaveXml(_e: IDomNode): IDomNode;
+public function SaveRok: boolean;
 {
-  var xnode: IDomNode
-  xnode := _e.AddNode(TagName);
-  xnode.AddAttr('rok:Payed='  + string(Payed));
-  xnode.AddAttr('rok:Sort='   + string(Sort));
-  xnode.AddAttr('rok:Title='  + string(Title));
-  xnode.AddAttr('rok:Value='  + DoubleToStr(Value, '\2p[|-]3666666666666~99'));
-  xnode.AddAttr('rok:TaxCur=' + string(TaxCur));
-  xnode.AddAttr('rok:Rate='   + DoubleToStr(Rate, '\4p[|-]3666666666~9999'));
-  xnode.AddAttr('rok:Info='   + Info);
-  result := xnode;
+  result := true;
+  StartNewRec;
+  WriteDate(Payed);
+  WriteByte(Sort);
+  WriteByte(Title);
+  WriteDouble(Value);
+  WriteByte(TaxCur);
+  WriteDouble(Rate);
+  WriteStr(Info);
 }
 
 public function LoadRok: boolean;
@@ -234,22 +271,21 @@ public function LoadRok: boolean;
     TaxCur := ReadByte;
     Rate   := ReadDouble;
     Info   := ReadStr;
-    insert current mtPayment;
+    Person := oWage.PersonId;
+    Period := oWage.PeriodId;
+
+    if (GetFirst mtPayment2 where (( mtPayment.Person == mtPayment2.Person and
+                                     mtPayment.Period == mtPayment2.Period and
+                                     mtPayment.Title  == mtPayment2.Title )) = tsOk)
+      oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+    else
+    {
+      insert current mtPayment;
+      oWage.Log(APE_INFO, ToString);
+    }
+
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteDate(Payed);
-  WriteByte(Sort);
-  WriteByte(Title);
-  WriteDouble(Value);
-  WriteByte(TaxCur);
-  WriteDouble(Rate);
-  WriteStr(Info);
 }
 
 end.

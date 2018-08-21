@@ -11,7 +11,7 @@ Screen scPayment ('',, sci178Esc);
   table mtPayment;
 Fields
   mtStruct.Name: skip;
-  mtPayment.Period:  ['MM.YYYY'], skip;
+  mtPayment.dPeriod:  ['MM.YYYY'], skip;
   mtPayment.Sort:         noprotect;
   mtPayment.GetTitleName: noprotect;
   mtPayment.Payed:        noprotect;
@@ -22,11 +22,11 @@ Fields
                           'USD с налогами'], protect;
   mtPayment.NetBYN: skip;
   mtPayment.TaxBYN: skip;
-  mtPayment.Rate:   [13.4,'\4p[|-]3`666`666~9999'], noprotect;
+  mtPayment.Rate:   [13.4,'\4p[|-]366`666~9999'], noprotect;
   mtPayment.NetUSD: skip;
   mtPayment.TaxUSD: skip;
-  mtPayment.Info   (''): noprotect;
-  mtPayment.Error: skip;
+  mtPayment.Info:   noprotect;
+  mtPayment.Error:  skip;
 <<
 
    `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

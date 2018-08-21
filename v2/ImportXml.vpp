@@ -6,6 +6,7 @@
 
 private procedure LoadPeriods(_e: IDomNode);
 {
+  wlog.LogMessage(APE_INFO, 'Периоды');
   if _e.GetFirstNode
     do
     {
@@ -13,14 +14,16 @@ private procedure LoadPeriods(_e: IDomNode);
         _raise exUserBreaked;
 
       case _e.FndNode.Name of
-        'rok:Period': mtPeriods.Load(_e.FndNode);
+        'rok:Period': mtPeriods.LoadXml(_e.FndNode);
       end;
     }
     while (_e.GetNextNode);
+  wlog.LogCommit;
 }
 
 private procedure LoadDeparts(_e: IDomNode);
 {
+  wlog.LogMessage(APE_INFO, 'Подразделения и должности');
   if _e.GetFirstNode
     do
     {
@@ -28,19 +31,21 @@ private procedure LoadDeparts(_e: IDomNode);
         _raise exUserBreaked;
 
       case _e.FndNode.Name of
-        'rok:Depart':  mtDepart.Load(_e.FndNode);
-        'rok:DepHist': mtDepHist.Load(_e.FndNode);
-        'rok:Post':    mtPost.Load(_e.FndNode);
+        'rok:Depart':  mtDepart.LoadXml(_e.FndNode);
+        'rok:DepHist': mtDepHist.LoadXml(_e.FndNode);
+        'rok:Post':    mtPost.LoadXml(_e.FndNode);
       end;
     }
     while (_e.GetNextNode);
+  wlog.LogCommit;
 }
 
 private procedure LoadPersPer(_e: IDomNode);
 {
-  mtPersPer.Load(_e);
-  mtPersPer.Person := mtPerson.Id;
-  update current mtPersPer;
+  mtPersPer.LoadXml(_e);
+
+  if (wDetProt <> 0)
+    wlog.LogMessage(APE_INFO, DateToStr(mtPersPer.dBeg, 'MM.YYYY'));
 
   if _e.GetFirstNode
     do
@@ -48,58 +53,23 @@ private procedure LoadPersPer(_e: IDomNode);
       if not NextVisual
         _raise exUserBreaked;
 
-      SetVisualHeader(DateToStr(mtPersPer.Period, 'MM.YYYY') + ' ' + mtPerson.FIO);
-
       case _e.FndNode.Name of
-
-        'rok:DebtIn':
-        {
-          if (mtDebtIn.Load(_e.FndNode))
-          {
-            mtDebtIn.Person := mtPerson.Id;
-            mtDebtIn.Period := mtPersPer.Period;
-            update current mtDebtIn;
-          }
-        }
-
-        'rok:Nachisl':
-        {
-          if (mtNachisl.Load(_e.FndNode))
-          {
-            mtNachisl.Person := mtPerson.Id;
-            mtNachisl.Period := mtPersPer.Period;
-            update current mtNachisl;
-          }
-        }
-
-        'rok:Payment':
-        {
-          if (mtPayment.Load(_e.FndNode))
-          {
-            mtPayment.Person := mtPerson.Id;
-            mtPayment.Period := mtPersPer.Period;
-            update current mtPayment;
-          }
-        }
-
-        'rok:DebtOut':
-        {
-          if (mtDebtOut.Load(_e.FndNode))
-          {
-            mtDebtOut.Person := mtPerson.Id;
-            mtDebtOut.Period := mtPersPer.Period;
-            update current mtDebtOut;
-          }
-        }
-
+        'rok:DebtIn':  mtDebtIn.LoadXml(_e.FndNode);
+        'rok:Nachisl': mtNachisl.LoadXml(_e.FndNode);
+        'rok:Payment': mtPayment.LoadXml(_e.FndNode);
+        'rok:DebtOut': mtDebtOut.LoadXml(_e.FndNode);
       end;
     }
     while (_e.GetNextNode);
+
+  if (wDetProt <> 0)
+    wlog.LogCommit;
 }
 
 private procedure LoadOnePerson(_e: IDomNode);
 {
-  mtPerson.Load(_e);
+  mtPerson.LoadXml(_e);
+  wlog.LogMessage(APE_INFO, mtPerson.FIO);
 
   if _e.GetFirstNode
     do
@@ -110,20 +80,13 @@ private procedure LoadOnePerson(_e: IDomNode);
       SetVisualHeader(mtPerson.FIO);
 
       case _e.FndNode.Name of
-
-        'rok:Appoint':
-        {
-          mtAppoint.Load(_e.FndNode);
-          mtAppoint.Person := mtPerson.Id;
-          update current mtAppoint;
-        }
-
-        'rok:PersPer':
-          LoadPersPer(_e.FndNode);
-
+        'rok:Appoint': mtAppoint.LoadXml(_e.FndNode);
+        'rok:PersPer': LoadPersPer(_e.FndNode);
       end;
     }
     while (_e.GetNextNode);
+
+  wlog.LogCommit;
 }
 
 private procedure LoadPersons(_e: IDomNode);
@@ -141,27 +104,14 @@ private procedure LoadPersons(_e: IDomNode);
     while (_e.GetNextNode);
 }
 
-private procedure DoImportXml;
+private function DoImportXml: boolean;
 {
-  StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
-  SetVisualTitle('Загрузка из ' + sFile);
+  wlog.LogStartVisual('Загрузка из файла ' + sFile, 0);
   var doc: DomDoc new;
   doc.Load(sFile);
 
   if (doc.RootNode <> NullRef)
   {
-    mtPeriods.Clear(IWageView(self));
-    mtDepart.Clear(IWageView(self));
-    mtDepHist.Clear(IWageView(self));
-    mtPost.Clear(IWageView(self));
-    mtPerson.Clear(IWageView(self));
-    mtAppoint.Clear(IWageView(self));
-    mtPersPer.Clear(IWageView(self));
-    mtDebtIn.Clear(IWageView(self));
-    mtNachisl.Clear(IWageView(self));
-    mtPayment.Clear(IWageView(self));
-    mtDebtOut.Clear(IWageView(self));
-
     _try
     {
       if doc.RootNode.GetFirstNode
@@ -187,5 +137,5 @@ private procedure DoImportXml;
     }
   }
   doc.Free;
-  StopVisual;
+  result := (wlog.LogStopVisual = APE_INFO);
 }

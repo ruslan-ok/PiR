@@ -11,18 +11,18 @@ Screen scDebtOut ('',, sci178Esc);
   table mtDebtOut;
 Fields
   mtStruct.Name: skip;
-  mtDebtOut.Period: ['MM.YYYY'], skip;
-  mtDebtOut.Sort   (''): noprotect;
-  mtDebtOut.Title  (''): noprotect;
-  mtDebtOut.Payed  (''): noprotect;
-  mtDebtOut.Value  (''): noprotect;
-  mtDebtOut.TaxCur (''): [list 'BYN без налогов',
-                               'BYN с налогами',
-                               'USD без налогов',
-                               'USD с налогами'], protect;
+  mtDebtOut.dPeriod:  ['MM.YYYY'], skip;
+  mtDebtOut.Sort:         noprotect;
+  mtDebtOut.GetTitleName: noprotect;
+  mtDebtOut.Payed:        noprotect;
+  mtDebtOut.Value: [13.2,'\2p[|-]366`666`666~99'], noprotect;
+  mtDebtOut.TaxCur: [list 'BYN без налогов',
+                          'BYN с налогами',
+                          'USD без налогов',
+                          'USD с налогами'], protect;
   mtDebtOut.NetBYN: skip;
   mtDebtOut.TaxBYN: skip;
-  mtDebtOut.Rate:   skip;
+  mtDebtOut.Rate:   [13.4,'\4p[|-]366`666~9999'], noprotect;
   mtDebtOut.NetUSD: skip;
   mtDebtOut.TaxUSD: skip;
   mtDebtOut.Info:   noprotect;

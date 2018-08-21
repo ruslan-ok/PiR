@@ -4,6 +4,8 @@
 // Табличный объект расчетных периодов
 //------------------------------------------------------------------------------
 
+#include AtlProtocol.vih
+
 Interface Periods;
 
 // Список периодов с данными
@@ -50,7 +52,7 @@ public function Next: date;
   if (GetFirst mtPeriods2 ordered by index ByDate = tsOk)
     result := Add_Months(mtPeriods2.dBeg, 1);
   else
-    result := date(1, 1, 2013);
+    result := date(1, 1, StartYear);
 }
 
 public function CanDelete: boolean;
@@ -68,6 +70,14 @@ public function CanDelete: boolean;
 
 public function Correct: boolean;
 {
+  mtPeriods.Id := PeriodToId(dBeg);
+
+  if (mtPeriods.Id = 0)
+  {
+    result := false;
+    exit;
+  }
+
   if (mtPeriods.PlanDays < 18) or (mtPeriods.PlanDays > 22)
   {
     message('Количество рабочих дней должно быть в диапазоне от 18 до 22');
@@ -107,24 +117,28 @@ public function Correct: boolean;
   result := true;
 }
 
-function IModify.doInsert : word;
+function IModify.doInsert: word;
 {
-  Id := byte((Year(dBeg) - 2013) * 12 + Month(dBeg) - 1);
-  result := insert current mtPeriods;
+  if (Id = 0)
+    result := tsOk;
+  else
+    result := insert current mtPeriods;
 }
 
-function IModify.doUpdate : word;
+function IModify.doUpdate: word;
 {
-  Id := byte((Year(dBeg) - 2013) * 12 + Month(dBeg) - 1);
-  result := update current mtPeriods;
+  if (Id = 0)
+    result := tsOk;
+  else
+    result := update current mtPeriods;
 }
 
-function IModify.doDelete : word;
+function IModify.doDelete: word;
 {
   result := delete current mtPeriods;
 }
 
-implementation IModify.doFlush  abstract;
+implementation IModify.doFlush abstract;
 
 constructor Init;
 {
@@ -148,7 +162,7 @@ public function LoadXml(_e: IDomNode): boolean;
         'rok:dBeg':
         {
           dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-          Id := byte((Year(dBeg) - 2013) * 12 + Month(dBeg) - 1);
+          Id := PeriodToId(dBeg);
         }
         'rok:PlanDays':    PlanDays    := byte(_e.FndAttr.Value);
         'rok:AvansDate':   AvansDate   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
@@ -158,7 +172,12 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  insert current mtPeriods;
+
+  if (Id <> 0) and (GetFirst mtPeriods2 where (( mtPeriods.Id == mtPeriods2.Id )) <> tsOk)
+  {
+    insert current mtPeriods;
+    oWage.Log(APE_INFO, string(Id) + ' ' + string(dBeg));
+  }
   result := true;
 }
 
@@ -182,13 +201,10 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPeriods);
-    var m, r1, r2: byte;
-    var y: word;
     Id := ReadByte;
-    y := word(Id div 12) + 2013;
-    m := (Id mod 12) + 1;
-    dBeg := date(1, m, y);
+    dBeg := IdToPeriod(Id);
     PlanDays := ReadByte;
+    var r1, r2: byte;
     r1 := ReadByte;
     r2 := r1 - ((r1 shr 4) shl 4);
     r1 := (r1 - r2) shr 4;
@@ -196,7 +212,11 @@ public function LoadRok: boolean;
     PaymentDate := if(r2 = 0, ZeroDate, date(r2, Month(Add_Months(dBeg, 1)), Year(Add_Months(dBeg, 1))));
     AvansRate := ReadDouble;
     PaymentRate := ReadDouble;
-    insert current mtPeriods;
+    if (Id <> 0) and (GetFirst mtPeriods2 where (( mtPeriods.Id == mtPeriods2.Id )) <> tsOk)
+    {
+      insert current mtPeriods;
+      oWage.Log(APE_INFO, string(Id) + ' ' + string(dBeg));
+    }
     result := true;
   }
 }

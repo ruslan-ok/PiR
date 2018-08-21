@@ -17,9 +17,10 @@ var
   sav_cRec: byte;
   sav_NRec: comp;
   CurPerson: byte;
+  ByteCounter: byte;
+  wlog: AtlProtocol;
   mtPeriods: IPeriods(Periods) new;
   mtDepHist: IDepHist;
-//  mtDepHist: IDepHist(DepHist) new;
   mtDepart:  IDepart(Depart)   new;
   mtPost:    IPost(Post)       new;
   mtPerson:  IPerson(Person)   new;
@@ -41,68 +42,17 @@ Table struct mtStruct
   dEnd:   date,
   Name:   string,
   Mode:   byte,
-  Rec:    byte,
+  Depart: byte,
+  Person: byte,
   Sort:   s100
 )
 with index
 (
   mtStruct1 = NRec (unique, surrogate),
   mtStruct2 = dPer + Node + Mode(desc) + Sort,
-  mtStruct3 = dPer + Mode + Rec
+  mtStruct3 = dPer + Mode + Depart,
+  mtStruct4 = dPer + Mode + Person
 );
-/*
-Table struct mtColumn
-(
-  Sheet: longint,
-  Col: longint,
-  Name1: string,
-  Name2: string,
-  cSpCol: comp
-)
-with index
-(
-  mtColumn01 = Sheet + Col,
-  mtColumn02 = cSpCol
-);
-
-Table struct mtRow
-(
-  Sheet: longint,
-  Row: longint,
-  Name: string
-)
-with index
-(
-  mtRow01 = Sheet + Row
-);
-
-Table struct mtRawData
-(
-  Sheet: longint,
-  Row: longint,
-  Col: longint,
-  Value: string
-)
-with index
-(
-  mtRawData01 = Sheet + Row + Col
-);
-*/
-//Table struct mtPerData
-//(
-//  Sheet: longint,
-//  PlanDays: word,
-//  AvansDate: date,
-//  SalaryDate: date,
-//  InterDate: date,
-//  AvansRate: double,
-//  SalaryRate: double,
-//  InterRate: double
-//)
-//with index
-//(
-//  mtPerData01 = Sheet
-//);
 
 Table struct mtColTitle
 (
@@ -159,10 +109,9 @@ With index
 );
 
 Create view as select
-//  mtDepart.GetName(mtDepHist.Node) (FieldName = UpDepart),
   *
 From
-  mtPeriods,
+  mtPeriods (Sort),
   mtDepHist,
   mtDepart,
   mtPost,
@@ -170,16 +119,13 @@ From
   mtPerson,
   mtStruct,
   mtStruct SubStruct,
+  mtStruct mtStruct2,
   mtPersPer,
   mtDebtIn,
   mtNachisl,
   mtPayTitle,
   mtPayment,
   mtDebtOut,
-//  mtColumn,
-//  mtRow,
-//  mtRawData,
-//  mtPerData,
   mtColTitle,
   mtSpCol,
   KatSotr,
@@ -189,17 +135,17 @@ From
 Where ((
   mtPeriods.dBeg    == mtStruct.dPer    and
   cNode             == mtStruct.Node    and
-  mtStruct.Rec      == mtAppoint.Person and
-  mtStruct.Rec      == mtPersPer.Person and
-  mtPeriods.dBeg    == mtPersPer.Period and
-  mtStruct.Rec      == mtDebtIn.Person  and
-  mtPeriods.dBeg    == mtDebtIn.Period  and
-  mtStruct.Rec      == mtNachisl.Person and
-  mtPeriods.dBeg    == mtNachisl.Period and
-  mtStruct.Rec      == mtPayment.Person and
-  mtPeriods.dBeg    == mtPayment.Period and
-  mtStruct.Rec      == mtDebtOut.Person and
-  mtPeriods.dBeg    == mtDebtOut.Period and
+  mtStruct.Person   == mtAppoint.Person and
+  mtStruct.Person   == mtPersPer.Person and
+  mtPeriods.Id      == mtPersPer.Period and
+  mtStruct.Person   == mtDebtIn.Person  and
+  mtPeriods.Id      == mtDebtIn.Period  and
+  mtStruct.Person   == mtNachisl.Person and
+  mtPeriods.Id      == mtNachisl.Period and
+  mtStruct.Person   == mtPayment.Person and
+  mtPeriods.Id      == mtPayment.Period and
+  mtStruct.Person   == mtDebtOut.Person and
+  mtPeriods.Id      == mtDebtOut.Period and
   mtAppoint.Depart  == mtDepart.Id      and
   mtAppoint.Post    == mtPost.Id        and
   mtPeriods.dBeg    == SubStruct.dPer   and
@@ -209,13 +155,18 @@ Where ((
 
 Condition CurAppoint = ((mtPeriods.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriods.dBeg)))
 Condition SotrOnly = ((mtPeriods.dBeg = mtStruct.dPer) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
-Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Rec
+Bounds CurSotr = mtPeriods.dBeg == mtStruct.dPer and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
 Bounds ViewDepHist mtDepart.Id == mtDepHist.Depart
 ;
 
-private procedure OpenAllNodes; forward;
+property PersonId: byte read mtPerson.Id;
+property PeriodId: byte read mtPersPer.Period;
+
+//private procedure OpenAllNodes; forward;
 private function GetNachisl(_mode: byte): double; forward;
 private function GetPayment(_mode: byte): double; forward;
+private procedure BuildTree; forward;
+
 
 Browse brPeriods ('',, sci1478EnEsc);
   Show at(,, 10,) Fixed_X;
@@ -228,7 +179,9 @@ TableEvent
   Table mtPeriods;
 
 cmPositionChanged:
-  OpenAllNodes;
+  if (GetFirst mtStruct2 where (( mtPeriods.dBeg == mtStruct2.dPer and
+                                  comp(0)        == mtStruct2.Node )) <> tsOk)
+    BuildTree;
 
 End;
 
@@ -273,7 +226,7 @@ cmPositionChanged:
 {
   sav_NRec := mtStruct.NRec;
   sav_Mode := mtStruct.Mode;
-  sav_cRec := mtStruct.Rec;
+  sav_cRec := if(sav_Mode = 1, mtStruct.Depart, mtStruct.Person);
 }
 
 End;
@@ -368,8 +321,6 @@ End;
 
 End; // tsInfo
 
-private procedure BuildTree; forward;
-
 #include ReportFuncs.vpp
 
 #include Periods.vpp
@@ -393,22 +344,6 @@ private procedure BuildTree; forward;
 
 #include DoSend.vpp
 
-private procedure OpenAllNodes;
-{
-  if TreeGetFirst(trFilling)
-    do
-      TreeOpenNode(trFilling);
-    while TreeGetNext(trFilling);
-
-  if (GetFirst mtStruct where (( mtPeriods.dBeg == mtStruct.dPer and
-                                  sav_Mode       == mtStruct.Mode and
-                                  sav_cRec       == mtStruct.Rec )) = tsOk)
-    sav_NRec := mtStruct.NRec;
-
-  TreeJumpToRecord(trFilling, sav_NRec);
-  RescanPanel(#mtStruct);
-}
-
 private procedure ScanAppoint(_dep: byte; _dst: comp);
 {
   PushPos(#mtAppoint);
@@ -423,13 +358,13 @@ private procedure ScanAppoint(_dep: byte; _dst: comp);
       continue;
 
     insert mtStruct set mtStruct.dPer   := mtPeriods.dBeg,
-                         mtStruct.Node   := _dst,
-                         mtStruct.Mode   := 2,
-                         mtStruct.dBeg   := mtAppoint.dBeg,
-                         mtStruct.dEnd   := mtAppoint.dEnd,
-                         mtStruct.Rec    := mtPerson.Id,
-                         mtStruct.Name   := mtPerson.FIO,
-                         mtStruct.Sort   := LPadCh(string(mtPerson.Sort), '0', 6);
+                        mtStruct.Node   := _dst,
+                        mtStruct.Mode   := 2,
+                        mtStruct.dBeg   := mtAppoint.dBeg,
+                        mtStruct.dEnd   := mtAppoint.dEnd,
+                        mtStruct.Person := mtPerson.Id,
+                        mtStruct.Name   := mtPerson.FIO,
+                        mtStruct.Sort   := LPadCh(string(mtPerson.Sort), '0', 6);
 
   }
   PopPos(#mtStruct);
@@ -448,14 +383,14 @@ private procedure ScanDepHist(_src: byte; _dst: comp);
     if (GetFirst mtDepart where (( mtDepHist.Depart == mtDepart.Id )) <> tsOk)
       continue;
 
-    insert mtStruct set mtStruct.dPer := mtPeriods.dBeg,
-                         mtStruct.Node := _dst,
-                         mtStruct.Mode := 1,
-                         mtStruct.dBeg := mtDepHist.dBeg,
-                         mtStruct.dEnd := mtDepHist.dEnd,
-                         mtStruct.Rec  := mtDepHist.Depart,
-                         mtStruct.Name := mtDepart.Name,
-                         mtStruct.Sort := mtDepart.Code;
+    insert mtStruct set mtStruct.dPer   := mtPeriods.dBeg,
+                        mtStruct.Node   := _dst,
+                        mtStruct.Mode   := 1,
+                        mtStruct.dBeg   := mtDepHist.dBeg,
+                        mtStruct.dEnd   := mtDepHist.dEnd,
+                        mtStruct.Depart := mtDepHist.Depart,
+                        mtStruct.Name   := mtDepart.Name,
+                        mtStruct.Sort   := mtDepart.Code;
     ScanAppoint(mtDepHist.Depart, mtStruct.NRec);
     ScanDepHist(mtDepHist.Depart, mtStruct.NRec);
   }
@@ -464,32 +399,33 @@ private procedure ScanDepHist(_src: byte; _dst: comp);
 
 private procedure BuildTree;
 {
+  if (mtDepHist = NullRef)
+    exit;
+
   StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, 'Построение иерархии', 1);
   ResetBounds(#mtStruct);
   delete all mtStruct;
 
-  RereadRecord;
-
-  _loop mtPeriods
-    ScanDepHist(0, 0);
+  ScanDepHist(0, 0);
 
   SetBounds(#mtStruct);
-  GetFirst mtPeriods;
-  RereadRecord;
 
+  var cGoto: comp = 0;
   if TreeGetFirst(trFilling)
   {
+    cGoto := mtStruct.NRec;
     do
       TreeOpenNode(trFilling);
     while TreeGetNext(trFilling) and (TreeLevel(trFilling) > 0);
     TreeGetFirst(trFilling);
   }
 
-  RereadRecord;
-  TreeGetFirst(trFilling);
-  RereadRecord;
+//  RereadRecord;
+  TreeJumpToRecord(trFilling, cGoto);
+  RereadRecord(tnmtStruct);
 
   StopVisual;
+  //RescanPanel(tnmtStruct);
 }
 
 private function GetNachisl(_mode: byte): double;
@@ -584,6 +520,23 @@ public function GetTitleName(_title: byte): string;
     result := mtPayTitle.Name;
 }
 
+public function CheckLineLen: boolean;
+{
+  result := false;
+  ByteCounter++;
+  if (ByteCounter >= 180)
+  {
+    result := true;
+    ByteCounter := 0;
+  }
+}
+
+public procedure Log(_type: word; _mess: string);
+{
+  if (wDetProt <> 0)
+    wlog.LogLine(_type, _mess);
+}
+
 HandleEvent
 
 cmInit:
@@ -591,19 +544,27 @@ cmInit:
 
 cmValue30:
 {
+  ByteCounter := 0;
   mtDepHist := IDepHist(new(DepHist, Init2(mtDepart)));
+
+  mtPeriods.Clear(IWageView(self));
+  mtDepart.Clear(IWageView(self));
+  mtDepHist.Clear(IWageView(self));
+  mtPost.Clear(IWageView(self));
+  mtPerson.Clear(IWageView(self));
+  mtAppoint.Clear(IWageView(self));
+  mtPersPer.Clear(IWageView(self));
+  mtPayTitle.Clear(IWageView(self));
+  mtDebtIn.Clear(IWageView(self));
+  mtNachisl.Clear(IWageView(self));
+  mtPayment.Clear(IWageView(self));
+  mtDebtOut.Clear(IWageView(self));
+
   TreeGetFirst(trFilling);
   PushConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetTitle('Отдел разработки "Управление персоналом" [+]');
   RereadRecord;
   AutoImport;
-
-  if not isValid(#mtPeriods)
-  {
-    mtPeriods.PlanDays := 22;
-    insert current mtPeriods;
-    RereadRecord;
-  }
 
   if isValid(#mtPeriods)
     SelectFormat(trFilling);
@@ -702,10 +663,12 @@ cmExp:
 cmImp:
   RunWindowModal(wnImport);
 
-#ifndef NoPiR
+#ifdef NoPiR
+cmCalc:
+#else
 cmCtrlQ:
-  BuildTree;
 #end
+  BuildTree;
 
 cmValue9:
   ReportBySotr;

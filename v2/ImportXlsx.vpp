@@ -5,7 +5,6 @@
 //------------------------------------------------------------------------------
 
 var wbNum: longint = 0;
-var wlog: AtlProtocol;
 var lSheetsCount, lSheetNum: longint;
 var sSheetName: string;
 var row, col, maxRow, maxCol: longint = 0;
@@ -347,12 +346,12 @@ private procedure CheckAppoint(_tab: string);
 
 private procedure CheckFactDays;
 {
-  if (GetFirst mtPersPer where (( mtPerson.Id    == mtPersPer.Person and
-                                  mtPeriods.dBeg == mtPersPer.Period )) <> tsOk)
+  if (GetFirst mtPersPer where (( mtPerson.Id  == mtPersPer.Person and
+                                  mtPeriods.Id == mtPersPer.Period )) <> tsOk)
   {
     ClearBuffer(#mtPersPer);
     mtPersPer.Person := mtPerson.Id;
-    mtPersPer.Period := mtPeriods.dBeg;
+    mtPersPer.Period := mtPeriods.Id;
     mtPersPer.FactDays := byte(sCell);
     insert current mtPersPer;
   }
@@ -733,8 +732,8 @@ private procedure DoImportXlsx;
   if not bOk
   {
     wlog.LogCommit;
-    wlog.Refresh;
-    wlog.Visible := true;
+    //wlog.Refresh;
+    //wlog.Visible := true;
     exit;
   }
 

@@ -16,6 +16,7 @@ private procedure DoExportRok;
   mtDepart.SetStream(fRok.Handle);
   mtDepHist.SetStream(fRok.Handle);
   mtPost.SetStream(fRok.Handle);
+  mtPayTitle.SetStream(fRok.Handle);
   mtPerson.SetStream(fRok.Handle);
   mtAppoint.SetStream(fRok.Handle);
   mtPersPer.SetStream(fRok.Handle);
@@ -47,6 +48,11 @@ private procedure DoExportRok;
     mtPost.Save;
   mtPost.Stop;
   SetBounds(#mtPost);
+
+  mtPayTitle.Start;
+  _loop mtPayTitle
+    mtPayTitle.Save;
+  mtPayTitle.Stop;
 
   mtPerson.Start;
   _loop mtPerson

@@ -5,12 +5,23 @@
 //------------------------------------------------------------------------------
 
 #include Base64.vih
+#include AtlProtocol.vih
 
 Interface Rok;
+
+Const
+  StartYear = 2009;
+End;
 
 var
   pStream: TPtr;
   oWage: IWageView;
+  b64: Base64;
+  s: string;
+  bMessaged: boolean;
+
+//---------------------------------------------------------------------------------
+// Преобразование даты в Id и обратно
 
 private function GetId(_table: word; _nrec: comp): byte;
 {
@@ -26,6 +37,9 @@ private function GetTitleId(_title: string): byte;
     result := oWage.GetTitleId(_title);
 }
 
+//---------------------------------------------------------------------------------
+// Посимвольное чтение и запись
+
 private function MyRead(_len: byte): string;
 {
   result := '';
@@ -34,141 +48,174 @@ private function MyRead(_len: byte): string;
   while (i < _len)
   {
     File_Read(cc, pStream);
+    if (cc = chr(10)) or (cc = chr(13))
+      continue;
     i++;
     result += cc;
   }
 }
 
-private procedure MyWrite(_value: string; _len: byte = 0);
+private procedure MyWrite(_value: string);
 {
-  var ss: string;
-  if (_len = 0)
-    ss := _value;
-  else
-    ss := LPadCh(_value, '0', _len);
-
   var i: byte;
-  for (i := 1; i <= length(ss); i++)
-    File_Write(ss[i], pStream);
+  for (i := 1; i <= length(_value); i++)
+  {
+    File_Write(_value[i], pStream);
+    if oWage.CheckLineLen
+      File_WriteLn('', pStream);
+  }
 }
 
-private procedure WriteComp(_value: comp);
-{
-  MyWrite(string(_value, 0, 0));
-}
-
-private function ReadComp: comp;
-{
-  var ss: string;
-  ss := MyRead(17);
-  result := comp(ss);
-}
-
-private procedure WriteDate(_value: date);
-{
-  MyWrite(string(To_Days(_value)), 6);
-}
-
-private function ReadDate: date;
-{
-  var ss: string;
-  ss := MyRead(6);
-  result := From_Days(longint(ss));
-}
+//---------------------------------------------------------------------------------
+// Запись в файл
 
 private procedure WriteByte(_value: byte);
 {
-  MyWrite(string(_value), 3);
-}
-
-private function ReadByte: byte;
-{
-  var ss: string;
-  ss := MyRead(3);
-  result := byte(ss);
+  s := b64.EncodeByte(_value);
+  MyWrite(s);
 }
 
 private procedure WriteWord(_value: word);
 {
-  MyWrite(string(_value), 5);
+  s := b64.EncodeWord(_value);
+  MyWrite(s);
 }
 
-private function ReadWord: word;
+private procedure WriteInt(_value: integer);
 {
-  var ss: string;
-  ss := MyRead(5);
-  result := word(ss);
-}
-
-private procedure WriteDouble(_value: double);
-{
-  var ss: string;
-  ss := DoubleToStr(_value, '\4p[|-]3666666666~9999');
-  var pp: byte;
-  pp := Pos('.', ss);
-  MyWrite(string(pp), 2);
-  ss := Replace(ss, '.', '');
-  MyWrite(string(length(ss)), 2);
-  MyWrite(ss);
-}
-
-private function ReadDouble: double;
-{
-  var p1, p2: byte;
-  var ss, s1, s2: string;
-  ss := MyRead(2);
-  p1 := byte(ss);
-  ss := MyRead(2);
-  p2 := byte(ss);
-  ss := MyRead(p2);
-  if (p1 > 0)
-  {
-    s1 := SubStr(ss, 1, p1-1);
-    s2 := SubStr(ss, p1, 255);
-    ss := s1 + '.' + s2;
-  }
-  result := double(ss);
+  s := b64.EncodeInt(_value);
+  MyWrite(s);
 }
 
 private procedure WriteLong(_value: longint);
 {
-  WriteDouble(double(_value));
+  s := b64.EncodeLong(_value);
+  MyWrite(s);
 }
 
-private function ReadLong: longint;
+private procedure WriteComp(_value: comp);
 {
-  result := ReadDouble;
+  s := b64.EncodeComp(_value);
+  MyWrite(s);
+}
+
+private procedure WriteDouble(_value: double);
+{
+  s := b64.EncodeDouble(_value);
+  MyWrite(s);
+}
+
+private procedure WriteDate(_value: date);
+{
+  s := b64.EncodeDate(_value);
+  MyWrite(s);
 }
 
 private procedure WriteStr(_value: string);
 {
-  var s: string;
-  var b64: Base64;
-  s := b64.Encode(_value);
-  MyWrite(string(length(s)), 3);
-  MyWrite(s);
+  var part1, part2: string;
+  b64.EncodeLongStr(_value, part1, part2);
+  WriteByte(length(part1));
+  MyWrite(part1);
+  if (length(part1) >= 254)
+  {
+    WriteByte(length(part2));
+    MyWrite(part2);
+  }
+}
+
+//---------------------------------------------------------------------------------
+// Чтение из файла
+
+private function ReadByte: byte;
+{
+  s := MyRead(2);
+  result := b64.DecodeByte(s);
+}
+
+private function ReadWord: word;
+{
+  s := MyRead(3);
+  result := b64.DecodeWord(s);
+}
+
+private function ReadInt: integer;
+{
+  s := MyRead(3);
+  result := b64.DecodeInt(s);
+}
+
+private function ReadLong: longint;
+{
+  s := MyRead(6);
+  result := b64.DecodeLong(s);
+}
+
+private function ReadComp: comp;
+{
+  s := MyRead(12);
+  result := b64.DecodeComp(s);
+}
+
+private function ReadDouble: double;
+{
+  s := MyRead(12);
+  result := b64.DecodeDouble(s);
+}
+
+private function ReadDate: date;
+{
+
+  s := MyRead(6);
+  result := b64.DecodeDate(s);
 }
 
 private function ReadStr: string;
 {
   var pp: byte;
-  pp := byte(MyRead(3));
-  var s: string;
+  pp := ReadByte;
   s := MyRead(pp);
-  var b64: Base64;
-  result := b64.Decode(s);
+  result := b64.DecodeStr(s);
+  if (pp >= 254)
+  {
+    pp := ReadByte;
+    s := MyRead(pp);
+    result += b64.DecodeStr(s);
+  }
 }
+
+//---------------------------------------------------------------------------------
+//
 
 private function CheckNewRec: boolean;
 {
   var cc: string;
   cc := MyRead(1);
   result := (cc = '.');
+  if (cc <> '.') and (cc <> '}') and not bMessaged
+  {
+    bMessaged := true;
+    oWage.Log(APE_ERROR, 'Во входном потоке (строка ' + oWage.GetStrByPos + ', позиция ' + oWage.GetColByPos + ') не обнаружен ожидаемый символ начала записи или окончания списка.');
+  }
 }
 
 private procedure StartNewRec;
 {
   MyWrite('.');
+}
+
+private function PeriodToId(_period: date): byte;
+{
+  result := byte((Year(_period) - StartYear) * 12 + Month(_period) - 1);
+}
+
+private function IdToPeriod(_id: byte): date;
+{
+  var y: word;
+  var m: byte;
+  y := word(_id div 12) + StartYear;
+  m := (_id mod 12) + 1;
+  result := date(1, m, y);
 }
 
 public procedure Clear(_wage: IWageView = NullRef);
@@ -227,32 +274,33 @@ public procedure Stop;
   MyWrite('}');
 }
 
-public function LoadRok: boolean;
-{
-  #__UnUsed__(_stream)
-  result := false;
-  CheckNewRec;
-  ReadStr;
-  ReadDate;
-  ReadByte;
-  ReadWord;
-  ReadComp;
-  ReadLong;
-  ReadDouble;
-}
-
 public function SaveRok: boolean;
 {
-  #__UnUsed__(_stream)
   result := false;
   StartNewRec;
-  WriteStr('');
-  WriteDate(ZeroDate);
   WriteByte(0);
   WriteWord(0);
-  WriteComp(0);
+  WriteInt(0);
   WriteLong(0);
+  WriteComp(0);
   WriteDouble(0);
+  WriteDate(ZeroDate);
+  WriteStr('');
+  PeriodToId(IdToPeriod(0));
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+  CheckNewRec;
+  ReadByte;
+  ReadWord;
+  ReadInt;
+  ReadLong;
+  ReadComp;
+  ReadDouble;
+  ReadDate;
+  ReadStr;
 }
 
 
@@ -261,6 +309,7 @@ constructor Init;
   result := true;
   pStream := 0;
   oWage := NullRef;
+  bMessaged := false;
 }
 
 End.

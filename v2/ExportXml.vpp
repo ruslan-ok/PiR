@@ -70,7 +70,7 @@ private procedure DoExportXml;
             if not NextVisual
               _raise exUserBreaked;
 
-            SetVisualHeader(DateToStr(mtPersPer.Period, 'MM.YYYY') + ' ' + mtPerson.FIO);
+            SetVisualHeader(string(mtPersPer.Period) + ' ' + mtPerson.FIO);
             xper := mtPersPer.Save(xpers);
 
             if (GetFirst mtDebtIn where (( mtPersPer.Person == mtDebtIn.Person and

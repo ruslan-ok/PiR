@@ -45,7 +45,7 @@ cmUpdateRecord:
   update current mtPeriods;
 
 cmDeleteRecord:
-  if (GetFirst mtPersPer where (( mtPeriods.dBeg == mtPersPer.Period )) = tsOk)
+  if (GetFirst mtPersPer where (( mtPeriods.Id == mtPersPer.Period )) = tsOk)
     message('Удаление невозможно, так как за этот период есть данные расчета.');
   else
     if mtPeriods.CanDelete

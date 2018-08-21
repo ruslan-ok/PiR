@@ -25,7 +25,7 @@ DataStream dsReportByMonth
     [TaxDeductRB]      RB(R21);                        // Льгота по подоходному налогу, BYN
     [TaxDeductUE]      UE(R21);                        // Льгота по подоходному налогу, USD
     [IncomingRB]       RB(R08);                        // Вх. остаток, BYN
-    [IncomingRB_Check] mtDebtOut.GetValue(mtStruct.Rec, Sub_Months(mtPeriods.dBeg, 1), GetSumTitle(R08), cgNetUSD); // Вх. остаток - контроль с распечаткой, BYN
+    [IncomingRB_Check] mtDebtOut.GetValue(mtStruct.Person, Sub_Months(mtPeriods.dBeg, 1), GetSumTitle(R08), cgNetUSD); // Вх. остаток - контроль с распечаткой, BYN
     [IncomingUE]       UE(R08);                        // Вх. остаток, USD
     [ToIssue]          UE(R09);                        // К выдаче
     [PrepaymentRB]     RB(R10);                        // Аванс, BYN

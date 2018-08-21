@@ -35,7 +35,7 @@ cmInit:
   cGoto := 0;
   if isValid(#mtStruct)
     if (mtStruct.Mode = 2)
-      cGoto := mtStruct.Rec;
+      cGoto := mtStruct.Person;
 
   if (GetFirst mtPerson where (( cGoto == mtPerson.Id )) = tsOk)
     RescanPanel(#mtPerson);

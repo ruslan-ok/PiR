@@ -4,6 +4,8 @@
 // Табличный объект сотрудников
 //------------------------------------------------------------------------------
 
+//#include AtlProtocol.vih
+
 Interface Person;
 
 // Работник
@@ -105,6 +107,18 @@ public function SaveXml(_e: IDomNode): IDomNode;
   result := xnode;
 }
 
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteByte(Id);
+  WriteStr(Login);
+  WriteStr(FIO);
+  WriteStr(EMail);
+  WriteStr(Passw);
+  WriteLong(Sort);
+}
+
 public function LoadRok: boolean;
 {
   result := false;
@@ -118,21 +132,13 @@ public function LoadRok: boolean;
     EMail := ReadStr;
     Passw := ReadStr;
     Sort  := ReadLong;
-    insert current mtPerson;
+    if (GetFirst mtPerson2 where (( mtPerson.Id == mtPerson2.Id )) <> tsOk)
+    {
+      insert current mtPerson;
+      //oWage.Log(APE_INFO, string(mtPerson.Id) + '. ' + mtPerson.FIO);
+    }
     result := true;
   }
-}
-
-public function SaveRok: boolean;
-{
-  result := true;
-  StartNewRec;
-  WriteByte(Id);
-  WriteStr(Login);
-//  WriteStr(FIO);
-//  WriteStr(EMail);
-  WriteStr(Passw);
-  WriteLong(Sort);
 }
 
 end.

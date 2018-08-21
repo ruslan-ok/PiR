@@ -8,13 +8,14 @@ var sFile: string;
 var wDetProt: word;
 
 Window wnImport 'Параметры импорта';
-  show at(,, 82, 8);
+  show at(,, 82, 18);
 
 Screen scImport ('',, sci13Esc);
+  show at(,,, 8) Fixed_Y;
   table mtPeriods;
 fields
   sFile ('xml-файл для импорта'): noProtect, pickButton;
-//  wDetProt ('Формирование подробного протокола',, sci1Esc): noProtect;
+  wDetProt ('Формирование подробного протокола',, sci1Esc): noProtect;
 buttons
   cmOk, default;
   cmCancel;
@@ -23,9 +24,12 @@ buttons
   `Файл для импорта`
    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-!   [.] подробный протокол`          <.  Загрузить  .>      <.   Отмена    .>
-                                    <.  Загрузить  .>      <.   Отмена    .>
+   [.] подробный протокол`          <.  Загрузить  .>      <.   Отмена    .>
 >>
+End;
+
+Embedded embLog interface wlog;
+  show at (, 9,,);
 End;
 
 End;
@@ -56,7 +60,7 @@ cmOk:
   DoImport;
   SaveMyDsk(sFile, 'WageView_sFile');
   SaveMyDsk(wDetProt, 'WageView_wDetProt');
-  CloseWindow(wnImport);
+  wlog.Refresh;
 }
 
 End;
@@ -93,12 +97,12 @@ function StartCheckImport(var _ext: string): boolean;
     exit;
   }
 
-  if ((_ext = 'XML') or (_ext = 'ROK')) and isValid(#mtStruct)
-    if (message('Текущие данные будут удалены.'#13#13 +
-                'Продолжить?', Confirmation + YesNo + mfSwapButtons) <> cmYes)
-    {
-      exit;
-    }
+//  if ((_ext = 'XML') or (_ext = 'ROK')) and isValid(#mtStruct)
+//    if (message('Текущие данные будут удалены.'#13#13 +
+//                'Продолжить?', Confirmation + YesNo + mfSwapButtons) <> cmYes)
+//    {
+//      exit;
+//    }
 
   result := true;
 }
@@ -109,11 +113,13 @@ private procedure DoImport;
   if (not StartCheckImport(sExt))
     exit;
 
+  var bRet: boolean = false;
+
   case sExt of
 
     'XML':
     {
-      DoImportXml;
+      bRet := DoImportXml;
       SaveMyDsk(sFile, 'WageView_sXmlFile');
     }
 
@@ -125,17 +131,22 @@ private procedure DoImport;
 
     'ROK':
     {
-      DoImportRok;
+      bRet := DoImportRok;
       SaveMyDsk(sFile, 'WageView_sXlsxFile');
     }
 
   end;
 
+  RereadRecord(tnmtPeriods);
   GetFirst mtPeriods;
+
   BuildTree;
 
   if isValid(#mtPeriods)
     SelectFormat(trFilling);
+
+  if bRet and (wDetProt = 0)
+    CloseWindow(wnImport);
 }
 
 private procedure AutoImport;
