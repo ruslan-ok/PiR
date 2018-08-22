@@ -93,8 +93,13 @@ public function LoadXml(_e: IDomNode): boolean;
       end;
     }
     while (_e.GetNextAttr);
-  mtPerson.Id := GenerateNewId;
-  insert current mtPerson;
+
+  if (GetFirst mtPerson2 where (( mtPerson.FIO == mtPerson2.FIO )) <> tsOk)
+  {
+    Id := GenerateNewId;
+    insert current mtPerson;
+  }
+
   result := true;
 }
 

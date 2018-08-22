@@ -1,0 +1,22 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Галактика ERP 9.1
+// Проектный файл сборки компонента
+//------------------------------------------------------------------------------
+
+#statusline "statgal"
+
+#include galnet.inc end;
+#include glovars.inc
+
+#define CompTitle Учет сотрудников отдела
+#doc
+  #CompTitle
+#end
+#include Z_Wage.ver
+
+#include All.vih
+
+#define NoPiR
+#make "vip\*.vip"
+#make "vip\TblObjects\*.vip"
