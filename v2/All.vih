@@ -106,6 +106,7 @@ ObjInterface IPeriod(ISerializable);
   function Next: date;
   function Correct: boolean;
   function CanDelete: boolean;
+  //function GetPrevRate: double;
 end;
 
 ObjInterface IDepart(ISerializable);

@@ -122,8 +122,8 @@ public function LoadXml(_e: IDomNode): boolean;
                                    mtPersPer.Period == mtPersPer2.Period )) <> tsOk)
   {
     insert current mtPersPer;
-    if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
-      oWage.Log(APE_INFO, string(dTmp) + ': DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
+//    if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
+//      oWage.Log(APE_INFO, string(dTmp) + ': DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
   }
   result := true;
 }
@@ -155,8 +155,8 @@ public function LoadRok: boolean;
                                      mtPersPer.Period == mtPersPer2.Period )) <> tsOk)
     {
       insert current mtPersPer;
-      if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
-        oWage.Log(APE_INFO, 'DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
+//      if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
+//        oWage.Log(APE_INFO, 'DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
     }
 
     result := true;

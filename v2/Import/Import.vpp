@@ -123,15 +123,15 @@ private procedure DoImport;
       SaveMyDsk(sFile, 'WageView_sXmlFile');
     }
 
-    'XLSX':
-    {
-      DoImportXlsx;
-      SaveMyDsk(sFile, 'WageView_sXlsxFile');
-    }
-
     'ROK':
     {
       bRet := DoImportRok;
+      SaveMyDsk(sFile, 'WageView_sXlsxFile');
+    }
+
+    'XLSX':
+    {
+      DoImportXlsx;
       SaveMyDsk(sFile, 'WageView_sXlsxFile');
     }
 

@@ -108,9 +108,21 @@ public function Correct: boolean;
 
   result := true;
 }
-
+/*
+public function GetPrevRate: double;
+{
+  result := 0;
+  var yPrev: byte;
+  yPrev := PeriodToId(Sub_Months(mtPeriod.dBeg, 1));
+  if (GetFirst mtPeriod2 where (( yPrev == mtPeriod2.Id )) = tsOk)
+    result := mtPeriod2.PaymentRate;
+}
+*/
 function IModify.doInsert: word;
 {
+  if (mtPeriod.Id = 0)
+    mtPeriod.Id := PeriodToId(mtPeriod.dBeg);
+
   if (Id = 0)
     result := tsOk;
   else

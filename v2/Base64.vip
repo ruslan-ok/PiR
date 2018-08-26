@@ -208,7 +208,8 @@ public function DecodeStr(_data: string): string; // Для строк длиной не более 1
   result := '';
   DecodeBytes(_data);
   for (j := 1; j < i; j++)
-    result += chr(a[j]);
+    if (a[j] <> 0)
+      result += chr(a[j]);
 }
 
 public function DecodeLongStr(_part1, _part2: string): string; // Для строк длиной от 192 до 255 символов
@@ -335,6 +336,9 @@ private function GetPos64(_value: char): byte;
 // Декодирование заданного количества символов кода
 private procedure DecodeBytes(_part1: string; _part2: string = '');
 {
+//  for (i := 1; i <= GetLimit(a); i++)
+//    a[i] := 0;
+
   step := 0;
   i := 1;
 

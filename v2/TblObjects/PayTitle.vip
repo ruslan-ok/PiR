@@ -30,33 +30,33 @@ index ByName auto;
 
 private function GenerateNewId: byte;
 {
-  SiLogDll_LogDebug('GenerateNewId');
+  //SiLogDll_LogDebug('GenerateNewId');
   if (GetLast mtPayTitle2 ordered by index ById <> tsOk)
     result := 1;
   else
     result := mtPayTitle2.Id + 1;
-  SiLogDll_LogDebug('= ' + string(result));
+  //SiLogDll_LogDebug('= ' + string(result));
 }
 
 public function GetId(_title: string): byte;
 {
-  SiLogDll_LogDebug('GetId(' + _title + ')');
+  //SiLogDll_LogDebug('GetId(' + _title + ')');
   if (GetFirst mtPayTitle3 where (( _title == mtPayTitle3.Name )) <> tsOk)
   {
-    SiLogDll_LogDebug('not tsOk');
+    //SiLogDll_LogDebug('not tsOk');
     ClearBuffer(#mtPayTitle3);
     mtPayTitle3.Name := _title;
     mtPayTitle3.Id := GenerateNewId;
-    SiLogDll_LogDebug('before insert ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
+    //SiLogDll_LogDebug('before insert ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
     var res: word;
     res := insert current mtPayTitle3;
     if (res <> tsOk)
-      oWage.Log(APE_WARNING, 'GetId: Error on insert: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
+      oWage.Log(APE_ERROR, 'Ошибка добавления наименования начисления/выплаты: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
     else
-      oWage.Log(APE_INFO, string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
+      oWage.Log(APE_WARNING, 'Добавлено наименование начисления/выплаты: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
   }
   result := mtPayTitle3.Id;
-  SiLogDll_LogDebug('= ' + string(result));
+  //SiLogDll_LogDebug('= ' + string(result));
 }
 
 public function GetTitle(_title: byte): string;
@@ -123,9 +123,9 @@ public function LoadXml(_e: IDomNode): boolean;
     var res: word;
     res := insert current mtPayTitle;
     if (res <> tsOk)
-      oWage.Log(APE_WARNING, 'Error on insert: ' + string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+      oWage.Log(APE_ERROR, 'Ошибка добавления наименования начисления/выплаты: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
     else
-      oWage.Log(APE_INFO, string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+      oWage.Log(APE_WARNING, 'Добавлено наименование начисления/выплаты: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
   }
   result := true;
 }

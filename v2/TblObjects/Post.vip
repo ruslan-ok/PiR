@@ -94,7 +94,7 @@ public function LoadXml(_e: IDomNode): boolean;
   if (GetFirst mtPost2 where (( mtPost.Id == mtPost2.Id )) <> tsOk)
   {
     insert current mtPost;
-    //oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
+    oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
   }
   result := true;
 }
@@ -119,7 +119,7 @@ public function LoadRok: boolean;
     if (GetFirst mtPost2 where (( mtPost.Id == mtPost2.Id )) <> tsOk)
     {
       insert current mtPost;
-      //oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
+      oWage.Log(APE_INFO, string(mtPost.Id) + '. ' + mtPost.Name);
     }
     result := true;
   }

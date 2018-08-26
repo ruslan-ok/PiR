@@ -120,12 +120,15 @@ private function DoImportRok: boolean;
         {
           if (wDetProt <> 0)
             wlog.LogMessage(APE_INFO, 'Расчеты (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+
           while (mtPersPer.LoadRok)
           {
             yPeriodId := mtPersPer.Period;
 
             if (wDetProt <> 0)
-              wlog.LogMessage(APE_INFO, DateToStr(mtPersPer.dBeg, 'MM.YYYY'));
+              wlog.LogMessage(APE_INFO, DateToStr(mtPersPer.dBeg, 'MM.YYYY') +
+                                        if(mtPersPer.DebtIn  = 0, '', ' DebtIn  = ' + string(mtPersPer.DebtIn)) +
+                                        if(mtPersPer.DebtOut = 0, '', ' DebtOut = ' + string(mtPersPer.DebtOut)));
 
             if not NextVisual
               _raise exUserBreaked;

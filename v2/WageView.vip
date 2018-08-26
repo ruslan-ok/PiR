@@ -58,7 +58,8 @@ with index
 Table struct mtColTitle
 (
   Num: longint,
-  Name: string
+  Name: string,
+  PayTitle: byte
 )
 with index
 (
@@ -197,7 +198,7 @@ cmPositionChanged:
                                   comp(0)     == mtStruct2.Node )) <> tsOk)
     BuildTree;
 
-  var ret: boolean;
+  var ret: boolean = false;
 
   if (sav_Mode = 1)
     ret := (GetFirst mtStruct where (( mtPeriod.Id == mtStruct.Period and

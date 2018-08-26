@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="cp866"?>
+<Repository Partial="1">
+  <Components>
+    <Group Name="Z_" Flags="1" Comment="" GroupName="Компоненты контура Управления персоналом">
+      <Component Name="Z_Wage" Flags="0" Comment="Учет сотрудников отдела" Resource="%StartPath%Z_Wage.res" Priority="1000" FixCode="0" Version="9.2.1.0" CRC="0" Copyright="(c) ЗАО &quot;Корпорация Галактика&quot; 1992-2018" System="galnet">
+        <Shared Flags="0" Deny="0"/>
+      </Component>
+    </Group>
+  </Components>
+</Repository>

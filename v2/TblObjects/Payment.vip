@@ -231,7 +231,8 @@ public function LoadXml(_e: IDomNode): boolean;
                                    mtPayment.Period == mtPayment2.Period and
                                    mtPayment.Title  == mtPayment2.Title )) = tsOk)
   {
-    oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+    if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.TaxCur <> mtPayment2.TaxCur) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
+      oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
   }
   else
   {
@@ -280,7 +281,8 @@ public function LoadRok: boolean;
                                      mtPayment.Period == mtPayment2.Period and
                                      mtPayment.Title  == mtPayment2.Title )) = tsOk)
     {
-      oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+      if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.TaxCur <> mtPayment2.TaxCur) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
+        oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
     }
     else
     {
