@@ -67,6 +67,7 @@ end;
 ObjInterface IWageView;
   property PersonId: byte read;
   property PeriodId: byte read;
+  property DataChanged: boolean;
   function GetId(_table: word; _nrec: comp): byte;
   function GetTitleId(_title: string): byte;
   function GetTitleName(_title: byte): string;

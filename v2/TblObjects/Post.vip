@@ -42,16 +42,19 @@ function IModify.doInsert : word;
     mtPost.Id := GenerateNewId;
 
   result := insert current mtPost;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate : word;
 {
   result := update current mtPost;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete : word;
 {
   result := delete current mtPost;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush  abstract;

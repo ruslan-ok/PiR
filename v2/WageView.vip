@@ -164,10 +164,12 @@ Bounds ViewDepHist mtDepart.Id == mtDepHist.Depart
 
 property PersonId: byte read yPersonId;
 property PeriodId: byte read yPeriodId;
+var bDataChanged: boolean;
+property DataChanged: boolean read bDataChanged write bDataChanged := result;
 
 private function GetNachisl(_mode: byte): double; forward;
 private function GetPayment(_mode: byte): double; forward;
-private procedure BuildTree; forward;
+private procedure BuildTree(_mode, _rec: byte); forward;
 private function GetDebtInRate: double; forward;
 
 
@@ -196,24 +198,7 @@ cmPositionChanged:
 {
   if (GetFirst mtStruct2 where (( mtPeriod.Id == mtStruct2.Period and
                                   comp(0)     == mtStruct2.Node )) <> tsOk)
-    BuildTree;
-
-  var ret: boolean = false;
-
-  if (sav_Mode = 1)
-    ret := (GetFirst mtStruct where (( mtPeriod.Id == mtStruct.Period and
-                                       sav_Mode    == mtStruct.Mode   and
-                                       sav_cRec    == mtStruct.Depart )) = tsOk);
-  else
-    ret := (GetFirst mtStruct where (( mtPeriod.Id == mtStruct.Period and
-                                       sav_Mode    == mtStruct.Mode   and
-                                       sav_cRec    == mtStruct.Person )) = tsOk);
-  if (ret)
-  {
-    var cGoto: comp = mtStruct.NRec;
-    TreeJumpToRecord(trFilling, cGoto);
-    RescanPanel(#mtStruct);
-  }
+    BuildTree(sav_Mode, sav_cRec);
 }
 
 End;
@@ -423,7 +408,7 @@ private procedure ScanDepHist(_src: byte; _dst: comp);
   PopPos(tnmtDepHist);
 }
 
-private procedure BuildTree;
+private procedure BuildTree(_mode, _rec: byte);
 {
   if (mtDepHist = NullRef)
     exit;
@@ -437,9 +422,28 @@ private procedure BuildTree;
   SetBounds(tnmtStruct);
 
   var cGoto: comp = 0;
+
+  if (_mode <> 0) and (_rec <> 0)
+  {
+    if (_mode = 1)
+      if (GetFirst mtStruct where (( mtPeriod.Id == mtStruct.Period and
+                                     _mode == mtStruct.Mode and
+                                     _rec  == mtStruct.Depart )) = tsOk)
+        cGoto := mtStruct.NRec;
+
+    if (_mode = 2)
+      if (GetFirst mtStruct where (( mtPeriod.Id == mtStruct.Period and
+                                     _mode == mtStruct.Mode and
+                                     _rec  == mtStruct.Person )) = tsOk)
+        cGoto := mtStruct.NRec;
+  }
+
   if TreeGetFirst(trFilling)
   {
-    cGoto := mtStruct.NRec;
+    if (_mode = 0) or (_rec = 0)
+      if isValid(tnmtStruct)
+        cGoto := mtStruct.NRec;
+
     do
       TreeOpenNode(trFilling);
     while TreeGetNext(trFilling) and (TreeLevel(trFilling) > 0);
@@ -630,11 +634,16 @@ cmInit:
   PushConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetTitle('Отдел разработки "Управление персоналом" [+]');
   RereadRecord;
-//  AutoImport;
+  AutoImport;
 
   if isValid(#mtPeriod)
     SelectFormat(trFilling);
+
+  bDataChanged := false;
 }
+
+cmDone:
+  AutoExport;
 
 cmChangeTabbedSheetFormat:
   if (Target = brAppoints)
@@ -680,7 +689,7 @@ cmAddNewRec:
   {
     abort;
     RunWindowModal(wnNewStruct);
-    BuildTree;
+    //BuildTree;
   }
 
 cmInsert:
@@ -734,7 +743,10 @@ cmCalc:
 #else
 cmCtrlQ:
 #end
-  BuildTree;
+  if isValid(tnmtStruct)
+    BuildTree(mtStruct.Mode, if(mtStruct.Mode = 1, mtStruct.Depart, mtStruct.Person));
+  else
+    BuildTree(0, 0);
 
 //cmValue9:
 //  ReportBySotr;

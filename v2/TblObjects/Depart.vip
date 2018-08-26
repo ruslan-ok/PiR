@@ -50,16 +50,19 @@ function IModify.doInsert: word;
     mtDepart.Id := GenerateNewId;
 
   result := insert current mtDepart;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate: word;
 {
   result := update current mtDepart;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete: word;
 {
   result := delete current mtDepart;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush  abstract;

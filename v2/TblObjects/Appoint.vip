@@ -60,16 +60,19 @@ public function prSalary(_per: date): double;
 function IModify.doInsert : word;
 {
   result := insert current mtAppoint;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate : word;
 {
   result := update current mtAppoint;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete : word;
 {
   result := delete current mtAppoint;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush abstract;

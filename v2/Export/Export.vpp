@@ -5,18 +5,21 @@
 //------------------------------------------------------------------------------
 
 Const
+  cgFormat_Rok = 0;
+  cgFormat_Xml = 1;
+
   cgArch_None = 0;
-  cgArch_Rar = 1;
-  cgArch_7z = 2;
-  cgArch_Rok = 3;
+  cgArch_Rar  = 1;
+  cgArch_7z   = 2;
 end;
 
 var
+  wFormat: word;
   wToArchive: word;
   sPassword: string;
   sXmlFile, sResFile: string;
 
-procedure doExport; forward;
+procedure doExport(_silent: boolean); forward;
 procedure CheckFileName; forward;
 
 Window wnExport 'Параметры экспорта' ('',, sci13Esc);
@@ -25,7 +28,8 @@ Window wnExport 'Параметры экспорта' ('',, sci13Esc);
 Screen scExport;
   table mtStruct;
 Fields
-  wToArchive ('Выполнять ли архивирование xml-файла'): [List cgArch_None 'нет', cgArch_Rar 'используя RAR', cgArch_7z 'используя 7-ZIP', cgArch_Rok 'формат ROK'], protect;
+  wFormat ('Выбор формата хранения данных'): [List cgFormat_Rok 'Rok', cgFormat_Xml 'Xml'], protect;
+  wToArchive ('Выполнять ли архивирование xml-файла'): [List cgArch_None 'нет', cgArch_Rar 'используя RAR', cgArch_7z 'используя 7-ZIP'], protect;
   sPassword ('Пароль для архива',, sci1Esc): NoProtect;
   sResFile ('Каталог (можно не указывать, тогда сохранит в OutputFilesDirectory) и/или имя файла (если не указывать, то Wage_DD.MM.YYYY_HH-MM-SS.xml)'): noProtect, pickButton;
 buttons
@@ -33,6 +37,7 @@ buttons
   cmCancel;
 <<
 
+              `Формат` .@@@@@@@@@@@@@@@
         `Архивировать` .@@@@@@@@@@@@@@@    `Пароль`.@@@@@@@@@@@@@@@@@@@@@@@@@
 
   `Куда сохранить`
@@ -48,7 +53,9 @@ WindowEvent wnExport;
 
 cmInit:
 {
+  wFormat := cgFormat_Rok;
   wToArchive := cgArch_None;
+  ReadMyDsk(wFormat, 'WageView_wFormat', false);
   ReadMyDsk(wToArchive, 'WageView_wToArchive', false);
   ReadMyDsk(sResFile, 'WageView_sResFile', false);
   if (wToArchive <> cgArch_None)
@@ -69,7 +76,7 @@ cmPick:
   end;
 
 cmOk:
-  doExport;
+  doExport(false);
 
 End;
 
@@ -147,8 +154,8 @@ File fTest;
 function CheckFileAccess: boolean;
 {
   result := false;
-  if not fTest.OpenFile(if(wToArchive = cgArch_Rok, sResFile, sXmlFile), stCreate)
-    message('Не удалось открыть на запись файл: ' + if(wToArchive = cgArch_Rok, sResFile, sXmlFile));
+  if not fTest.OpenFile(if(wFormat = cgFormat_Rok, sResFile, sXmlFile), stCreate)
+    message('Не удалось открыть на запись файл: ' + if(wFormat = cgFormat_Rok, sResFile, sXmlFile));
   else
   {
     result := true;
@@ -174,12 +181,14 @@ private procedure CheckFileName;
     if (SubStr(sName, 1, 5) = 'Wage_') and (length(sName) = 24)
       sName := DefaultFileName; // актуализация даты-времени
 
-  case wToArchive of
-    cgArch_None: sExt := 'xml';
-    cgArch_Rar:  sExt := 'rar';
-    cgArch_7z:   sExt := '7z';
-    cgArch_Rok:  sExt := 'rok';
-  end;
+  if (wFormat = cgFormat_Rok)
+    sExt := 'rok';
+  else
+    case wToArchive of
+      cgArch_None: sExt := 'xml';
+      cgArch_Rar:  sExt := 'rar';
+      cgArch_7z:   sExt := '7z';
+    end;
 
   if (sPath <> '')
     sPath := AddSlashToPath(sPath);
@@ -249,7 +258,7 @@ function GetErrorCodeDescr(_code: integer): string;
 // Архивация
 procedure Archivate;
 {
-  if (wToArchive = cgArch_None) or (wToArchive = cgArch_Rok)
+  if (wToArchive = cgArch_None) or (wFormat <> cgFormat_Xml)
     exit;
 
   message('Архивация');
@@ -309,10 +318,11 @@ procedure Archivate;
 #include ExportRok.vpp
 
 // Старт экспорта
-private procedure doExport;
+private procedure doExport(_silent: boolean);
 {
-  if (not StartCheckExport)
-    exit;
+  if (not _silent)
+    if (not StartCheckExport)
+      exit;
 
   PushPos(#mtPeriod);
   if (CurFormatInArea(scInfo) = scInfo)
@@ -321,12 +331,40 @@ private procedure doExport;
   StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
   SetVisualTitle('Сохранение в файл ' + sXmlFile);
 
-  if (wToArchive = cgArch_Rok)
+  if (wFormat = cgFormat_Rok)
     DoExportRok;
   else
     DoExportXml;
 
   PopPos(#mtPeriod);
 
+  SaveMyDsk(wFormat, 'WageView_wFormat');
+  SaveMyDsk(wToArchive, 'WageView_wToArchive');
+  SaveMyDsk(sResFile, 'WageView_sResFile');
+
   CloseWindow(wnExport);
+}
+
+procedure AutoExport;
+{
+  if (not bDataChanged)
+    exit;
+
+  sResFile := '';
+  ReadMyDsk(sResFile, 'WageView_sRokFile', false);
+
+  var sPath, sName, sExt: string;
+  ParseFileName(sResFile, sPath, sName, sExt);
+
+  if (UpCase(sName) = 'WAGE') and (UpCase(sExt) = 'ROK')
+  {
+    sResFile := sPath + DefaultFileName + '.' + sExt;
+    wFormat := cgFormat_Rok;
+    doExport(true);
+    CopyMoveFile(sResFile, sPath + sName + '.' + sExt, false, ecmfClientFrom + ecmfClientTo);
+  }
+  else
+    doExport(false);
+
+  bDataChanged := false;
 }

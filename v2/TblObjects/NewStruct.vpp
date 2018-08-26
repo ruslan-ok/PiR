@@ -142,6 +142,7 @@ cmDelOnProtect:
   end;
 
 cmOk:
+{
   case wAddMode of
 
     0:
@@ -240,6 +241,9 @@ cmOk:
 
   end;
 
+  BuildTree(if(wAddMode = 0, 1, 2), if(wAddMode = 0, mtDepart.Id, mtPerson.Id));
+}
+
 End;
 
 
@@ -258,8 +262,9 @@ cmDeleteRecord:
       1: ret := DelDepart(mtStruct.Depart);
       2: ret := DelPerson(mtStruct.Person);
     end;
+
     if ret
-      BuildTree;
+      BuildTree(0, 0);
   }
 
 End;

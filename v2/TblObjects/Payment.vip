@@ -119,16 +119,19 @@ public function ToString: string;
 function IModify.doInsert : word;
 {
   result := insert current mtPayment;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate : word;
 {
   result := update current mtPayment;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete : word;
 {
   result := delete current mtPayment;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush abstract;

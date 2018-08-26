@@ -126,7 +126,7 @@ private procedure DoImport;
     'ROK':
     {
       bRet := DoImportRok;
-      SaveMyDsk(sFile, 'WageView_sXlsxFile');
+      SaveMyDsk(sFile, 'WageView_sRokFile');
     }
 
     'XLSX':
@@ -140,7 +140,7 @@ private procedure DoImport;
   RereadRecord(tnmtPeriod);
   GetFirst mtPeriod;
 
-  BuildTree;
+  BuildTree(0, 0);
 
   if isValid(#mtPeriod)
     SelectFormat(trFilling);
@@ -152,7 +152,7 @@ private procedure DoImport;
 private procedure AutoImport;
 {
   sFile := '';
-  ReadMyDsk(sFile, 'WageView_sXmlFile', false);
-//  if ExistFile(sFile)
-//    DoImport;
+  ReadMyDsk(sFile, 'WageView_sRokFile', false);
+  if ExistFile(sFile)
+    DoImport;
 }

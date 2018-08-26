@@ -59,16 +59,19 @@ private function GetPrevOut: double;
 function IModify.doInsert: word;
 {
   result := insert current mtPersPer;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate: word;
 {
   result := update current mtPersPer;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete: word;
 {
   result := delete current mtPersPer;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush abstract;

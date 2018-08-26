@@ -8,6 +8,7 @@ File fRok;
 
 private procedure DoExportRok;
 {
+  wlog.LogStartVisual('‡ ―¨αμ Ά δ ©« ' + sResFile, 0);
   fRok.OpenFile(sResFile, stCreate);
 //  fRok.WriteLn('<rok:Wage xmlns:rok="http://178.172.132.68/pir/">');
 //  fRok.WriteLine('<rok:Periods>');
@@ -55,6 +56,9 @@ private procedure DoExportRok;
   mtPerson.Start;
   _loop mtPerson
   {
+    if not NextVisual
+      _raise exUserBreaked;
+
     mtPerson.Save;
 
     mtAppoint.Start;
@@ -65,6 +69,9 @@ private procedure DoExportRok;
     mtPersPer.Start;
     _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
     {
+      if not NextVisual
+        _raise exUserBreaked;
+
       mtPersPer.Save;
 
       mtNachisl.Start;
@@ -84,5 +91,5 @@ private procedure DoExportRok;
   mtPerson.Stop;
 
   fRok.Close;
-  StopVisual;
+  wlog.LogStopVisual;
 }

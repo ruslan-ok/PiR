@@ -157,16 +157,19 @@ function IModify.doInsert: word;
     mtDepHist.Id := GenerateNewId;
 
   result := insert current mtDepHist;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate: word;
 {
   result := update current mtDepHist;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete: word;
 {
   result := delete current mtDepHist;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush abstract;

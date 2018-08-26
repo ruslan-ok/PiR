@@ -126,7 +126,10 @@ function IModify.doInsert: word;
   if (Id = 0)
     result := tsOk;
   else
+  {
     result := insert current mtPeriod;
+    oWage.DataChanged := true;
+  }
 }
 
 function IModify.doUpdate: word;
@@ -134,12 +137,16 @@ function IModify.doUpdate: word;
   if (Id = 0)
     result := tsOk;
   else
+  {
     result := update current mtPeriod;
+    oWage.DataChanged := true;
+  }
 }
 
 function IModify.doDelete: word;
 {
   result := delete current mtPeriod;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush abstract;

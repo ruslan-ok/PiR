@@ -79,7 +79,7 @@ cmInit:
 {
   PushPos(#mtDepart);
   ResetBounds(#mtDepart);
-//  PushBounds(tbViewDepHist);
+  PushBounds(tbViewDepHist);
 
   var cGoto: byte;
   cGoto := 0;
@@ -94,10 +94,10 @@ cmInit:
 cmDone:
 {
   UpdateTable;
-//  PopBounds(tbViewDepHist);
+  PopBounds(tbViewDepHist);
   SetBounds(#mtDepart);
   PopPos(#mtDepart);
-  BuildTree;
+  BuildTree(1, mtDepart.Id);
 }
 
 cmPick:

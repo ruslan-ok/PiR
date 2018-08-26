@@ -70,16 +70,19 @@ public function GetTitle(_title: byte): string;
 function IModify.doInsert: word;
 {
   result := insert current mtPayTitle;
+  oWage.DataChanged := true;
 }
 
 function IModify.doUpdate: word;
 {
   result := update current mtPayTitle;
+  oWage.DataChanged := true;
 }
 
 function IModify.doDelete: word;
 {
   result := delete current mtPayTitle;
+  oWage.DataChanged := true;
 }
 
 implementation IModify.doFlush abstract;
