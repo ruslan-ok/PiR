@@ -54,14 +54,17 @@ Screen scDepart ('',, sci178Esc);
   show at(,,, 4);
   table mtDepart;
 Fields
-  mtDepart.Name (''): noprotect;
+  mtDepart.Id: skip;
+  mtDepart.Sort: noprotect;
+  mtDepart.Name: noprotect;
 <<
 
+             `Id` .@@@@@@@@@@@          `Код для сортировки` .@@@@@@@@@@@
    `Наименование` .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
 
-Browse brDepHist ('',, sci178Esc);
+Browse brDepartHist ('',, sci178Esc);
   show at(, 5,,);
   table mtDepHist;
 Fields

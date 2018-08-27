@@ -8,11 +8,11 @@ DataStream dsReportBySotr
 (
   [FIO] mtStruct.Name;
 
-  table mtPeriods
+  table mtPeriod
   (
-    [Year]             Year(mtPeriods.dBeg);           // Год
-    [Month]            Month(mtPeriods.dBeg);          // Месяц
-    [DaysPlan]         mtPeriods.PlanDays;             // Дней по плану
+    [Year]             Year(mtPeriod.dBeg);           // Год
+    [Month]            Month(mtPeriod.dBeg);          // Месяц
+    [DaysPlan]         mtPeriod.PlanDays;             // Дней по плану
     [DaysFact]         mtPersPer.FactDays;             // Дней фактически
     [Salary]           mtAppoint.Salary;                        // Оклад
     [Salary_Check]     GetPrevSalary;                  // Оклад за прошлый месяц
@@ -60,11 +60,11 @@ private procedure ReportBySotr;
   }
 
   CurPerson := mtStruct.Person;
-  PushPos(#mtPeriods);
+  PushPos(#mtPeriod);
   ResetBounds(#mtStruct);
-//  PushBounds(tbCurSotr);
+  PushBounds(tbCurSotr);
   RunFReport(dsReportBySotr, '', false);
-//  PopBounds(tbCurSotr);
+  PopBounds(tbCurSotr);
   SetBounds(#mtStruct);
-  PopPos(#mtPeriods);
+  PopPos(#mtPeriod);
 }

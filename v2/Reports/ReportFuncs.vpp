@@ -12,8 +12,8 @@ Const
   R05 = 05; // Компенсация разницы курсов
   R06 = 06; // Выплата отложенной части
   R22 = 07; // Остальные начисления
-  R21 = 08; // Льгота по подоходному налогу
-  R07 = 09; // Начислено
+  R07 = 08; // Начислено
+  R21 = 09; // Льгота по подоходному налогу
   R08 = 10; // Зачет с прошлого месяца
   R09 = 11; // К выдаче
   R10 = 12; // Аванс
@@ -41,7 +41,8 @@ private function GetSumTitle(_row: byte): string;
     R02: result := 'Премия отдела';
     R03: result := 'Премия Управления';
     R04: result := 'Проектный бизнес';
-    R22: result := mtNachisl.Title; // Остальные начисления
+    R21: result := 'Льгота по подоходному налогу';
+    R22: result := mtNachisl.GetTitleName; // Остальные начисления
     R07: result := 'Начислено';
     R08: result := 'Зачет с прошлого месяца';
     R09: result := 'К выдаче';
@@ -49,7 +50,7 @@ private function GetSumTitle(_row: byte): string;
     R11: result := 'Межрасчетные выплаты (отпускные)';
     R12: result := 'К доплате';
     R13: result := 'Перечислено';
-    R23: result := mtPayment.Title; // Остальные выплаты
+    R23: result := mtPayment.GetTitleName; // Остальные выплаты
     R16: result := 'Выдано';
     R15: result := 'Зачет на следующий месяц';
     R17: result := 'Долг за расчетный месяц';
@@ -75,14 +76,14 @@ function GetComment(_row: byte): string;
 
   case _row of
     R02, R03, R04:
-      result := mtNachisl.GetInfo(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
+      result := mtNachisl.GetInfo(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
 
     R10, R11, R13:
     {
-      result := mtPayment.GetInfo(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
+      result := mtPayment.GetInfo(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
 
       var dPayed: date;
-      dPayed := mtPayment.GetPayed(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
+      dPayed := mtPayment.GetPayed(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
       if (dPayed <> ZeroDate)
         result += if(result = '', '', '. ') + 'Перечисление ' + DateToStr(dPayed, 'DD.MM.YYYY');
     }
@@ -107,7 +108,7 @@ function GetTaxDeduct: double;
 
   var fTaxDeduct: double;
 
-  if (mtPeriods.dBeg < date(1, 1, 2017))
+  if (mtPeriod.dBeg < date(1, 1, 2017))
     if (mtAppoint.TaxDed = 1)
       fTaxDeduct := 24;
     else
@@ -130,10 +131,10 @@ private function UE(_row: byte): double;
 
   case _row of
 
-    R01: result := if(mtAppoint.Currency = 'USD', mtAppoint.Salary / mtPeriods.PlanDays * mtPersPer.FactDays, RB(R01) / Rate(R01)); // Оклад
+    R01: result := if(mtAppoint.Currency = 'USD', mtAppoint.Salary / mtPeriod.PlanDays * mtPersPer.FactDays, RB(R01) / Rate(R01)); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row), cgNetUSD);
+      result := mtNachisl.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetUSD);
 
     R22:
     {
@@ -159,7 +160,7 @@ private function UE(_row: byte): double;
     R09: result := UE(R07) + UE(R08) + UE(R21); // К выдаче
 
     R10, R11, R13:
-      result := mtPayment.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row), cgNetUSD);
+      result := mtPayment.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetUSD);
 
     R23:
     {
@@ -196,19 +197,19 @@ private function Rate(_row: byte): double;
 
   case _row of
 
-    R01: result := mtPeriods.PaymentRate; // Оклад
+    R01: result := mtPeriod.PaymentRate; // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetRate(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
+      result := mtNachisl.GetRate(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
 
-    R08: result := mtPeriods.DebtInRate; // Зачет с прошлого месяца
+    R08: result := 0/*mtPeriod.DebtInRate*/; // [ToDo] Зачет с прошлого месяца
 
     R10, R11, R13:
-      result := mtPayment.GetRate(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row));
+      result := mtPayment.GetRate(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
 
-    R15: result := mtPeriods.PaymentRate; // Зачет на следующий месяц
+    R15: result := mtPeriod.PaymentRate; // Зачет на следующий месяц
 
-    R21: result := mtPeriods.PaymentRate; // Льгота по подоходному налогу
+    R21: result := mtPeriod.PaymentRate; // Льгота по подоходному налогу
 
   end;
 }
@@ -219,10 +220,10 @@ private function RB(_row: byte): double;
 
   case _row of
 
-    R01: result := if(mtAppoint.Currency = 'BYN', mtAppoint.Salary / mtPeriods.PlanDays * mtPersPer.FactDays, UE(R01) * Rate(R01)); // Оклад
+    R01: result := if(mtAppoint.Currency = 'BYN', mtAppoint.Salary / mtPeriod.PlanDays * mtPersPer.FactDays, UE(R01) * Rate(R01)); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row), cgNetBYN);
+      result := mtNachisl.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetBYN);
 
     R22:
     {
@@ -248,7 +249,7 @@ private function RB(_row: byte): double;
     R09: result := RB(R07) + RB(R08) + RB(R21); // К выдаче
 
     R10, R11, R13:
-      result := mtPayment.GetValue(mtStruct.Person, mtPeriods.dBeg, GetSumAbbr(_row), cgNetBYN);
+      result := mtPayment.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetBYN);
 
     R23:
     {
@@ -280,7 +281,7 @@ private function RB(_row: byte): double;
 
 function GetPrevSalary: double;
 {
-  result := mtAppoint.prSalary(mtPeriods.dBeg);
+  result := mtAppoint.prSalary(mtPeriod.dBeg);
 }
 
 function IsVisible(_row, _col, _debug: byte): boolean;
@@ -295,7 +296,7 @@ function IsVisible(_row, _col, _debug: byte): boolean;
     s[R04] := '1    '; // Проектный бизнес
     s[R05] := '     '; // Компенсация разницы курс
     s[R06] := '     '; // Выплата отложенной части
-    s[R22] := '1    '; // Остальные начисления
+    s[R22] := '1 1 1'; // Остальные начисления
     s[R21] := '1 1 1'; // Льгота по подоходному налогу
     s[R07] := '1    '; // Начислено
     s[R08] := '1 1 1'; // Зачет с прошлого месяца

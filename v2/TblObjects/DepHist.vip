@@ -153,11 +153,10 @@ private function GenerateNewId: byte;
 
 function IModify.doInsert: word;
 {
-  if (mtDepHist.Id = 0)
-    mtDepHist.Id := GenerateNewId;
+  mtDepHist.Id := GenerateNewId;
 
   result := insert current mtDepHist;
-  oWage.DataChanged := true;
+  oWage.DataChanged := (result = tsOk);
 }
 
 function IModify.doUpdate: word;

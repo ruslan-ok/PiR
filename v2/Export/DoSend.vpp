@@ -116,20 +116,20 @@ Procedure SendThis;
   f.WriteLn('<BODY>');
   f.WriteLn(Oem2Ansi('Информация о расчете и выплате зарплаты сотрудника<br>'));
   f.WriteLn(Oem2Ansi('<strong>' + mtStruct.Name + '</strong>' + // таб. № ' + mtMoney.TabNmb +
-                     ' за период <strong>' + DateToStr(mtPeriods.dBeg, 'month YYYY</strong> г.') + '<p>'));
+                     ' за период <strong>' + DateToStr(mtPeriod.dBeg, 'month YYYY</strong> г.') + '<p>'));
 
   f.WriteLn('<table width="300" frame="border" border=0 style="font-size: 10pt;">');
   f.WriteLn('<tr align="right">');
   f.WriteLn(Oem2Ansi('    <td width="280">По графику рабочих дней в месяце:</td>'));
-  f.WriteLn(Oem2Ansi('    <td width="20">' + string(mtPeriods.PlanDays) + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="20">' + string(mtPeriod.PlanDays) + '</td>'));
   f.WriteLn('</tr>');
   f.WriteLn('<tr align="right">');
-  f.WriteLn(Oem2Ansi('    <td width="280">' + if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '<strong>') +
+  f.WriteLn(Oem2Ansi('    <td width="280">' + if(mtPeriod.PlanDays = mtPersPer.FactDays, '', '<strong>') +
                                               'Фактически отработано дней:' +
-                                              if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '</strong>') + '</td>'));
-  f.WriteLn(Oem2Ansi('    <td width="20">' + if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '<strong>') +
+                                              if(mtPeriod.PlanDays = mtPersPer.FactDays, '', '</strong>') + '</td>'));
+  f.WriteLn(Oem2Ansi('    <td width="20">' + if(mtPeriod.PlanDays = mtPersPer.FactDays, '', '<strong>') +
                                              string(mtPersPer.FactDays) +
-                                             if(mtPeriods.PlanDays = mtPersPer.FactDays, '', '</strong>') +'</td>'));
+                                             if(mtPeriod.PlanDays = mtPersPer.FactDays, '', '</strong>') +'</td>'));
   f.WriteLn('</tr>');
   f.WriteLn('</table><p>');
 
@@ -149,19 +149,19 @@ Procedure SendThis;
     if NeedPrint(row, wDebug)
     {
       case row of
-        R02:
+        R22:
         {
           _loop mtNachisl
-            PrintString(R02, wDebug);
+            PrintString(R22, wDebug);
         }
 
-        R10:
+        R23:
         {
           _loop mtPayment
-            PrintString(R10, wDebug);
+            PrintString(R23, wDebug);
         }
 
-        R03, R04, R05, R06, R11, R13, R14:
+        R02, R03, R04, R05, R06, R10, R11, R13, R14:
         { // Ничего не делаем, т.к. должны были обработать при R02 или R10
         }
 
@@ -204,7 +204,7 @@ Procedure SendThis;
   f.WriteLn('<META http-equiv="Content-Type" content="text/html; charset=windows-1251">');
   f.WriteLn('</HEAD>');
   f.WriteLn('<BODY>');
-  f.WriteLn('Во вложенном файле - информация о расчете и выплате зарплаты за <strong>' + DateToStr(mtPeriods.dBeg, 'month YYYY') + '</strong> г.<br>');
+  f.WriteLn('Во вложенном файле - информация о расчете и выплате зарплаты за <strong>' + DateToStr(mtPeriod.dBeg, 'month YYYY') + '</strong> г.<br>');
   f.WriteLn('Для открытия архива необходимо ввести персональный пароль, отправленный ранее отдельным письмом.<p>');
   f.WriteLn('Напоминаем, что на основании трудового договора, заработная плата не подлежит разглашению и открытому обсуждению.<br>');
   f.WriteLn('Любые вопросы по суммам в расчетном листке следует выяснять через начальника отдела.<br><br>');
@@ -234,7 +234,7 @@ Procedure SendThis;
 
     if SetCurMailEncodingTable(AMAIL_1251)         // устанавливаем кодировку
       if CreateMail(sTo, sCc, 'Информация о расчете и выплате зарплаты за ' +  // создаем письмо
-                                   DateToStr(mtPeriods.dBeg, 'month YYYY г.'))
+                                   DateToStr(mtPeriod.dBeg, 'month YYYY г.'))
         if SetBody(f.Handle, 3)                    // тело письма
           if AddAttachFrom(sPath + sName + '.7z')  // прикрепляемый файл
             if SendMail                            // отправка письма

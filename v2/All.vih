@@ -113,6 +113,7 @@ end;
 ObjInterface IDepart(ISerializable);
   property Id: byte;
   property Name: s100;
+  property Sort: byte;
 
   index DepId  = Id (unique);
   index ByName = Name;

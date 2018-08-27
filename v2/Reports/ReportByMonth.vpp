@@ -8,10 +8,10 @@ DataStream dsReportByMonth
 (
   table mtStruct
   (
-    [Year]             Year(mtPeriods.dBeg);           // Год
-    [Month]            Month(mtPeriods.dBeg);          // Месяц
+    [Year]             Year(mtPeriod.dBeg);           // Год
+    [Month]            Month(mtPeriod.dBeg);          // Месяц
     [FIO]              mtStruct.Name;                  // Сотрудник
-    [DaysPlan]         mtPeriods.PlanDays;             // Дней по плану
+    [DaysPlan]         mtPeriod.PlanDays;             // Дней по плану
     [DaysFact]         mtPersPer.FactDays;             // Дней фактически
     [Salary]           UE(R01);                        // Оклад
     [Salary_Check]     GetPrevSalary;                  // Оклад за прошлый месяц
@@ -56,9 +56,9 @@ procedure ReportByMonth;
   PushPos(#mtPayment);
   PushPos(#mtStruct);
   ResetBounds(#mtStruct);
-//  PushCondition(tcSotrOnly);
+  PushCondition(tcSotrOnly);
   RunFReport(dsReportByMonth, '', false);
-//  PopCondition(tcSotrOnly);
+  PopCondition(tcSotrOnly);
   SetBounds(#mtStruct);
   PopPos(#mtStruct);
   PopPos(#mtPayment);

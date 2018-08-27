@@ -12,7 +12,8 @@ Interface Depart;
 Table struct mtDepart
 (
   Id:   byte,
-  Name: s100
+  Name: s100,
+  Sort: byte
 )
 With index
 (
@@ -24,6 +25,7 @@ Create view from mtDepart, mtDepart mtDepart2;
 
 property Id:   byte absolute mtDepart.Id;
 property Name: s100 absolute mtDepart.Name;
+property Sort: byte absolute mtDepart.Sort;
 
 index DepId  auto;
 index ByName auto;
@@ -85,6 +87,7 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode := _e.AddNode('rok:Depart');
   xnode.AddAttr('rok:Id='   + string(Id));
   xnode.AddAttr('rok:Name=' + Name);
+  xnode.AddAttr('rok:Sort=' + string(Sort));
   result := xnode;
 }
 
@@ -98,6 +101,7 @@ public function LoadXml(_e: IDomNode): boolean;
         'rok:NRec': Id   := GetId(cgDepart, comp(_e.FndAttr.Value));
         'rok:Id':   Id   := GetId(cgDepart, comp(_e.FndAttr.Value));
         'rok:Name': Name := _e.FndAttr.Value;
+        'rok:Sort': Sort := byte(_e.FndAttr.Value);
       end;
     }
     while (_e.GetNextAttr);
@@ -117,6 +121,7 @@ public function SaveRok: boolean;
   StartNewRec;
   WriteByte(Id);
   WriteStr(Name);
+  WriteByte(Sort);
 }
 
 public function LoadRok: boolean;
@@ -128,6 +133,7 @@ public function LoadRok: boolean;
     ClearBuffer(#mtDepart);
     Id   := ReadByte;
     Name := ReadStr;
+    Sort := ReadByte;
     if (GetFirst mtDepart2 where (( mtDepart.Id == mtDepart2.Id )) <> tsOk)
     {
       insert current mtDepart;

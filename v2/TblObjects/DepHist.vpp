@@ -1,0 +1,35 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Окно редактирования истории подразделений
+//------------------------------------------------------------------------------
+
+Window wnDepHist 'История подразделений';
+  show at(,, 80, 15);
+
+Browse brDepHist ('',, sci178Esc);
+  table mtDepHist;
+Fields
+  mtDepHist.Id     'Идентификатор':  [10], noProtect;
+  mtDepHist.dBeg   'Начало':         [15], noProtect;
+  mtDepHist.dEnd   'Окончание':      [15], noProtect;
+  mtDepHist.Node   'Вышестоящее':    [10], noProtect;
+  mtDepHist.Sort   'Для сортировки': [10], noProtect;
+  mtDepHist.Depart 'Подразделение':  [10], noProtect;
+End;
+
+End;
+
+TableEvent
+  table mtDepHist;
+
+cmInsertRecord:
+  insert current mtDepHist;
+
+cmUpdateRecord:
+  update current mtDepHist;
+
+cmDeleteRecord:
+  delete current mtDepHist;
+
+End;

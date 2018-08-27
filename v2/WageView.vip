@@ -199,6 +199,23 @@ cmPositionChanged:
   if (GetFirst mtStruct2 where (( mtPeriod.Id == mtStruct2.Period and
                                   comp(0)     == mtStruct2.Node )) <> tsOk)
     BuildTree(sav_Mode, sav_cRec);
+  else
+  {
+    var poz: boolean = false;
+
+    if (sav_Mode = 1)
+      poz := (GetFirst mtStruct2 where (( mtPeriod.Id == mtStruct2.Period and
+                                          sav_Mode    == mtStruct2.Mode   and
+                                          sav_cRec    == mtStruct2.Depart )) = tsOk);
+    else
+      poz := (GetFirst mtStruct2 where (( mtPeriod.Id == mtStruct2.Period and
+                                          sav_Mode    == mtStruct2.Mode   and
+                                          sav_cRec    == mtStruct2.Person )) = tsOk);
+    if poz
+      TreeJumpToRecord(trFilling, mtStruct2.NRec);
+    else
+      TreeGetFirst(trFilling);
+  }
 }
 
 End;
@@ -334,10 +351,11 @@ End;
 
 End; // tsInfo
 
-//#include ReportFuncs.vpp
+#include ReportFuncs.vpp
 
 #include Period.vpp
 #include Depart.vpp
+#include DepHist.vpp
 #include Post.vpp
 #include Person.vpp
 #include NewStruct.vpp
@@ -349,11 +367,11 @@ End; // tsInfo
 #include Export.vpp
 #include Import.vpp
 
-//#include ReportBySotr.vpp
-//#include ReportByMonth.vpp
-//#include ReportOwertime.vpp
+#include ReportBySotr.vpp
+#include ReportByMonth.vpp
+#include ReportOwertime.vpp
 
-//#include DoSend.vpp
+#include DoSend.vpp
 
 private procedure ScanAppoint(_dep: byte; _dst: comp);
 {
@@ -401,7 +419,7 @@ private procedure ScanDepHist(_src: byte; _dst: comp);
                         mtStruct.dEnd   := mtDepHist.dEnd,
                         mtStruct.Depart := mtDepHist.Depart,
                         mtStruct.Name   := mtDepart.Name,
-                        mtStruct.Sort   := string(mtDepart.Id);
+                        mtStruct.Sort   := string(mtDepart.Sort);
     ScanAppoint(mtDepHist.Depart, mtStruct.NRec);
     ScanDepHist(mtDepHist.Depart, mtStruct.NRec);
   }
@@ -684,6 +702,9 @@ cmEdit:
       RunWindowModal(wnPeriod);
   end;
 
+cmAlt1:
+  RunWindowModal(wnDepHist);
+
 cmAddNewRec:
   if (CurTable = tnmtStruct)
   {
@@ -703,7 +724,7 @@ cmDelOnProtect:
 
 cmHotKeys:
   PutHotCommand(RunMenu('mnWage'));
-/*
+
 cmAccording:
 {
   if (not isValid(#mtPeriod))
@@ -731,7 +752,7 @@ cmAccording:
 
   DoSend;
 }
-*/
+
 cmExp:
   RunWindowModal(wnExport);
 
@@ -748,14 +769,14 @@ cmCtrlQ:
   else
     BuildTree(0, 0);
 
-//cmValue9:
-//  ReportBySotr;
-//
-//cmValue11:
-//  ReportByMonth;
-//
-//cmValue12:
-//  ReportOwertime;
+cmValue9:
+  ReportBySotr;
+
+cmValue11:
+  ReportByMonth;
+
+cmValue12:
+  ReportOwertime;
 
 End;
 End.
