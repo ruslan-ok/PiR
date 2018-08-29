@@ -117,6 +117,7 @@ ObjInterface IDepart(ISerializable);
 
   index DepId  = Id (unique);
   index ByName = Name;
+  index BySort = Sort;
 
   function GetName(_Id: byte): string;
 end;
@@ -169,6 +170,7 @@ ObjInterface IAppoint(ISerializable);
   property Currency: s10;
   property TabNum: s50;
   property TaxDed: double;
+  property CorrectPer: boolean read;
 
   index ByDepart = Depart, dBeg;
   index ByPerson = Person, dBeg (unique);

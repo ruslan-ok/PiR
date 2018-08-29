@@ -14,6 +14,8 @@ Browse brDepart;
   table mtDepart;
 Fields
   mtDepart.Name 'Наименование': [40], protect;
+  mtDepart.Id   'Код':          [05], protect;
+  mtDepart.Sort 'Сорт.':        [05], noProtect;
 End;
 
 End;
@@ -23,7 +25,7 @@ WindowEvent wnPickDepart;
 cmInit:
 {
   PushPos(#mtDepart);
-  ResetBounds(#mtDepart);
+  PushBounds(tbSelDep);
 
   if (GetFirst mtDepart where (( cSelectedDep == mtDepart.Id )) = tsOk)
     RescanPanel(#mtDepart);
@@ -39,7 +41,7 @@ cmDefault:
 
 cmDone:
 {
-  SetBounds(#mtDepart);
+  PushBounds(tbAppDep);
   PopPos(#mtDepart);
 }
 

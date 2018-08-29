@@ -31,6 +31,8 @@ With index
 
 Create view from mtAppoint, mtAppoint mtAppoint2;
 
+private function CheckCorrectPer: boolean; forward;
+
 property Depart: byte   absolute mtAppoint.Depart;
 property Person: byte   absolute mtAppoint.Person;
 property Post:   byte   absolute mtAppoint.Post;
@@ -40,11 +42,21 @@ property Salary: double absolute mtAppoint.Salary;
 property Currency: s10  absolute mtAppoint.Currency;
 property TabNum: s50    absolute mtAppoint.TabNum;
 property TaxDed: double absolute mtAppoint.TaxDed;
+property CorrectPer: boolean read CheckCorrectPer;
 
 index ByDepart auto;
 index ByPerson auto;
 index ByPeriod auto;
 index ByPost   auto;
+
+private function CheckCorrectPer: boolean;
+{
+  result := true;
+
+  if (GetLast mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and
+                                  mtAppoint.dBeg   >> mtAppoint2.dBeg )) = tsOk)
+    result := (mtAppoint.dBeg = Add_Day(mtAppoint2.dEnd, 1));
+}
 
 public function prSalary(_per: date): double;
 {

@@ -18,7 +18,8 @@ Table struct mtDepart
 With index
 (
   DepId  = Id (unique),
-  ByName = Name
+  ByName = Name,
+  BySort = Sort
 );
 
 Create view from mtDepart, mtDepart mtDepart2;
@@ -29,6 +30,7 @@ property Sort: byte absolute mtDepart.Sort;
 
 index DepId  auto;
 index ByName auto;
+index BySort auto;
 
 public function GetName(_Id: byte): string;
 {

@@ -48,6 +48,7 @@ Browse brPost;
   table mtPost;
 Fields
   mtPost.Name 'Наименование': [40], protect;
+  mtPost.Id 'Id': [05], protect;
 End;
 
 End;
@@ -57,7 +58,7 @@ WindowEvent wnPickPost;
 cmInit:
 {
   PushPos(#mtPost);
-  ResetBounds(#mtPost);
+  PushBounds(tbSelPost);
 
   if (GetFirst mtPost where (( cSelectedPost == mtPost.Id )) = tsOk)
     RescanPanel(#mtPost);
@@ -74,7 +75,7 @@ cmDefault:
 
 cmDone:
 {
-  SetBounds(#mtPost);
+  PushBounds(tbAppPost);
   PopPos(#mtPost);
 }
 

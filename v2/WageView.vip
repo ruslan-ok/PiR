@@ -8,7 +8,7 @@
 #include AtlProtocol.vih
 
 Interface WageView 'Отдел разработки "Управление персоналом"' ('',, sci1478Esc);
-  Show at(,, 120, 30);
+  Show at(,, 125, 35);
 
 var
   cNode: comp;
@@ -115,7 +115,7 @@ Create view as select
 From
   mtPeriod (ByDate),
   mtDepHist,
-  mtDepart,
+  mtDepart (BySort),
   mtPost,
   mtAppoint,
   mtPerson,
@@ -147,9 +147,6 @@ Where ((
   mtStruct.Person   == mtPayment.Person and
   mtPeriod.Id       == mtPayment.Period and
 
-  mtAppoint.Depart  == mtDepart.Id      and
-  mtAppoint.Post    == mtPost.Id        and
-
   mtPeriod.Id       == SubStruct.Period and
   mtStruct.NRec     == SubStruct.Node   and
 
@@ -158,8 +155,13 @@ Where ((
 
 Condition CurAppoint = ((mtPeriod.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg)))
 Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
-Bounds CurSotr = mtPeriod.Id == mtStruct.Period and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
-Bounds ViewDepHist mtDepart.Id == mtDepHist.Depart
+
+Bounds CurSotr     = mtPeriod.Id == mtStruct.Period and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
+Bounds ViewDepHist = mtDepart.Id == mtDepHist.Depart
+Bounds AppDep      = mtAppoint.Depart == mtDepart.Id
+Bounds AppPost     = mtAppoint.Post   == mtPost.Id
+Bounds SelDep      = root == mtDepart.Sort ordered by mtDepart.Sort
+Bounds SelPost     = root == mtPost.Name ordered by mtPost.Name
 ;
 
 property PersonId: byte read yPersonId;
@@ -171,23 +173,22 @@ private function GetNachisl(_mode: byte): double; forward;
 private function GetPayment(_mode: byte): double; forward;
 private procedure BuildTree(_mode, _rec: byte); forward;
 private function GetDebtInRate: double; forward;
+private function isHitPeriod(dateBeg, dateEnd, dateTest: date): boolean; forward;
 
 
 Browse brPeriods ('',, sci1478EnEsc);
   Show at(,, 10,) Fixed_X;
   Table mtPeriod;
 Fields
-  mtPeriod.dBeg 'Период' ('Месяц и год расчетного периода'): [15, 'MM.YYYY'], Protect;
-  mtPeriod.Id 'Id': [5], Protect;
+  mtPeriod.dBeg 'Период' ('Месяц и год расчетного периода'): [7, 'MM.YYYY'], Protect;
 End;
 
 Tree trFilling ('',, sci1478EscTree);
-  Show at(11,, 36,);
+  Show at(11,, 39,);
   Table mtStruct;
   recMarker = pMarker {mtStruct.NRec};
 Fields
-  mtStruct.Name 'Подразделение или ФИО' ('Наименование подразделения или ФИО работника'): [20], Protect;
-  mtStruct.Person 'Pers': [5], Protect;
+  mtStruct.Name 'Подразделение или ФИО' ('Наименование подразделения или ФИО работника'): [25], Protect;
 End;
 
 
@@ -257,7 +258,7 @@ cmPositionChanged:
 End;
 
 TabbedSheet right tsInfo;
-  show at(37,,,);
+  show at(40,,,);
 
 Screen scInfo 'Основное' ('',, sci178Esc);
   table mtPersPer;
@@ -341,7 +342,8 @@ End;
 Browse brAppoints 'Назначения' ('',, sci1478Esc);
   table mtAppoint;
 Fields
-  mtAppoint.dBeg     'Назначен с':    [15], Protect;
+  {font = {color = if(isHitPeriod(mtAppoint.dBeg, mtAppoint.dEnd, mtPeriod.dBeg), 0, ColorSysGray)}};
+  mtAppoint.dBeg     'Назначен с':    [15], Protect, {font = {backColor = if(mtAppoint.CorrectPer, 0, ColorError)}};
   mtAppoint.dEnd     'Контракт до':   [15], Protect;
   mtAppoint.Salary   'Оклад':         [13.2,'\2p[|-]366`666`666~99'], Protect;
   mtAppoint.Currency 'Вал.':          [ 5], Protect;
@@ -372,6 +374,28 @@ End; // tsInfo
 #include ReportOwertime.vpp
 
 #include DoSend.vpp
+
+private function isHitPeriod(dateBeg, dateEnd, dateTest: date): boolean;
+{ // проверяет попадает ли dateTest в период
+  result := true;
+
+  if (dateTest = ZeroDate)
+    exit;
+
+  if ((dateBeg = ZeroDate) and (dateEnd = ZeroDate))
+    exit;
+
+  if ((dateTest >= dateBeg) and (dateEnd = ZeroDate))
+    exit;
+
+  if ((dateTest <= dateEnd) and (dateBeg = ZeroDate))
+    exit;
+
+  if ((dateEnd <> ZeroDate) and (dateTest <= dateEnd) and (dateBeg <> ZeroDate) and (dateTest >= dateBeg))
+    exit;
+
+  result := false;
+}
 
 private procedure ScanAppoint(_dep: byte; _dst: comp);
 {
@@ -648,6 +672,8 @@ cmInit:
 //  mtPeriod.Correct;
   insert current mtPeriod;
 */
+  PushBounds(tbAppDep);
+  PushBounds(tbAppPost);
   TreeGetFirst(trFilling);
   PushConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetTitle('Отдел разработки "Управление персоналом" [+]');
