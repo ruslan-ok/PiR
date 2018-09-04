@@ -8,6 +8,7 @@ private procedure DoExportXml;
 {
   _try
   {
+    DoSetStream(0);
     var doc: DomDoc new;
     doc.CreateXmlDoc;
     var xwage, xnode, xpers, xper: IDomNode;
@@ -96,8 +97,5 @@ private procedure DoExportXml;
     Archivate;
     SaveMyDsk(sResFile, 'WageView_sResFile');
     SaveMyDsk(wToArchive, 'WageView_wToArchive');
-    if (CurFormatInArea(scInfo) = scInfo)
-      PushConditionForLeave(tcCurAppoint, tnmtAppoint);
-    PopPos(#mtPeriod);
   }
 }

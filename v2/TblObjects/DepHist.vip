@@ -231,7 +231,8 @@ public function LoadXml(_e: IDomNode): boolean;
   if (GetFirst mtDepHist2 where (( mtDepHist.Id == mtDepHist2.Id )) <> tsOk)
   {
     insert current mtDepHist;
-    oWage.Log(APE_INFO, string(mtDepHist.Depart) + ' ' + string(mtDepHist.dBeg) + if(mtDepHist.dEnd = ZeroDate, '', '-' + string(mtDepHist.dEnd)));
+    oWage.Log(APE_WARNING, string(mtDepHist.Depart) + ' ' + string(mtDepHist.dBeg) + if(mtDepHist.dEnd = ZeroDate, '', '-' + string(mtDepHist.dEnd)));
+    oWage.DataChanged := true;
   }
   result := true;
 }

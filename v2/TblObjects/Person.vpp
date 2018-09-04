@@ -5,9 +5,10 @@
 //------------------------------------------------------------------------------
 
 Window wnPerson 'Сотрудник';
-  show at(,, 80, 7);
+  show at(,, 100, 20);
 
 Screen scPerson ('',, sci178Esc);
+  show at(,,, 8);
   table mtPerson;
 Fields
   mtPerson.FIO    (''): noprotect;
@@ -25,23 +26,74 @@ Fields
 >>
 End;
 
+Browse brPersApp ('',, sci178Esc);
+  show at(, 9,,);
+  table mtAppoint;
+Fields
+  mtAppoint.TabNum   'Таб. номер':     [10], noProtect;
+  mtAppoint.dBeg     'Назначен с':     [15], NoProtect, {font = {backColor = if(mtAppoint.CorrectPer, 0, ColorError)}};
+  mtAppoint.dEnd     'Контракт до':    [15], NoProtect;
+  mtAppoint.Salary   'Оклад':          [13.2,'\2p[|-]366`666`666~99'], NoProtect;
+  mtAppoint.Currency 'Вал.':           [ 5], NoProtect;
+  mtDepart.Name      'Подразделение' ('',, sci1378Esc): [15], Protect;
+  mtPost.Name        'Должность'     ('',, sci1378Esc): [25], Protect;
+  mtAppoint.TaxDed   'Налог и валюта': [10], NoProtect;
 End;
 
-WindowEvent wnPerson;
+End;
+
+
+Window wnPersList 'Список сотрудников';
+  show at(,, 100, 20);
+
+Browse brPerson ('',, sci1478Esc);
+  table mtPerson;
+Fields
+  mtPerson.FIO   'ФИО':    [10], NoProtect;
+  mtPerson.Login 'Логин':  [10], NoProtect;
+  mtPerson.EMail 'e-mail': [20], NoProtect;
+  mtPerson.Passw 'Пароль': [15], NoProtect;
+  mtPerson.Sort  'Сорт.':  [05], NoProtect;
+End;
+
+End;
+
+var bRestoreCond: boolean;
+
+WindowEvent wnPersList;
 
 cmInit:
 {
+  bRestoreCond := false;
+  if ConditionActiveInLeave(tcCurAppoint, tnmtAppoint)
+  {
+    bRestoreCond := true;
+    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
+  }
+
   var cGoto: byte;
   cGoto := 0;
   if isValid(#mtStruct)
     if (mtStruct.Mode = 2)
       cGoto := mtStruct.Person;
 
+  ResetBounds(#mtPerson);
   if (GetFirst mtPerson where (( cGoto == mtPerson.Id )) = tsOk)
     RescanPanel(#mtPerson);
 }
 
+cmDone:
+{
+  SetBounds(#mtPerson);
+  if bRestoreCond
+    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
+}
+
+cmEdit:
+  RunWindow(wnPerson);
+
 End;
+
 
 
 private function DelPerson(_pers: byte): boolean;

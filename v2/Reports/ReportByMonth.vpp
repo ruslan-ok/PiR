@@ -42,10 +42,10 @@ DataStream dsReportByMonth
     [ThrdPartUE]       UE(R23);                        // Остальные выплаты, USD
     [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
     [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
-    [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN
-    [OutgoingUE]       UE(R09) - UE(R16);              // Исх. остаток, USD
-    [OutgoingUE_Check] UE(R15);                        // Исх. остаток - контроль с распечаткой, USD
-    [OutgoingUE_Delta] UE(R09) - UE(R16) - UE(R15);
+    [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN в распечатке
+    [OutgoingUE_Check] UE(R09) - UE(R16);              // Исх. остаток, USD расчет
+    [OutgoingRB_Check] (UE(R09) - UE(R16)) * Rate(R13);           // Исх. остаток, BYN расчет
+    [OutgoingUE_Delta] (UE(R09) - UE(R16)) * Rate(R13) - RB(R15); // Расхождение с распечаткой, BYN
   );
 )
 end;

@@ -98,7 +98,10 @@ WindowEvent wnNewStruct;
 
 cmInit:
 {
-  sDepName := sFIO := sLogin := sEmail := '';
+#ifdef NoPiR
+  sFIO := sLogin := sEmail := '';
+#end
+  sDepName := '';
   dCreateDep := dCreateApp := mtPeriod.dBeg;
   dContract := ZeroDate;
   cSotr := cSotrDep := cSotrPost := 0;

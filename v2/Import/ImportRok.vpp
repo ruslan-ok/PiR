@@ -76,16 +76,7 @@ private function DoImportRok: boolean;
   {
     wlog.LogStartVisual('Чтение данных из файла ' + sFile, 0);
 
-    mtPeriod.SetStream(fRok.Handle);
-    mtDepart.SetStream(fRok.Handle);
-    mtDepHist.SetStream(fRok.Handle);
-    mtPost.SetStream(fRok.Handle);
-    mtPayTitle.SetStream(fRok.Handle);
-    mtPerson.SetStream(fRok.Handle);
-    mtAppoint.SetStream(fRok.Handle);
-    mtPersPer.SetStream(fRok.Handle);
-    mtNachisl.SetStream(fRok.Handle);
-    mtPayment.SetStream(fRok.Handle);
+    DoSetStream(fRok.Handle);
 
     MyLoadPeriod('Периоды');
     MyLoadDepart('Подразделения');

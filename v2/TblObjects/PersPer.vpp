@@ -13,10 +13,8 @@ Fields
   mtStruct.Name:        skip;
   mtPersPer.dBeg:       ['MM.YYYY'], skip;
   mtPersPer.DebtIn:     [13.2,'\2p[|-]366`666`666~99'], noProtect;
-//  mtPeriod.PaymentRate: [13.4,'\4p[|-]366`666~9999'],   Skip;
-  GetDebtInRate: [13.4,'\4p[|-]366`666~9999'],   Skip;
-//  (mtPersPer.DebtIn / mtPeriod.PaymentRate): [13.2,'\2p[|-]366`666`666~99'], Skip;
-  (mtPersPer.DebtIn / GetDebtInRate): [13.2,'\2p[|-]366`666`666~99'], Skip;
+  mtPeriod.DebtInRate: [13.4,'\4p[|-]366`666~9999'],   Skip;
+  (mtPersPer.DebtIn / mtPeriod.DebtInRate): [13.2,'\2p[|-]366`666`666~99'], Skip;
 <<
 
    `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -58,5 +56,15 @@ cmInsertRecord:
 
 cmUpdateRecord:
   update current mtPersPer;
+
+cmDeleteRecord:
+  if isValid(#mtPersPer)
+    if (GetFirst mtNachisl = tsOk)
+      message('Удаление расчетного периода невозможно, так как есть начисления.');
+    else
+      if (GetFirst mtPayment = tsOk)
+        message('Удаление расчетного периода невозможно, так как есть выплаты.');
+      else
+        delete current mtPersPer;
 
 end;

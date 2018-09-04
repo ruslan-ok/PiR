@@ -8,6 +8,7 @@
 #include pir32prj.inc end;
 #include glovars.inc
 
+#include C_QP.vil // „«ï GetSotr
 #include All.vih
 
 #make "v1\*.vip"

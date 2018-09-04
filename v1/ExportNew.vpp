@@ -543,6 +543,7 @@ private procedure doExport;
                 xpp.AddAttr('rok:DebtIn=' + string(RB(R08)));
                 xpp.AddAttr('rok:RateIn=' + string(RB(R08)));
                 xpp.AddAttr('rok:DebtOut=' + string(RB(R15)));
+                xpp.AddAttr('rok:SalaryRate=' + DoubleToStr(Rate(R01), '\4p[|-]3666666666~9999'));
 
                 AddNachisl(xpp, R02); // Премия отдела
                 AddNachisl(xpp, R03); // Премия Управления

@@ -113,6 +113,7 @@ private procedure DoImport;
   if (not StartCheckImport(sExt))
     exit;
 
+  ResetBounds(#mtPerson);
   var bRet: boolean = false;
 
   case sExt of
@@ -137,6 +138,7 @@ private procedure DoImport;
 
   end;
 
+  SetBounds(#mtPerson);
   RereadRecord(tnmtPeriod);
   GetFirst mtPeriod;
 

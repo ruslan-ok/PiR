@@ -10,11 +10,13 @@ Interface PersPer;
 
 Table struct mtPersPer
 (
-  Person:   byte,
-  Period:   byte,
-  FactDays: byte,
-  DebtIn:   double,
-  DebtOut:  double
+  Person:     byte,
+  Period:     byte,
+  FactDays:   byte,
+  DebtIn:     double,
+  DebtOut:    double,
+  SalaryRate: double,
+  Privilege:  double
 )
 With index
 (
@@ -26,13 +28,16 @@ Create view from mtPersPer, mtPersPer mtPersPer2;
 
 private function GetPrevOut: double; forward;
 
-property Person:   byte   absolute mtPersPer.Person;
-property Period:   byte   absolute mtPersPer.Period;
-property FactDays: byte   absolute mtPersPer.FactDays;
-property DebtIn:   double absolute mtPersPer.DebtIn;
-property DebtOut:  double absolute mtPersPer.DebtOut;
-property PrevOut:  double read GetPrevOut;
-property dBeg:     date   read IdToPeriod(mtPersPer.Period);
+property Person:     byte   absolute mtPersPer.Person;
+property Period:     byte   absolute mtPersPer.Period;
+property FactDays:   byte   absolute mtPersPer.FactDays;
+property DebtIn:     double absolute mtPersPer.DebtIn;
+property DebtOut:    double absolute mtPersPer.DebtOut;
+property SalaryRate: double absolute mtPersPer.SalaryRate;
+property Privilege:  double absolute mtPersPer.Privilege;
+
+property PrevOut:    double read GetPrevOut;
+property dBeg:       date   read IdToPeriod(mtPersPer.Period);
 
 
 index ByPerson auto;
@@ -96,6 +101,8 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:FactDays=' + string(FactDays));
   xnode.AddAttr('rok:DebtIn=' + string(DebtIn));
   xnode.AddAttr('rok:DebtOut=' + string(DebtOut));
+  xnode.AddAttr('rok:SalaryRate=' + DoubleToStr(SalaryRate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:Privilege=' + string(Privilege));
   result := xnode;
 }
 
@@ -112,9 +119,11 @@ public function LoadXml(_e: IDomNode): boolean;
           dTmp := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
           Period := PeriodToId(dTmp);
         }
-        'rok:FactDays': FactDays := byte(_e.FndAttr.Value);
-        'rok:DebtIn': DebtIn := double(_e.FndAttr.Value);
-        'rok:DebtOut': DebtOut := double(_e.FndAttr.Value);
+        'rok:FactDays':   FactDays   := byte(_e.FndAttr.Value);
+        'rok:DebtIn':     DebtIn     := double(_e.FndAttr.Value);
+        'rok:DebtOut':    DebtOut    := double(_e.FndAttr.Value);
+        'rok:SalaryRate': SalaryRate := double(_e.FndAttr.Value);
+        'rok:Privilege':  Privilege  := double(_e.FndAttr.Value);
       end;
     }
     while (_e.GetNextAttr);
@@ -126,8 +135,17 @@ public function LoadXml(_e: IDomNode): boolean;
   {
     insert current mtPersPer;
 //    if (mtPersPer.DebtIn <> 0) or (mtPersPer.DebtOut <> 0)
-//      oWage.Log(APE_INFO, string(dTmp) + ': DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
+    oWage.Log(APE_WARNING, string(dTmp) + ': DebtIn = ' + string(mtPersPer.DebtIn) + ', DebtOut = ' + string(mtPersPer.DebtOut));
+    oWage.DataChanged := true;
   }
+  else
+    if (mtPersPer.SalaryRate <> mtPersPer2.SalaryRate)
+    {
+      oWage.Log(APE_INFO, string(dTmp) + ' Скорректирован курс оклада: ' + DoubleToStr(mtPersPer.SalaryRate, '\4p[|-]3666666666~9999') + ' был ' + DoubleToStr(mtPersPer2.SalaryRate, '\4p[|-]3666666666~9999'));
+      mtPersPer2.SalaryRate := mtPersPer.SalaryRate;
+      update current mtPersPer2;
+      oWage.DataChanged := true;
+    }
   result := true;
 }
 
@@ -139,6 +157,8 @@ public function SaveRok: boolean;
   WriteByte(FactDays);
   WriteDouble(DebtIn);
   WriteDouble(DebtOut);
+  WriteDouble(SalaryRate);
+  WriteDouble(Privilege);
 }
 
 public function LoadRok: boolean;
@@ -148,11 +168,13 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPersPer);
-    Period   := ReadByte;
-    FactDays := ReadByte;
-    DebtIn   := ReadDouble;
-    DebtOut  := ReadDouble;
-    Person   := oWage.PersonId;
+    Period     := ReadByte;
+    FactDays   := ReadByte;
+    DebtIn     := ReadDouble;
+    DebtOut    := ReadDouble;
+    SalaryRate := ReadDouble;
+    //Privilege  := ReadDouble;
+    Person := oWage.PersonId;
 
     if (GetFirst mtPersPer2 where (( mtPersPer.Person == mtPersPer2.Person and
                                      mtPersPer.Period == mtPersPer2.Period )) <> tsOk)

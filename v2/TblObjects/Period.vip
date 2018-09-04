@@ -17,7 +17,8 @@ Table struct mtPeriod
   AvansDate:   date,
   PaymentDate: date,
   AvansRate:   double,
-  PaymentRate: double
+  PaymentRate: double,
+  DebtInRate:  double
 )
 With index
 (
@@ -35,6 +36,7 @@ property AvansDate:   date   absolute mtPeriod.AvansDate;
 property PaymentDate: date   absolute mtPeriod.PaymentDate;
 property AvansRate:   double absolute mtPeriod.AvansRate;
 property PaymentRate: double absolute mtPeriod.PaymentRate;
+property DebtInRate:  double absolute mtPeriod.DebtInRate;
 
 index ById auto;
 index ByDate auto;
@@ -93,31 +95,9 @@ public function Correct: boolean;
       exit;
     }
 
-  if (GetFirst mtPeriod2 where (( mtPeriod.Id == mtPeriod2.Id )) = tsOk)
-  {
-    var dTmp: date;
-    dTmp := mtPeriod2.dBeg;
-    if (GetFirst mtPeriod2 where (( Sub_Months(dTmp, 1) == mtPeriod2.dBeg )) = tsOk)
-      if (GetFirst mtPeriod2 where (( Add_Months(dTmp, 1) == mtPeriod2.dBeg )) = tsOk)
-      {
-        message('В списке периодов не должно быть разрывов.');
-        result := false;
-        exit;
-      }
-  }
-
   result := true;
 }
-/*
-public function GetPrevRate: double;
-{
-  result := 0;
-  var yPrev: byte;
-  yPrev := PeriodToId(Sub_Months(mtPeriod.dBeg, 1));
-  if (GetFirst mtPeriod2 where (( yPrev == mtPeriod2.Id )) = tsOk)
-    result := mtPeriod2.PaymentRate;
-}
-*/
+
 function IModify.doInsert: word;
 {
   if (mtPeriod.Id = 0)
@@ -180,6 +160,7 @@ public function LoadXml(_e: IDomNode): boolean;
         'rok:PaymentDate': PaymentDate := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
         'rok:AvansRate':   AvansRate   := double(_e.FndAttr.Value);
         'rok:PaymentRate': PaymentRate := double(_e.FndAttr.Value);
+        'rok:DebtInRate':  DebtInRate  := double(_e.FndAttr.Value);
       end;
     }
     while (_e.GetNextAttr);
@@ -187,7 +168,8 @@ public function LoadXml(_e: IDomNode): boolean;
   if (Id <> 0) and (GetFirst mtPeriod2 where (( mtPeriod.Id == mtPeriod2.Id )) <> tsOk)
   {
     insert current mtPeriod;
-    oWage.Log(APE_INFO, string(Id) + ' ' + string(dBeg));
+    oWage.Log(APE_WARNING, 'Добавлен период ' + string(Id) + ' ' + string(dBeg));
+    oWage.DataChanged := true;
   }
   result := true;
 }
@@ -200,8 +182,9 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:PlanDays='    + string(PlanDays));
   xnode.AddAttr('rok:AvansDate='   + string(AvansDate));
   xnode.AddAttr('rok:PaymentDate=' + string(PaymentDate));
-  xnode.AddAttr('rok:AvansRate='   + DoubleToStr(AvansRate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:AvansRate='   + DoubleToStr(AvansRate,   '\4p[|-]3666666666~9999'));
   xnode.AddAttr('rok:PaymentRate=' + DoubleToStr(PaymentRate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:DebtInRate='  + DoubleToStr(DebtInRate,  '\4p[|-]3666666666~9999'));
   result := xnode;
 }
 
@@ -221,8 +204,9 @@ public function LoadRok: boolean;
     r1 := (r1 - r2) shr 4;
     AvansDate   := if(r1 = 0, ZeroDate, date(r1 + 18, Month(dBeg), Year(dBeg)));
     PaymentDate := if(r2 = 0, ZeroDate, date(r2, Month(Add_Months(dBeg, 1)), Year(Add_Months(dBeg, 1))));
-    AvansRate := ReadDouble;
+    AvansRate   := ReadDouble;
     PaymentRate := ReadDouble;
+    DebtInRate  := ReadDouble;
     if (Id <> 0) and (GetFirst mtPeriod2 where (( mtPeriod.Id == mtPeriod2.Id )) <> tsOk)
     {
       insert current mtPeriod;
@@ -255,6 +239,7 @@ public function SaveRok: boolean;
   WriteByte(b);
   WriteDouble(AvansRate);
   WriteDouble(PaymentRate);
+  WriteDouble(DebtInRate);
 }
 
 end.

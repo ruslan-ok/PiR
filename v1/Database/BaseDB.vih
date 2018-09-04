@@ -1,7 +1,7 @@
 #ifndef __BaseDB__
 #define __BaseDB__
 Const
-  MyDataBase = 'D:\Work\Сотрудники\ПиР\Data\';
+  MyDataBase = 'D:\Gal\Data\PiR\';
   coDirect_Read  = 1;
   coDirect_Write = 2;
   coConnectorServer = 'http://178.172.132.68/pir/';

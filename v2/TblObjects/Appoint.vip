@@ -19,7 +19,8 @@ Table struct mtAppoint
   Salary: double,
   Currency: s10,
   TabNum: s50,
-  TaxDed: double
+  TaxDed: double,
+  Info: string
 )
 With index
 (
@@ -42,6 +43,7 @@ property Salary: double absolute mtAppoint.Salary;
 property Currency: s10  absolute mtAppoint.Currency;
 property TabNum: s50    absolute mtAppoint.TabNum;
 property TaxDed: double absolute mtAppoint.TaxDed;
+property Info:   string absolute mtAppoint.Info;
 property CorrectPer: boolean read CheckCorrectPer;
 
 index ByDepart auto;
@@ -113,6 +115,7 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Currency=' + Currency);
   xnode.AddAttr('rok:TabNum=' + TabNum);
   xnode.AddAttr('rok:TaxDed=' + DoubleToStr(TaxDed, '\2p[|-]3666~99'));
+  xnode.AddAttr('rok:Info=' + Info);
   result := xnode;
 }
 
@@ -131,18 +134,24 @@ public function LoadXml(_e: IDomNode): boolean;
         'rok:Currency': Currency := _e.FndAttr.Value;
         'rok:TabNum': TabNum := _e.FndAttr.Value;
         'rok:TaxDed': TaxDed := double(_e.FndAttr.Value);
+        'rok:Info': Info := _e.FndAttr.Value;
       end;
     }
     while (_e.GetNextAttr);
 
   Person := oWage.PersonId;
 
-  if (GetFirst mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and
-                                   mtAppoint.dBeg   == mtAppoint2.dBeg )) <> tsOk)
-  {
-    insert current mtAppoint;
-    oWage.Log(APE_INFO, string(mtAppoint.dBeg) + if(mtAppoint.dEnd = ZeroDate, '', '-' + string(mtAppoint.dEnd)) + ', Depart[' + string(mtAppoint.Depart) + '], Post[' + string(mtAppoint.Post) + ']');
-  }
+  if (Person = 0)
+    oWage.Log(APE_WARNING, 'Person = 0! '+ string(mtAppoint.dBeg) + if(mtAppoint.dEnd = ZeroDate, '', '-' + string(mtAppoint.dEnd)) + ', Depart[' + string(mtAppoint.Depart) + '], Post[' + string(mtAppoint.Post) + '], ' + string(Salary) + ' ' + Currency);
+  else
+    if (GetFirst mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and
+                                     mtAppoint.dBeg  >>= mtAppoint2.dBeg   and
+                                     ((mtAppoint.dBeg <= mtAppoint2.dEnd) or (mtAppoint2.dEnd = ZeroDate)) )) <> tsOk)
+    {
+      insert current mtAppoint;
+      oWage.Log(APE_WARNING, string(mtAppoint.dBeg) + if(mtAppoint.dEnd = ZeroDate, '', '-' + string(mtAppoint.dEnd)) + ', Depart[' + string(mtAppoint.Depart) + '], Post[' + string(mtAppoint.Post) + '], ' + string(Salary) + ' ' + Currency);
+      oWage.DataChanged := true;
+    }
 
   result := true;
 }
@@ -159,6 +168,7 @@ public function SaveRok: boolean;
   WriteStr(Currency);
   WriteStr(TabNum);
   WriteDouble(TaxDed);
+  WriteStr(Info);
 }
 
 public function LoadRok: boolean;
@@ -176,6 +186,7 @@ public function LoadRok: boolean;
     Currency := ReadStr;
     TabNum   := ReadStr;
     TaxDed   := ReadDouble;
+    Info     := ReadStr;
     Person   := oWage.PersonId;
 
     if (GetFirst mtAppoint2 where (( mtAppoint.Person == mtAppoint2.Person and

@@ -5,21 +5,24 @@
 //------------------------------------------------------------------------------
 
 Window wnPeriod 'Период';
-  show at(,, 90, 6);
+  show at(,, 90, 7);
 
 Screen scPeriods ('',, sci178Esc);
   table mtPeriod;
 Fields
+  mtPeriod.Id: skip;
   mtPeriod.dBeg: [15, 'MM.YYYY'], noprotect;
   mtPeriod.PlanDays: noprotect, {font = {backColor = if(mtPeriod.PlanDays = 0, ColorNeed, if((mtPeriod.PlanDays < 18) or (mtPeriod.PlanDays > 22), ColorError, 0))}};
+  mtPeriod.DebtInRate: [9.4, '\4p[|-]3666666666~9999'], noprotect;
   mtPeriod.AvansDate: noprotect;
   mtPeriod.AvansRate: [9.4, '\4p[|-]3666666666~9999'], noprotect;
   mtPeriod.PaymentDate: noprotect;
   mtPeriod.PaymentRate: [9.4, '\4p[|-]3666666666~9999'], noprotect;
 <<
-
+                                                                             .@@@@@
                `Период` .@@@@@@@@@@@@          `Количество раб. дней` .@@@@@@@@@@@@
 
+                                       `Курс зачета с прошлого месяца`.@@@@@@@@@@@@
   `Дата выплаты аванса` .@@@@@@@@@@@@  `Курс на дату выплаты аванса`  .@@@@@@@@@@@@
 `Дата выплаты зарплаты` .@@@@@@@@@@@@  `Курс на дату выплаты зарплаты`.@@@@@@@@@@@@
 >>

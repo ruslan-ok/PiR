@@ -64,17 +64,17 @@ index ByTitle auto;
 
 var TagName: string;
 
-public function GetValue(_pers: byte; _period: date; _title: byte; _NeededTaxCur: byte): double;
+public function GetValue(_pers: byte; _period: byte; _title: byte; _NeededTaxCur: byte; _rate: double = 0): double;
 {
   result := 0;
 
   if (GetFirst mtPayment2 where (( _pers   == mtPayment2.Person and
                                    _period == mtPayment2.Period and
                                    _title  == mtPayment2.Title )) = tsOk)
-    result := GetCountedValue(mtPayment2.TaxCur, mtPayment2.Value, mtPayment2.Rate, _NeededTaxCur);
+    result := GetCountedValue(mtPayment2.TaxCur, mtPayment2.Value, if(mtPayment2.Rate = 0, _rate, mtPayment2.Rate), _NeededTaxCur);
 }
 
-public function GetRate(_pers: byte; _period: date; _title: byte): double;
+public function GetRate(_pers: byte; _period: byte; _title: byte): double;
 {
   result := 0;
 
@@ -84,7 +84,7 @@ public function GetRate(_pers: byte; _period: date; _title: byte): double;
     result := mtPayment2.Rate;
 }
 
-public function GetInfo(_pers: byte; _period: date; _title: byte): string;
+public function GetInfo(_pers: byte; _period: byte; _title: byte): string;
 {
   result := '';
 
@@ -94,7 +94,7 @@ public function GetInfo(_pers: byte; _period: date; _title: byte): string;
     result := mtPayment2.Info;
 }
 
-public function GetPayed(_pers: byte; _period: date; _title: byte): date;
+public function GetPayed(_pers: byte; _period: byte; _title: byte): date;
 {
   result := ZeroDate;
 
@@ -235,16 +235,22 @@ public function LoadXml(_e: IDomNode): boolean;
                                    mtPayment.Title  == mtPayment2.Title )) = tsOk)
   {
     if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.TaxCur <> mtPayment2.TaxCur) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
-      oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
+      oWage.Log(APE_WARNING, 'Запись уже существует с другими значениями: ' + ToString + ' [' +
+                             if(mtPayment.Payed = mtPayment2.Payed, '', ' дата выплаты ' + string(mtPayment.Payed) + ' в базе ' + string(mtPayment2.Payed)) +
+                             if(mtPayment.Value = mtPayment2.Value, '', ' сумма ' + DoubleToStr(mtPayment.Value, '\4p[|-]3666666666~9999') + ' в базе ' + DoubleToStr(mtPayment.Value, '\4p[|-]3666666666~9999')) +
+                             if(mtPayment.TaxCur = mtPayment2.TaxCur, '', ' TaxCur ' + string(mtPayment.TaxCur) + ' в базе ' + string(mtPayment2.TaxCur)) +
+                             if(mtPayment.Rate = mtPayment2.Rate, '', ' курс ' + DoubleToStr(mtPayment.Rate, '\4p[|-]3666666666~9999') + ' в базе ' + DoubleToStr(mtPayment2.Rate, '\4p[|-]3666666666~9999')) +
+                             if(mtPayment.Info = mtPayment2.Info, '', ' коммент "' + string(mtPayment.Info) + '" в базе "' + string(mtPayment2.Info) + '"') + ']');
   }
   else
   {
     var res: word;
     res := insert current mtPayment;
     if (res <> tsOk)
-      oWage.Log(APE_WARNING, 'Error on insert: ' + ToString);
+      oWage.Log(APE_ERROR, 'Error on insert: ' + ToString);
     else
-      oWage.Log(APE_INFO, ToString);
+      oWage.Log(APE_WARNING, ToString);
+    oWage.DataChanged := true;
   }
 
   result := true;

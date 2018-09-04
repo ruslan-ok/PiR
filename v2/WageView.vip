@@ -136,15 +136,17 @@ Where ((
   mtPeriod.Id       == mtStruct.Period  and
   cNode             == mtStruct.Node    and
 
-  mtStruct.Person   == mtAppoint.Person and
+  mtStruct.Person   == mtPerson.Id      and
 
-  mtStruct.Person   == mtPersPer.Person and
+  mtPerson.Id       == mtAppoint.Person and
+
+  mtPerson.Id       == mtPersPer.Person and
   mtPeriod.Id       == mtPersPer.Period and
 
-  mtStruct.Person   == mtNachisl.Person and
+  mtPerson.Id       == mtNachisl.Person and
   mtPeriod.Id       == mtNachisl.Period and
 
-  mtStruct.Person   == mtPayment.Person and
+  mtPerson.Id       == mtPayment.Person and
   mtPeriod.Id       == mtPayment.Period and
 
   mtPeriod.Id       == SubStruct.Period and
@@ -154,7 +156,7 @@ Where ((
 ))
 
 Condition CurAppoint = ((mtPeriod.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg)))
-Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_'))
+Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_') and (mtPersPer.FactDays > 0))
 
 Bounds CurSotr     = mtPeriod.Id == mtStruct.Period and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
 Bounds ViewDepHist = mtDepart.Id == mtDepHist.Depart
@@ -172,7 +174,7 @@ property DataChanged: boolean read bDataChanged write bDataChanged := result;
 private function GetNachisl(_mode: byte): double; forward;
 private function GetPayment(_mode: byte): double; forward;
 private procedure BuildTree(_mode, _rec: byte); forward;
-private function GetDebtInRate: double; forward;
+//private function GetDebtInRate: double; forward;
 private function isHitPeriod(dateBeg, dateEnd, dateTest: date): boolean; forward;
 
 
@@ -267,45 +269,39 @@ Fields
   mtAppoint.dEnd:       protect;
   mtAppoint.Salary:     [13.2,'\2p[|-]366`666`666~99'], protect;
   mtAppoint.Currency:   skip;
+  mtPersPer.SalaryRate: [13.4,'\4p[|-]366`666~9999'], noProtect;
   mtDepart.Name:        protect;
   mtPost.Name:          protect;
   mtPeriod.PlanDays:    protect;
   mtPersPer.FactDays:   noProtect;
 
-  (mtPersPer.DebtIn / GetDebtInRate) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
+  mtPersPer.Privilege: [13.2,'\2p[|-]366`666`666.88'], noProtect;
+
+  (mtPersPer.DebtIn / mtPeriod.DebtInRate /*GetDebtInRate*/) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
   mtPersPer.DebtIn ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], noProtect;
 
   GetNachisl(cgNetUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
-  GetNachisl(cgTaxUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
   GetNachisl(cgNetBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
-  GetNachisl(cgTaxBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
 
   GetPayment(cgNetUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
-  GetPayment(cgTaxUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
   GetPayment(cgNetBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
-  GetPayment(cgTaxBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
 
   (mtPersPer.DebtOut / mtPeriod.PaymentRate) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
   mtPersPer.DebtOut ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], noProtect;
-
-  mtPersPer.Period: Protect;
-  mtPersPer.Person: Protect;
-  mtStruct.Name: protect;
 <<
 
    `Назначение с`     .@@@@@@@@@@@@                  `Контракт до` .@@@@@@@@@@@@
-   `Оклад`            .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Оклад`            .@@@@@@@@@@@@  .@@@@@@@@@@@@    `Курс оклада`.@@@@@@@@@@@@
    `Отдел`            .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Должность`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
    `Дней план`        .@@@@@@@@@@@@                    `Дней факт` .@@@@@@@@@@@@
 
-                            Net_USD        Tax_USD        Net_BYN        Tax_BYN
-   `Входящий остаток` .@@@@@@@@@@@@                 .@@@@@@@@@@@@
-   `Начислено`        .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@
-   `Выплачено`        .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@  .@@@@@@@@@@@@
-   `Исходящий остаток`.@@@@@@@@@@@@                 .@@@@@@@@@@@@
-   Period .@@@@@@@@@@@@ Person .@@@@@@@@@@@@ mtStruct.Name .@@@@@@@@@@@@@@@@@@@@
+                                USD            BYN  `Льгота по ПН` .@@@@@@@@@@@@
+   `Входящий остаток` .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Начислено`        .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Выплачено`        .@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `Исходящий остаток`.@@@@@@@@@@@@  .@@@@@@@@@@@@
 >>
 End;
 
@@ -366,6 +362,21 @@ End; // tsInfo
 #include Nachisl.vpp
 #include Payment.vpp
 #include Appoint.vpp
+
+private procedure DoSetStream(_stream: TPtr);
+{
+  mtPeriod.SetStream(_stream);
+  mtDepart.SetStream(_stream);
+  mtDepHist.SetStream(_stream);
+  mtPost.SetStream(_stream);
+  mtPayTitle.SetStream(_stream);
+  mtPerson.SetStream(_stream);
+  mtAppoint.SetStream(_stream);
+  mtPersPer.SetStream(_stream);
+  mtNachisl.SetStream(_stream);
+  mtPayment.SetStream(_stream);
+}
+
 #include Export.vpp
 #include Import.vpp
 
@@ -374,6 +385,7 @@ End; // tsInfo
 #include ReportOwertime.vpp
 
 #include DoSend.vpp
+#include DupCorrector.vpp
 
 private function isHitPeriod(dateBeg, dateEnd, dateTest: date): boolean;
 { // проверяет попадает ли dateTest в период
@@ -556,17 +568,6 @@ private procedure DoDel;
   end;
 }
 
-private function GetDebtInRate: double;
-{
-  result := 0;
-  PushPos(#mtPeriod);
-  var yPrevId: byte;
-  yPrevId := mtPeriod.Id-1;
-  if (GetFirst mtPeriod where (( yPrevId == mtPeriod.Id )) = tsOk)
-    result := mtPeriod.PaymentRate;
-  PopPos(#mtPeriod);
-}
-
 private function GenerateNewId(_table: word): byte;
 {
   if (GetLast mtNrecId2 where (( _table == mtNrecId2.wTable )) ordered by index mtNrecId2 <> tsOk)
@@ -675,9 +676,9 @@ cmInit:
   PushBounds(tbAppDep);
   PushBounds(tbAppPost);
   TreeGetFirst(trFilling);
+  RereadRecord;
   PushConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetTitle('Отдел разработки "Управление персоналом" [+]');
-  RereadRecord;
   AutoImport;
 
   if isValid(#mtPeriod)
@@ -709,7 +710,7 @@ cmEdit:
       if isValid(tnmtStruct)
         case mtStruct.Mode of
           1: RunWindowModal(wnDepart);
-          2: RunWindowModal(wnPerson);
+          2: RunWindowModal(wnPersList);
         end;
     #mtNachisl:
       RunWindowModal(wnNachisl);
@@ -804,6 +805,23 @@ cmValue11:
 cmValue12:
   ReportOwertime;
 
+cmValue10:
+  DupCorrector;
+/*
+cmValue13:
+{
+  var fRate: double = 0;
+  PushPos(#mtPeriod);
+  _loop backward mtPeriod
+  {
+    mtPeriod.DebtInRate := fRate;
+    update current mtPeriod;
+    fRate := mtPeriod.PaymentRate;
+  }
+  PopPos(#mtPeriod);
+  message('done');
+}
+*/
 End;
 End.
 
@@ -822,4 +840,7 @@ mnWage menu
  - 'Отчет по сотруднику', cmValue9, 'Контрольный отчет по сотруднику за период',,,, sci1Esc;
  - 'Отчет по всем за месяц', cmValue11, 'Контрольный отчет по всем сотрудникам за выбранный месяц',,,, sci1Esc;
  - 'Сверхурочные', cmValue12, 'Сверхурочные',,,, sci1Esc;
+ ------;
+ - 'Корректор', cmValue10, 'Проверка и корректировка дублей в начислениях и выплатах',,,, sci1Esc;
+// - 'Курс зачета с прошлого месяца', cmValue13, 'Инициализация курсов зачета с прошлого месяца',,,, sci1Esc;
 }

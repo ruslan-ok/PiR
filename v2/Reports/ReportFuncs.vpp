@@ -38,7 +38,7 @@ private function GetSumTitle(_row: byte): string;
 
   case _row of
     R01: result := 'Повременная оплата (оклад)';
-    R02: result := 'Премия отдела';
+    R02: result := 'Премия Отдела  (код 83)'; //'Премия отдела';
     R03: result := 'Премия Управления';
     R04: result := 'Проектный бизнес';
     R21: result := 'Льгота по подоходному налогу';
@@ -60,14 +60,17 @@ private function GetSumTitle(_row: byte): string;
   end;
 }
 
-private function GetSumAbbr(_row: byte): string;
+private function GetSumId(_row: byte): byte;
 {
+  var sTitle: string = '';
   case _row of
-    R11: result := 'Межрасчеты';
-    R13: result := 'Зарплата';
+    R11: sTitle := 'Межрасчеты';
+    R13: sTitle := 'Зарплата';
   else
-    result := GetSumTitle(_row);
+    sTitle := GetSumTitle(_row);
   end;
+
+  result := mtPayTitle.GetId(sTitle);
 }
 
 function GetComment(_row: byte): string;
@@ -76,14 +79,16 @@ function GetComment(_row: byte): string;
 
   case _row of
     R02, R03, R04:
-      result := mtNachisl.GetInfo(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
+      result := mtNachisl.GetInfo(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
 
     R10, R11, R13:
     {
-      result := mtPayment.GetInfo(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
+      result := mtPayment.GetInfo(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
+      if (result = '')
+        result := mtPayment.GetInfo(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)));
 
       var dPayed: date;
-      dPayed := mtPayment.GetPayed(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
+      dPayed := mtPayment.GetPayed(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
       if (dPayed <> ZeroDate)
         result += if(result = '', '', '. ') + 'Перечисление ' + DateToStr(dPayed, 'DD.MM.YYYY');
     }
@@ -125,16 +130,82 @@ function GetTaxDeduct: double;
 private function Rate(_row: byte): double; forward;
 private function RB(_row: byte): double; forward;
 
+private function CountSalary(_usd: boolean): double;
+{
+  var AppStart, AppStop, LastDay: date;
+  AppStart := mtAppoint.dBeg;
+  AppStop := LastDay := Sub_Day(Add_Months(mtPeriod.dBeg, 1), 1);
+
+  if (mtAppoint.dEnd <> ZeroDate) and (LastDay > mtAppoint.dEnd)
+    AppStop := mtAppoint.dEnd;
+
+  var p1, f1, p2, f2: longint;
+  p1 := f1 := CalcDaysBetweenDates(mtPeriod.dBeg, AppStop, true);
+
+  if (mtPeriod.PlanDays <> 0) and (mtPersPer.FactDays <> 0)
+  {
+    if (p1 > mtPeriod.PlanDays)
+      p1 := mtPeriod.PlanDays;
+
+    f1 := mtPersPer.FactDays;
+    if (f1 > p1)
+      f1 := p1;
+  }
+
+  result := mtAppoint.Salary / p1 * f1;
+
+  if _usd and (mtAppoint.Currency <> 'USD')
+    result := result / Rate(R01);
+
+  if (not _usd) and (mtAppoint.Currency = 'USD')
+      result := result * Rate(R01);
+
+  if (AppStop < LastDay)
+  {
+    PushPos(#mtAppoint);
+
+    var PersId: byte = mtAppoint.Person;
+
+    if (GetLast mtAppoint where (( PersId             == mtAppoint.Person and
+                                   Add_Day(AppStop, 1) == mtAppoint.dBeg )) = tsOk)
+    {
+      p2 := mtPeriod.PlanDays - p1;
+      f2 := mtPersPer.FactDays - f1;
+
+      result := mtAppoint.Salary / p2 * f2;
+
+      if _usd and (mtAppoint.Currency <> 'USD')
+        result := result / Rate(R01);
+
+      if (not _usd) and (mtAppoint.Currency = 'USD')
+          result := result * Rate(R01);
+    }
+
+    PopPos(#mtAppoint);
+  }
+}
+/*
+private function GetDebtInRate: double;
+{
+  result := mtPeriod.AvansRate;
+  PushPos(#mtPeriod);
+  var yPrevId: byte;
+  yPrevId := mtPeriod.Id-1;
+  if (GetFirst mtPeriod where (( yPrevId == mtPeriod.Id )) = tsOk)
+    result := mtPeriod.PaymentRate;
+  PopPos(#mtPeriod);
+}
+*/
 private function UE(_row: byte): double;
 {
   result := 0;
 
   case _row of
 
-    R01: result := if(mtAppoint.Currency = 'USD', mtAppoint.Salary / mtPeriod.PlanDays * mtPersPer.FactDays, RB(R01) / Rate(R01)); // Оклад
+    R01:  result := CountSalary(true); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetUSD);
+      result := mtNachisl.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetUSD);
 
     R22:
     {
@@ -142,7 +213,7 @@ private function UE(_row: byte): double;
 
       _loop mtNachisl
       {
-        if (mtNachisl.Title = GetSumAbbr(R02)) or (mtNachisl.Title = GetSumAbbr(R03)) or (mtNachisl.Title = GetSumAbbr(R04))
+        if (mtNachisl.Title = GetSumId(R02)) or (mtNachisl.Title = GetSumId(R03)) or (mtNachisl.Title = GetSumId(R04))
           continue;
 
         result += mtNachisl.NetUSD;
@@ -157,10 +228,14 @@ private function UE(_row: byte): double;
     }
 
     R08: result := RB(R08) / Rate(R08); // Зачет с прошлого месяца
-    R09: result := UE(R07) + UE(R08) + UE(R21); // К выдаче
+    R09: result := UE(R07) + UE(R08) /*+ UE(R21)*/; // К выдаче
 
     R10, R11, R13:
-      result := mtPayment.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetUSD);
+    {
+      result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetUSD, Rate(_row));
+      if (result = 0)
+        result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)), Rate(_row));
+    }
 
     R23:
     {
@@ -168,7 +243,7 @@ private function UE(_row: byte): double;
 
       _loop mtPayment
       {
-        if (mtPayment.Title = GetSumAbbr(R10)) or (mtPayment.Title = GetSumAbbr(R11)) or (mtPayment.Title = GetSumAbbr(R13))
+        if (mtPayment.Title = GetSumId(R10)) or (mtPayment.Title = GetSumId(R11)) or (mtPayment.Title = GetSumId(R13))
           continue;
 
         result += mtPayment.NetUSD;
@@ -197,15 +272,28 @@ private function Rate(_row: byte): double;
 
   case _row of
 
-    R01: result := mtPeriod.PaymentRate; // Оклад
+    R01: result := if(mtPersPer.SalaryRate <> 0, mtPersPer.SalaryRate, mtPeriod.PaymentRate); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetRate(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
+      result := mtNachisl.GetRate(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
 
-    R08: result := 0/*mtPeriod.DebtInRate*/; // [ToDo] Зачет с прошлого месяца
+    R08: result := mtPeriod.DebtInRate; //GetDebtInRate; // Зачет с прошлого месяца
 
     R10, R11, R13:
-      result := mtPayment.GetRate(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row));
+    {
+      result := mtPayment.GetRate(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
+      if (result = 0)
+        result := mtPayment.GetRate(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)));
+
+      if (result = 0)
+      {
+        if (_row = R10)
+          result := mtPeriod.AvansRate;
+
+        if (_row = R13)
+          result := mtPeriod.PaymentRate;
+      }
+    }
 
     R15: result := mtPeriod.PaymentRate; // Зачет на следующий месяц
 
@@ -220,10 +308,10 @@ private function RB(_row: byte): double;
 
   case _row of
 
-    R01: result := if(mtAppoint.Currency = 'BYN', mtAppoint.Salary / mtPeriod.PlanDays * mtPersPer.FactDays, UE(R01) * Rate(R01)); // Оклад
+    R01:  result := CountSalary(false); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetBYN);
+      result := mtNachisl.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetBYN);
 
     R22:
     {
@@ -231,7 +319,7 @@ private function RB(_row: byte): double;
 
       _loop mtNachisl
       {
-        if (mtNachisl.Title = GetSumAbbr(R02)) or (mtNachisl.Title = GetSumAbbr(R03)) or (mtNachisl.Title = GetSumAbbr(R04))
+        if (mtNachisl.Title = GetSumId(R02)) or (mtNachisl.Title = GetSumId(R03)) or (mtNachisl.Title = GetSumId(R04))
           continue;
 
         result += mtNachisl.NetBYN;
@@ -249,7 +337,11 @@ private function RB(_row: byte): double;
     R09: result := RB(R07) + RB(R08) + RB(R21); // К выдаче
 
     R10, R11, R13:
-      result := mtPayment.GetValue(mtStruct.Person, mtPeriod.dBeg, GetSumAbbr(_row), cgNetBYN);
+    {
+      result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetBYN);
+      if (result = 0)
+        result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)), cgNetBYN);
+    }
 
     R23:
     {
@@ -257,7 +349,7 @@ private function RB(_row: byte): double;
 
       _loop mtPayment
       {
-        if (mtPayment.Title = GetSumAbbr(R10)) or (mtPayment.Title = GetSumAbbr(R11)) or (mtPayment.Title = GetSumAbbr(R13))
+        if (mtPayment.Title = GetSumId(R10)) or (mtPayment.Title = GetSumId(R11)) or (mtPayment.Title = GetSumId(R13))
           continue;
 
         result += mtPayment.NetBYN;

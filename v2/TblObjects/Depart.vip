@@ -111,7 +111,8 @@ public function LoadXml(_e: IDomNode): boolean;
   if (GetFirst mtDepart2 where (( mtDepart.Id == mtDepart2.Id )) <> tsOk)
   {
     insert current mtDepart;
-    oWage.Log(APE_INFO, string(Id) + '. ' + Name);
+    oWage.Log(APE_WARNING, string(Id) + '. ' + Name);
+    oWage.DataChanged := true;
   }
 
   result := true;

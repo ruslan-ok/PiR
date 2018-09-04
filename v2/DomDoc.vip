@@ -143,7 +143,8 @@ public procedure AddAttr(_attr: string);
       s := SubStr(s, 2, length(s)-2);
     if (Pos('XMLNS:', UpCase(a)) = 1)
       _doc.SetNS(SubStr(a, Pos(':', a) + 1, 255), s);
-    XmlDomElement_SetAttribute(_NodeId, a, s);
+    if (s <> '0.00') and (s <> '') and (s <> '0') and (s <> string(comp(0),0,0)) and (s <> string(ZeroDate))
+      XmlDomElement_SetAttribute(_NodeId, a, s);
   }
 }
 

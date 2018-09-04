@@ -5,20 +5,21 @@
 //------------------------------------------------------------------------------
 
 Window wnAppoint 'Назначение сотрудника';
-  show at(,, 80, 9);
+  show at(,, 80, 10);
 
 Screen scAppoint ('',, sci178Esc);
   table mtAppoint;
 Fields
   mtStruct.Name: skip;
-  mtAppoint.TabNum (''): noprotect;
-  mtAppoint.dBeg   (''): noprotect;
-  mtAppoint.dEnd   (''): noprotect;
-  mtDepart.Name    ('',, sci1378Esc): protect;
-  mtPost.Name      ('',, sci1378Esc): protect;
-  mtAppoint.Salary (''): [13.2,'\2p[|-]366`666`666~99'], noprotect;
-  mtAppoint.Currency (''): noprotect;
-  mtAppoint.TaxDed (''): noprotect;
+  mtAppoint.TabNum: NoProtect;
+  mtAppoint.dBeg  : NoProtect;
+  mtAppoint.dEnd  : NoProtect;
+  mtDepart.Name ('',, sci1378Esc): Protect;
+  mtPost.Name   ('',, sci1378Esc): Protect;
+  mtAppoint.Salary (''): [13.2,'\2p[|-]366`666`666~99'], NoProtect;
+  mtAppoint.Currency: NoProtect;
+  mtAppoint.TaxDed: NoProtect;
+  mtAppoint.Info: NoProtect;
 <<
 
    `Сотрудник`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -27,6 +28,7 @@ Fields
    `Отдел`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Должность`    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Оклад`        .@@@@@@@@@@@@ .@@@@@@@@          `Льгота` .@@@@@@@@@@@@
+   `Коммент`      .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
 

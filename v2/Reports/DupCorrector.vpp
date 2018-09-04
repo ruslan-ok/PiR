@@ -1,0 +1,331 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Проверка и корректировка дублей в начислениях и выплатах
+//------------------------------------------------------------------------------
+
+var fMagic: double;
+
+Window wnDupCorrector 'Проверка и корректировка дублей в начислениях и выплатах';
+  show at (,, 120, 35);
+
+Screen scTop;
+  show at (,,, 4) fixed_y;
+Fields
+  fMagic: NoProtect;
+Buttons
+  cmOk, default;
+  cmValue16;
+  cmCancel;
+<<
+
+   `Магическое число` .@@@@@@@@@@@@@@@@      <. Проверить .>  <. Исправить .>  <. Отмена .>
+>>
+End;
+
+Embedded embProt interface;
+  show at (, 5,,);
+End;
+
+End;
+
+private procedure StartCorrector(_kill: boolean); forward;
+
+WindowEvent wnDupCorrector;
+
+cmInit:
+{
+  fMagic := 106;
+  ReadMyDsk(fMagic, 'DupCorrector_fMagic', false);
+  BindEmbeddedInterface(embProt, wlog);
+  wlog.Clear;
+}
+
+cmDone:
+  SaveMyDsk(fMagic, 'DupCorrector_fMagic');
+
+cmOk:
+  StartCorrector(false);
+
+cmValue16:
+  StartCorrector(true);
+
+End;
+
+
+
+
+
+private function CheckSumm(_mode, _title1, _title2: byte; _name: string; _kill: boolean): double;
+{
+  result := 0;
+
+  var fValue, fRate: double = 0;
+  var wTaxCur: word = 0;
+  var sInfo: string = '';
+
+  if (_mode = 1) or (_mode = 3)
+  {
+    if (GetFirst mtNachisl where (( mtPerson.Id == mtNachisl.Person and
+                                    mtPeriod.Id == mtNachisl.Period and
+                                    _title1     == mtNachisl.Title )) = tsOk) // Премия отдела
+    {
+      fValue := mtNachisl.Value;
+      fRate := mtNachisl.Rate;
+      wTaxCur := mtNachisl.TaxCur;
+      sInfo := mtNachisl.Info;
+      if (GetFirst mtNachisl where (( mtPerson.Id == mtNachisl.Person and
+                                      mtPeriod.Id == mtNachisl.Period and
+                                      _title2     == mtNachisl.Title )) = tsOk) // Премия Отдела  (код 83)
+      {
+        if (Round(fValue, 2) = Round(mtNachisl.Value, 2)) and (fRate = mtNachisl.Rate) and (wTaxCur = mtNachisl.TaxCur)
+        {
+          result := if(_mode = 1, fValue, fValue * fRate);
+          if not _kill
+            wlog.LogLine(APE_WARNING, 'Обнаружено дублированное начисление "' + _name + '" ' + string(fValue) + ' USD');
+          else
+          {
+            wlog.LogLine(APE_INFO, 'Удалено начисление "' + _name + '" ' + string(fValue) + ' USD');
+            mtNachisl.Info := sInfo;
+            update current mtNachisl;
+            delete mtNachisl where (( mtPerson.Id == mtNachisl.Person and
+                                      mtPeriod.Id == mtNachisl.Period and
+                                      _title1     == mtNachisl.Title )); // Премия отдела
+          }
+        }
+      }
+    }
+  }
+
+  if (_mode = 2) or (_mode = 4)
+  {
+    if (GetFirst mtPayment where (( mtPerson.Id == mtPayment.Person and
+                                    mtPeriod.Id == mtPayment.Period and
+                                    _title1     == mtPayment.Title )) = tsOk) // Премия отдела
+    {
+      fValue := mtPayment.Value;
+      fRate := mtPayment.Rate;
+      wTaxCur := mtPayment.TaxCur;
+      sInfo := mtPayment.Info;
+      if (GetFirst mtPayment where (( mtPerson.Id == mtPayment.Person and
+                                      mtPeriod.Id == mtPayment.Period and
+                                      _title2     == mtPayment.Title )) = tsOk)// Премия Отдела  (код 83)
+      {
+        if (Round(fValue, 2) = Round(mtPayment.Value, 2)) and (fRate = mtPayment.Rate) and (wTaxCur = mtPayment.TaxCur)
+        {
+          result := if(_mode = 2, fValue / fRate, fValue);
+          if not _kill
+            wlog.LogLine(APE_WARNING, 'Обнаружена дублированная выплата "' + _name + '" ' + string(fValue) + ' BYN');
+          else
+          {
+            wlog.LogLine(APE_INFO, 'Удалена выплата "' + _name + '" ' + string(fValue) + ' BYN');
+            mtPayment.Info := sInfo;
+            update current mtPayment;
+            delete mtPayment where (( mtPerson.Id == mtPayment.Person and
+                                      mtPeriod.Id == mtPayment.Period and
+                                      _title1     == mtPayment.Title )); // Премия отдела
+          }
+        }
+      }
+    }
+  }
+}
+
+private procedure StartCorrector(_kill: boolean);
+{
+  wlog.LogStartVisual('Проверка дубликатов', 0);
+  PushPos(#mtAppoint);
+  PushPos(#mtPeriod);
+  ResetBounds(#mtAppoint);
+  ResetBounds(#mtPerson);
+  var bBreak: boolean = false;
+  var wYear: word = 0;
+  _loop mtPeriod
+  {
+    if bBreak
+      break;
+
+    if (wYear <> Year(mtPeriod.dBeg))
+    {
+      if (wYear <> 0)
+        wlog.LogCommit;
+      wYear := Year(mtPeriod.dBeg);
+      wlog.LogMessage(APE_INFO, string(wYear));
+    }
+
+//    if (mtPeriod.dBeg = date(1,6,2016))
+//      break;
+
+    wlog.LogMessage(APE_INFO, DateToStr(mtPeriod.dBeg, 'MM.YYYY'));
+
+    _loop mtPerson
+    {
+      if not wlog.LogNextVisual(DateToStr(mtPeriod.dBeg, 'MM.YYYY') + ' - ' + mtPerson.FIO)
+      {
+        bBreak := true;
+        break;
+      }
+
+      if (GetFirst mtPersPer where (( mtPerson.Id == mtPersPer.Person and
+                                      mtPeriod.Id == mtPersPer.Period )) <> tsOk)
+        continue;
+
+      if (GetFirst mtAppoint where (( mtPerson.Id == mtAppoint.Person and
+                                     ((mtPeriod.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg))) )) <> tsOk)
+        continue;
+
+      wlog.LogMessage(APE_INFO, mtPerson.FIO);
+
+      var fCorrNach, fCorrPay: double = 0;
+      var fTotNach, fTotPay, fRes: double = 0;
+
+      PushPos(#mtPeriod);
+      var fPrevRate: double = mtPeriod.PaymentRate;
+      var yId: byte;
+      yId := mtPeriod.Id - 1;
+      if (GetFirst mtPeriod where (( yId == mtPeriod.Id )) = tsOk)
+        fPrevRate := mtPeriod.PaymentRate;
+      PopPos(#mtPeriod);
+
+      var fSum: double;
+      //--------------------------------------------------------------------------------------
+      if (mtPersPer.SalaryRate <> 0) and (mtPersPer.SalaryRate <> mtPeriod.PaymentRate)
+      {
+        fRes := RB(R01);
+        wlog.LogLine(APE_INFO, 'Повременная оплата (оклад): ' + string(UE(R01)) + ' USD, курс оклада: ' + DoubleToStr(Rate(R01), '\4p[|-]3666666666~9999') + ', ' + string(RB(R01)) + ' BYN');
+
+        fTotNach := RB(R02) + RB(R03) + RB(R04) + RB(R22);
+        if (fTotNach <> 0)
+          wlog.LogLine(APE_INFO, 'Всего начислений: ' + string(fTotNach) + ' BYN');
+
+        fCorrNach += CheckSumm(3, 1, 14, 'Проектный бизнес', _kill);
+        if (fCorrNach = 0)
+          fCorrNach += CheckSumm(3, 6, 14, 'Проектный бизнес', _kill);
+        fCorrNach += CheckSumm(3, 9, 10, 'Премия отдела', _kill);
+        fCorrNach += CheckSumm(3, 1, 15, 'Премия Управления', _kill);
+        fCorrNach += CheckSumm(3, 6, 15, 'Проектный бизнес', _kill);
+
+        fSum := (fTotNach - fCorrNach);
+        if (fCorrNach <> 0)
+          wlog.LogLine(APE_INFO, 'После корректировки: ' + string(fSum) + ' BYN');
+        fRes += fSum;
+
+        fSum := mtPersPer.DebtIn;
+        if (fSum <> 0)
+          wlog.LogLine(APE_INFO, 'Входящий остаток: ' + string(fSum) + ' BYN');
+        fRes += fSum;
+
+        fSum := RB(R21);
+        if (fSum <> 0)
+          wlog.LogLine(APE_INFO, 'Льгота по подоходному налогу: ' + string(fSum) + ' BYN');
+        fRes += fSum;
+
+        wlog.LogLine(APE_INFO, 'К выплате: ' + string(fRes) + ' BYN');
+
+        fTotPay := RB(R10) + RB(R11) + RB(R13) + RB(R23);
+        if (fTotPay <> 0)
+          wlog.LogLine(APE_INFO, 'Всего выплат: ' + string(fTotPay) + ' BYN');
+
+        fCorrPay  += CheckSumm(4, 3, 16, 'Перечислено', _kill);
+        fCorrPay  += CheckSumm(4, 5, 12, 'Межрасчетные выплаты (отпускные)', _kill);
+        fSum := (fTotPay - fCorrPay);
+
+        if (fCorrPay <> 0)
+          wlog.LogLine(APE_INFO, 'После корректировки: ' + string(fSum) + ' BYN');
+        fRes -= fSum;
+
+        fSum := mtPersPer.DebtOut;
+        wlog.LogLine(APE_INFO, 'Исходящий остаток в распечатке: ' + string(fSum) + ' BYN');
+        wlog.LogLine(APE_INFO, 'Исходящий остаток расчетный: ' + string(fRes) + ' BYN');
+
+        fRes -= fSum;
+
+        if ((fRes >= -0.05) and (fRes <= 0.05)) or (RB(R01) = 0) or (fTotPay = 0)
+          wlog.LogLine(APE_INFO, 'Результат корректный');
+        else
+          if (fRes >= -30) and (fRes <= 30)
+            wlog.LogLine(APE_WARNING, 'Результат почти корректный: дельта = ' + string(fRes));
+          else
+            wlog.LogLine(APE_ERROR, 'Результат некорректный: дельта = ' + string(fRes));
+      }
+      //--------------------------------------------------------------------------------------
+      else
+      {
+        fRes := UE(R01);
+        wlog.LogLine(APE_INFO, 'Повременная оплата (оклад): ' + string(UE(R01)) + ' USD');
+
+        fTotNach := UE(R02) + UE(R03) + UE(R04) + UE(R22);
+        if (fTotNach <> 0)
+          wlog.LogLine(APE_INFO, 'Всего начислений: ' + string(fTotNach) + ' USD');
+
+        fCorrNach += CheckSumm(1, 1, 14, 'Проектный бизнес', _kill);
+        if (fCorrNach = 0)
+          fCorrNach += CheckSumm(1, 6, 14, 'Проектный бизнес', _kill);
+        fCorrNach += CheckSumm(1, 9, 10, 'Премия отдела', _kill);
+        fCorrNach += CheckSumm(1, 1, 15, 'Премия Управления', _kill);
+        fCorrNach += CheckSumm(1, 6, 15, 'Проектный бизнес', _kill);
+
+        fSum := (fTotNach - fCorrNach);
+        if (fCorrNach <> 0)
+          wlog.LogLine(APE_INFO, 'После корректировки: ' + string(fSum) + ' USD');
+        fRes += fSum;
+
+        fSum := mtPersPer.DebtIn / fPrevRate;
+        if (fSum <> 0)
+          wlog.LogLine(APE_INFO, 'Входящий остаток: ' + string(fSum) + ' USD');
+        fRes += fSum;
+
+        fSum := UE(R21);
+        if (fSum <> 0)
+          wlog.LogLine(APE_INFO, 'Льгота по подоходному налогу: ' + string(fSum) + ' USD');
+        fRes += fSum;
+
+        wlog.LogLine(APE_INFO, 'К выплате: ' + string(fRes) + ' USD');
+
+        fTotPay := UE(R10) + UE(R11) + UE(R13) + UE(R23);
+        if (fTotPay <> 0)
+          wlog.LogLine(APE_INFO, 'Всего выплат: ' + string(fTotPay) + ' USD');
+
+        fCorrPay  += CheckSumm(2, 3, 16, 'Перечислено', _kill);
+        fCorrPay  += CheckSumm(2, 5, 12, 'Межрасчетные выплаты (отпускные)', _kill);
+        fSum := (fTotPay - fCorrPay);
+
+        if (fCorrPay <> 0)
+          wlog.LogLine(APE_INFO, 'После корректировки: ' + string(fSum) + ' USD');
+        fRes -= fSum;
+
+        fSum := mtPersPer.DebtOut / mtPeriod.PaymentRate;
+        wlog.LogLine(APE_INFO, 'Исходящий остаток в распечатке: ' + string(fSum) + ' USD');
+        wlog.LogLine(APE_INFO, 'Исходящий остаток расчетный: ' + string(fRes) + ' USD');
+
+        fRes -= fSum;
+
+        if ((fRes >= -0.02) and (fRes <= 0.02)) or (UE(R01) = 0) or (fTotPay = 0)
+          wlog.LogLine(APE_INFO, 'Результат корректный');
+        else
+          if (fRes >= -15) and (fRes <= 15)
+            wlog.LogLine(APE_WARNING, 'Результат почти корректный: дельта = ' + string(fRes));
+          else
+            wlog.LogLine(APE_ERROR, 'Результат некорректный: дельта = ' + string(fRes));
+      }
+      //--------------------------------------------------------------------------------------
+      wlog.LogCommit;
+    }
+    wlog.LogCommit;
+  }
+
+  if (wYear <> 0)
+    wlog.LogCommit;
+
+  SetBounds(#mtPerson);
+  SetBounds(#mtAppoint);
+  PopPos(#mtPeriod);
+  PopPos(#mtAppoint);
+  wlog.LogStopVisual;
+  wlog.Refresh;
+}
+
+private procedure DupCorrector;
+{
+  RunWindow(wnDupCorrector);
+}

@@ -108,6 +108,7 @@ private procedure LoadPersons(_e: IDomNode);
 
 private function DoImportXml: boolean;
 {
+  DoSetStream(0);
   wlog.LogStartVisual('Загрузка из файла ' + sFile, 0);
   var doc: DomDoc new;
   doc.Load(sFile);

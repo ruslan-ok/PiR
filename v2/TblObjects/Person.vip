@@ -4,7 +4,7 @@
 // Табличный объект сотрудников
 //------------------------------------------------------------------------------
 
-//#include AtlProtocol.vih
+#include AtlProtocol.vih
 
 Interface Person;
 
@@ -89,18 +89,22 @@ public function LoadXml(_e: IDomNode): boolean;
     {
       case _e.FndAttr.Name of
         'rok:Login':  Login  := _e.FndAttr.Value;
-        'rok:FIO':    FIO    := _e.FndAttr.Value;
+        'rok:FIO':    FIO    := Replace(_e.FndAttr.Value, '_', '');
         'rok:EMail':  EMail  := _e.FndAttr.Value;
         'rok:Passw':  Passw  := _e.FndAttr.Value;
-        'rok:Sort':   Sort   := longint(_e.FndAttr.Value);
+        'rok:Sort':   Sort   := byte(_e.FndAttr.Value);
       end;
     }
     while (_e.GetNextAttr);
 
-  if (GetFirst mtPerson2 where (( mtPerson.FIO == mtPerson2.FIO )) <> tsOk)
+  if (GetFirst mtPerson2 where (( mtPerson.FIO == mtPerson2.FIO )) = tsOk)
+    Id := mtPerson2.Id;
+  else
   {
     Id := GenerateNewId;
     insert current mtPerson;
+    oWage.Log(APE_WARNING, 'Добавлен сотрудник ' + string(Id) + ' ' + mtPerson.FIO);
+    oWage.DataChanged := true;
   }
 
   result := true;
@@ -127,7 +131,7 @@ public function SaveRok: boolean;
   WriteStr(FIO);
   WriteStr(EMail);
   WriteStr(Passw);
-  WriteLong(Sort);
+  WriteByte(Sort);
 }
 
 public function LoadRok: boolean;
@@ -142,7 +146,7 @@ public function LoadRok: boolean;
     FIO   := ReadStr;
     EMail := ReadStr;
     Passw := ReadStr;
-    Sort  := ReadLong;
+    Sort  := ReadByte;
     if (GetFirst mtPerson2 where (( mtPerson.Id == mtPerson2.Id )) <> tsOk)
     {
       insert current mtPerson;

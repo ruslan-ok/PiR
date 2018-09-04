@@ -297,6 +297,7 @@ private procedure ReadColumns(var _PlanDays: byte; var _AvansDate, _PaymentDate:
 
 private procedure CheckPerson(_npp: string);
 {
+  sCell := Replace(sCell, 'Кузнецов Виталий А.', 'Кузнецов В.А.');
   sCell := Replace(sCell, '.  ', '.');
   sCell := Replace(sCell, '. ', '.');
 
@@ -360,18 +361,19 @@ private procedure CheckAppoint(_tab: string);
       }
     }
     else
-    {
-      var dContract: date = mtAppoint.dEnd;
+      if (mtAppoint.Currency = 'USD')
+      {
+        var dContract: date = mtAppoint.dEnd;
 
-      mtAppoint.dEnd := Sub_Day(mtPeriod.dBeg, 1);
-      update current mtAppoint;
+        mtAppoint.dEnd := Sub_Day(mtPeriod.dBeg, 1);
+        update current mtAppoint;
 
-      wlog.LogLine(APE_INFO, 'Добавлено назначение сотрудника в связи с изменением оклада с ' + string(mtAppoint.Salary) + ' на ' + sCell + ' USD');
-      mtAppoint.Salary := fCell;
-      mtAppoint.dBeg := mtPeriod.dBeg;
-      mtAppoint.dEnd := dContract;
-      insert current mtAppoint;
-    }
+        wlog.LogLine(APE_INFO, 'Добавлено назначение сотрудника в связи с изменением оклада с ' + string(mtAppoint.Salary) + ' на ' + sCell + ' USD');
+        mtAppoint.Salary := fCell;
+        mtAppoint.dBeg := mtPeriod.dBeg;
+        mtAppoint.dEnd := dContract;
+        insert current mtAppoint;
+      }
   }
 }
 

@@ -166,7 +166,7 @@ function CheckFileAccess: boolean;
 // Имя файла, используемое по умолчанию
 function DefaultFileName: string;
 {
-  result := 'Wage' + DateToStr(Cur_Date, '_DD.MM.YYYY_') + TimeToStr(Cur_Time, 'HH-MM-SS');
+  result := 'Wage' + DateToStr(Cur_Date, '_YYYY.MM.DD_') + TimeToStr(Cur_Time, 'HH-MM-SS');
 }
 
 // Проверка имени файла
@@ -325,7 +325,8 @@ private procedure doExport(_silent: boolean);
       exit;
 
   PushPos(#mtPeriod);
-  if (CurFormatInArea(scInfo) = scInfo)
+  ResetBounds(#mtPerson);
+  if (CurFormatInArea(brAppoints) <> brAppoints)
     PopConditionForLeave(tcCurAppoint, tnmtAppoint);
 
   StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
@@ -336,6 +337,10 @@ private procedure doExport(_silent: boolean);
   else
     DoExportXml;
 
+  if (CurFormatInArea(brAppoints) <> brAppoints)
+    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
+
+  SetBounds(#mtPerson);
   PopPos(#mtPeriod);
 
   SaveMyDsk(wFormat, 'WageView_wFormat');

@@ -129,6 +129,7 @@ public function LoadXml(_e: IDomNode): boolean;
       oWage.Log(APE_ERROR, 'Ошибка добавления наименования начисления/выплаты: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
     else
       oWage.Log(APE_WARNING, 'Добавлено наименование начисления/выплаты: ' + string(mtPayTitle3.Id) + '. ' + mtPayTitle3.Name);
+    oWage.DataChanged := true;
   }
   result := true;
 }
