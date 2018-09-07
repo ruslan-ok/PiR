@@ -406,24 +406,24 @@ private procedure CheckNachisl;
                                   mtPeriod.Id == mtNachisl.Period and
                           mtColTitle.PayTitle == mtNachisl.Title )) = tsOk)
   {
-    if (mtNachisl.Value <> fCell) or (mtNachisl.TaxCur <> cgNetUSD) or (mtNachisl.Rate <> mtPeriod.PaymentRate)
+    if (mtNachisl.Value <> fCell) or (mtNachisl.Currency <> cgUSD) or (mtNachisl.Rate <> mtPeriod.PaymentRate)
     {
       wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD (было ' + string(mtNachisl.Value) + ' USD)');
-      mtNachisl.Value  := fCell;
-      mtNachisl.TaxCur := cgNetUSD;
-      mtNachisl.Rate   := mtPeriod.PaymentRate;
+      mtNachisl.Value    := fCell;
+      mtNachisl.Currency := cgUSD;
+      mtNachisl.Rate     := mtPeriod.PaymentRate;
       update current mtNachisl;
     }
   }
   else
   {
     wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD');
-    mtNachisl.Person := mtPerson.Id;
-    mtNachisl.Period := mtPeriod.Id;
-    mtNachisl.Title  := mtColTitle.PayTitle;
-    mtNachisl.Value  := fCell;
-    mtNachisl.TaxCur := cgNetUSD;
-    mtNachisl.Rate   := mtPeriod.PaymentRate;
+    mtNachisl.Person   := mtPerson.Id;
+    mtNachisl.Period   := mtPeriod.Id;
+    mtNachisl.Title    := mtColTitle.PayTitle;
+    mtNachisl.Value    := fCell;
+    mtNachisl.Currency := cgUSD;
+    mtNachisl.Rate     := mtPeriod.PaymentRate;
     insert current mtNachisl;
   }
 }
@@ -450,26 +450,26 @@ private procedure CheckPayment(_value, _rate: double; _payed: date);
                                   mtPeriod.Id == mtPayment.Period and
                           mtColTitle.PayTitle == mtPayment.Title )) = tsOk)
   {
-    if (mtPayment.Value <> _value) or (mtPayment.TaxCur <> cgNetBYN) or (mtPayment.Rate <> _rate) or (mtPayment.Payed <> _payed)
+    if (mtPayment.Value <> _value) or (mtPayment.Currency <> cgBYN) or (mtPayment.Rate <> _rate) or (mtPayment.Payed <> _payed)
     {
       wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(_value) + ' BYN (было ' + string(mtPayment.Value) + ' BYN)');
-      mtPayment.Value  := _value;
-      mtPayment.TaxCur := cgNetBYN;
-      mtPayment.Rate   := _rate;
-      mtPayment.Payed  := _payed;
+      mtPayment.Value    := _value;
+      mtPayment.Currency := cgBYN;
+      mtPayment.Rate     := _rate;
+      mtPayment.Payed    := _payed;
       update current mtPayment;
     }
   }
   else
   {
     wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(_value) + ' BYN');
-    mtPayment.Person := mtPerson.Id;
-    mtPayment.Period := mtPeriod.Id;
-    mtPayment.Title  := mtColTitle.PayTitle;
-    mtPayment.Value  := _value;
-    mtPayment.TaxCur := cgNetBYN;
-    mtPayment.Rate   := _rate;
-    mtPayment.Payed  := _payed;
+    mtPayment.Person   := mtPerson.Id;
+    mtPayment.Period   := mtPeriod.Id;
+    mtPayment.Title    := mtColTitle.PayTitle;
+    mtPayment.Value    := _value;
+    mtPayment.Currency := cgBYN;
+    mtPayment.Rate     := _rate;
+    mtPayment.Payed    := _payed;
     insert current mtPayment;
   }
 }

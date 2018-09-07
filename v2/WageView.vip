@@ -280,11 +280,11 @@ Fields
   (mtPersPer.DebtIn / mtPeriod.DebtInRate /*GetDebtInRate*/) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
   mtPersPer.DebtIn ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], noProtect;
 
-  GetNachisl(cgNetUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
-  GetNachisl(cgNetBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetNachisl(cgUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetNachisl(cgBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
 
-  GetPayment(cgNetUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
-  GetPayment(cgNetBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetPayment(cgUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
+  GetPayment(cgBYN): [13.2,'\2p[|-]366`666`666.88'], protect;
 
   (mtPersPer.DebtOut / mtPeriod.PaymentRate) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
   mtPersPer.DebtOut ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], noProtect;
@@ -309,30 +309,22 @@ Browse brNachisl 'Начисления';
   table mtNachisl;
 Fields
   mtNachisl.GetTitleName  'Описание':    [20], Protect;
-  mtNachisl.Payed  'Дата':        [10], Protect;
-  mtNachisl.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
-  mtNachisl.TaxCur 'Валюта и налоги': [5],
-                         [list cgNetBYN 'BYN без налогов',
-                               cgTaxBYN 'BYN с налогами',
-                               cgNetUSD 'USD без налогов',
-                               cgTaxUSD 'USD с налогами'], Protect;
-  mtNachisl.Rate  'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
-  mtNachisl.Info  'Комментарий': [20], Protect;
+  mtNachisl.Payed         'Дата':        [10], Protect;
+  mtNachisl.Value         'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
+  mtNachisl.Currency      'Валюта':      [ 5], [list cgBYN 'BYN', cgUSD 'USD'], Protect;
+  mtNachisl.Rate          'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
+  mtNachisl.Info          'Комментарий': [20], Protect;
 End;
 
 Browse brPayment 'Выплаты';
   table mtPayment;
 Fields
   mtPayment.GetTitleName 'Описание':    [20], Protect;
-  mtPayment.Payed  'Дата':        [10], Protect;
-  mtPayment.Value  'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
-  mtPayment.TaxCur 'Валюта и налоги': [5],
-                         [list cgNetBYN 'BYN без налогов',
-                               cgTaxBYN 'BYN с налогами',
-                               cgNetUSD 'USD без налогов',
-                               cgTaxUSD 'USD с налогами'], Protect;
-  mtPayment.Rate   'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
-  mtPayment.Info   'Комментарий': [20], Protect;
+  mtPayment.Payed        'Дата':        [10], Protect;
+  mtPayment.Value        'Сумма':       [13.2,'\2p[|-]366`666`666~99'], Protect;
+  mtPayment.Currency     'Валюта':      [ 5], [list cgBYN 'BYN', cgUSD 'USD'], Protect;
+  mtPayment.Rate         'Курс':        [13.4,'\4p[|-]366`666~9999'], Protect;
+  mtPayment.Info         'Комментарий': [20], Protect;
 End;
 
 Browse brAppoints 'Назначения' ('',, sci1478Esc);
@@ -517,10 +509,8 @@ private function GetNachisl(_mode: byte): double;
 
   _loop mtNachisl
     case _mode of
-      cgNetUSD: result += mtNachisl.NetUSD;
-      cgTaxUSD: result += mtNachisl.TaxUSD;
-      cgNetBYN: result += mtNachisl.NetBYN;
-      cgTaxBYN: result += mtNachisl.TaxBYN;
+      cgUSD: result += mtNachisl.inUSD;
+      cgBYN: result += mtNachisl.inBYN;
     end;
 }
 
@@ -530,10 +520,8 @@ private function GetPayment(_mode: byte): double;
 
   _loop mtPayment
     case _mode of
-      cgNetUSD: result += mtPayment.NetUSD;
-      cgTaxUSD: result += mtPayment.TaxUSD;
-      cgNetBYN: result += mtPayment.NetBYN;
-      cgTaxBYN: result += mtPayment.TaxBYN;
+      cgUSD: result += mtPayment.inUSD;
+      cgBYN: result += mtPayment.inBYN;
     end;
 }
 

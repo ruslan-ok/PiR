@@ -43,9 +43,9 @@ DataStream dsReportBySotr
     [ThrdPartUE]       UE(R23);                        // Остальные выплаты, USD
     [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
     [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
-    [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN: mtDebtOut.NetBYN
+    [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN: mtDebtOut.inBYN
     [OutgoingUE]       UE(R09) - UE(R16);              // Исх. остаток, USD: UE(R07) + UE(R08) + UE(R21) - (UE(R10) + UE(R11) + UE(R13) + UE(R14))
-    [OutgoingUE_Check] UE(R15);                        // Исх. остаток - контроль с распечаткой, USD: mtDebtOut.NetUSD
+    [OutgoingUE_Check] UE(R15);                        // Исх. остаток - контроль с распечаткой, USD: mtDebtOut.inUSD
     [OutgoingUE_Delta] UE(R09) - UE(R16) - UE(R15);
   );
 )

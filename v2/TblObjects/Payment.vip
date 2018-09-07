@@ -12,15 +12,15 @@ var mPrev: IPayment;
 
 Table struct mtPayment
 (
-  Person: byte,
-  Period: byte,
-  Payed:  date,
-  Sort:   byte,
-  Title:  byte,
-  Value:  double,
-  TaxCur: byte,
-  Rate:   double,
-  Info:   string
+  Person:   byte,
+  Period:   byte,
+  Payed:    date,
+  Sort:     byte,
+  Title:    byte,
+  Value:    double,
+  Currency: byte,
+  Rate:     double,
+  Info:     string
 )
 With index
 (
@@ -29,34 +29,29 @@ With index
   ByTitle = Title
 );
 
-function GetCountedValue(_PresentTaxCur: byte; _value, _rate: double; _NeededTaxCur: byte): double; forward;
-var sError: string = '';
+private function GetCountedValue(_value, _rate: double; _PresentCurrency, _NeedCurrency: byte): double; forward;
 
 Create view as select
-  GetCountedValue(mtPayment.TaxCur, mtPayment.Value, mtPayment.Rate, cgNetUSD) (FieldName = fNetUSD),
-  GetCountedValue(mtPayment.TaxCur, mtPayment.Value, mtPayment.Rate, cgTaxUSD) (FieldName = fTaxUSD),
-  GetCountedValue(mtPayment.TaxCur, mtPayment.Value, mtPayment.Rate, cgNetBYN) (FieldName = fNetBYN),
-  GetCountedValue(mtPayment.TaxCur, mtPayment.Value, mtPayment.Rate, cgTaxBYN) (FieldName = fTaxBYN),
+  GetCountedValue(mtPayment.Value, mtPayment.Rate, mtPayment.Currency, cgUSD) (FieldName = fInUSD),
+  GetCountedValue(mtPayment.Value, mtPayment.Rate, mtPayment.Currency, cgBYN) (FieldName = fInBYN),
   *
 from
   mtPayment,
   mtPayment mtPayment2;
 
-property Person: byte   absolute mtPayment.Person;
-property Period: byte   absolute mtPayment.Period;
-property Payed:  date   absolute mtPayment.Payed;
-property Sort:   byte   absolute mtPayment.Sort;
-property Title:  byte   absolute mtPayment.Title;
-property Value:  double absolute mtPayment.Value;
-property TaxCur: byte   absolute mtPayment.TaxCur;
-property Rate:   double absolute mtPayment.Rate;
-property Info:   string absolute mtPayment.Info;
-property NetBYN: double read fNetBYN;
-property TaxBYN: double read fTaxBYN;
-property NetUSD: double read fNetUSD;
-property TaxUSD: double read fTaxUSD;
-property Error:  string read sError;
-property dPeriod: date  read IdToPeriod(mtPayment.Period);
+property Person:   byte   absolute mtPayment.Person;
+property Period:   byte   absolute mtPayment.Period;
+property Payed:    date   absolute mtPayment.Payed;
+property Sort:     byte   absolute mtPayment.Sort;
+property Title:    byte   absolute mtPayment.Title;
+property Value:    double absolute mtPayment.Value;
+property Currency: byte   absolute mtPayment.Currency;
+property Rate:     double absolute mtPayment.Rate;
+property Info:     string absolute mtPayment.Info;
+
+property inBYN:    double read fInBYN;
+property inUSD:    double read fInUSD;
+property dPeriod:  date   read IdToPeriod(mtPayment.Period);
 
 index Sorted auto;
 index Titled auto;
@@ -64,14 +59,14 @@ index ByTitle auto;
 
 var TagName: string;
 
-public function GetValue(_pers: byte; _period: byte; _title: byte; _NeededTaxCur: byte; _rate: double = 0): double;
+public function GetValue(_pers: byte; _period: byte; _title: byte; _NeededCurrency: byte; _rate: double = 0): double;
 {
   result := 0;
 
   if (GetFirst mtPayment2 where (( _pers   == mtPayment2.Person and
                                    _period == mtPayment2.Period and
                                    _title  == mtPayment2.Title )) = tsOk)
-    result := GetCountedValue(mtPayment2.TaxCur, mtPayment2.Value, if(mtPayment2.Rate = 0, _rate, mtPayment2.Rate), _NeededTaxCur);
+    result := GetCountedValue(mtPayment2.Value, if(mtPayment2.Rate = 0, _rate, mtPayment2.Rate), mtPayment2.Currency, _NeededCurrency);
 }
 
 public function GetRate(_pers: byte; _period: byte; _title: byte): double;
@@ -113,7 +108,7 @@ public function GetTitleName: string;
 
 public function ToString: string;
 {
-  result := string(Value) + ' ' + if(TaxCur = cgNetUSD or TaxCur = cgTaxUSD, 'USD', 'BYN') + ' ' + GetTitleName;
+  result := string(Value) + ' ' + if(Currency = cgUSD, 'USD', 'BYN') + ' ' + GetTitleName;
 }
 
 function IModify.doInsert : word;
@@ -143,42 +138,22 @@ constructor Init;
   TagName := 'rok:Payment';
 }
 
-private function GetCountedValue(_PresentTaxCur: byte; _value, _rate: double; _NeededTaxCur: byte): double;
+private function GetCountedValue(_value, _rate: double; _PresentCurrency, _NeedCurrency: byte): double;
 {
   result := 0;
 
-  case _NeededTaxCur of
+  case _NeedCurrency of
 
-    cgNetBYN:
-      case _PresentTaxCur of
-        cgNetBYN: result := _value;
-        cgTaxBYN: result := _value * 1.09;
-        cgNetUSD: result := _value * _rate;
-        cgTaxUSD: result := _value * 1.09 * _rate;
+    cgBYN:
+      case _PresentCurrency of
+        cgBYN: result := _value;
+        cgUSD: result := _value * _rate;
       end;
 
-    cgTaxBYN:
-      case _PresentTaxCur of
-        cgNetBYN: result := _value * 0.91;
-        cgTaxBYN: result := _value;
-        cgNetUSD: result := _value * 0.91 * _rate;
-        cgTaxUSD: result := _value * _rate;
-      end;
-
-    cgNetUSD:
-      case _PresentTaxCur of
-        cgNetBYN: result := _value / _rate;
-        cgTaxBYN: result := _value * 1.09 / _rate;
-        cgNetUSD: result := _value;
-        cgTaxUSD: result := _value * 1.09;
-      end;
-
-    cgTaxUSD:
-      case _PresentTaxCur of
-        cgNetBYN: result := _value * 0.91 / _rate;
-        cgTaxBYN: result := _value / _rate;
-        cgNetUSD: result := _value * 0.91;
-        cgTaxUSD: result := _value;
+    cgUSD:
+      case _PresentCurrency of
+        cgBYN: result := _value / _rate;
+        cgUSD: result := _value;
       end;
 
   end;
@@ -198,7 +173,7 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Sort='   + string(Sort));
   xnode.AddAttr('rok:Title='  + string(Title));
   xnode.AddAttr('rok:Value='  + DoubleToStr(Value, '\2p[|-]3666666666666~99'));
-  xnode.AddAttr('rok:TaxCur=' + string(TaxCur));
+  xnode.AddAttr('rok:Currency=' + string(Currency));
   xnode.AddAttr('rok:Rate='   + DoubleToStr(Rate, '\4p[|-]3666666666~9999'));
   xnode.AddAttr('rok:Info='   + Info);
   result := xnode;
@@ -216,13 +191,14 @@ public function LoadXml(_e: IDomNode): boolean;
     do
     {
       case _e.FndAttr.Name of
-        'rok:Payed':  Payed  := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-        'rok:Sort':   Sort   := byte(_e.FndAttr.Value);
-        'rok:Title':  Title  := GetTitleId(_e.FndAttr.Value);
-        'rok:Value':  Value  := double(_e.FndAttr.Value);
-        'rok:TaxCur': TaxCur := byte(_e.FndAttr.Value);
-        'rok:Rate':   Rate   := double(_e.FndAttr.Value);
-        'rok:Info':   Info   := _e.FndAttr.Value;
+        'rok:Payed':    Payed    := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Sort':     Sort     := byte(_e.FndAttr.Value);
+        'rok:Title':    Title    := GetTitleId(_e.FndAttr.Value);
+        'rok:Value':    Value    := double(_e.FndAttr.Value);
+        'rok:TaxCur':   Currency := byte(_e.FndAttr.Value); // deprecated
+        'rok:Currency': Currency := byte(_e.FndAttr.Value);
+        'rok:Rate':     Rate     := double(_e.FndAttr.Value);
+        'rok:Info':     Info     := _e.FndAttr.Value;
       end;
     }
     while (_e.GetNextAttr);
@@ -234,11 +210,11 @@ public function LoadXml(_e: IDomNode): boolean;
                                    mtPayment.Period == mtPayment2.Period and
                                    mtPayment.Title  == mtPayment2.Title )) = tsOk)
   {
-    if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.TaxCur <> mtPayment2.TaxCur) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
+    if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.Currency <> mtPayment2.Currency) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
       oWage.Log(APE_WARNING, 'Запись уже существует с другими значениями: ' + ToString + ' [' +
                              if(mtPayment.Payed = mtPayment2.Payed, '', ' дата выплаты ' + string(mtPayment.Payed) + ' в базе ' + string(mtPayment2.Payed)) +
                              if(mtPayment.Value = mtPayment2.Value, '', ' сумма ' + DoubleToStr(mtPayment.Value, '\4p[|-]3666666666~9999') + ' в базе ' + DoubleToStr(mtPayment.Value, '\4p[|-]3666666666~9999')) +
-                             if(mtPayment.TaxCur = mtPayment2.TaxCur, '', ' TaxCur ' + string(mtPayment.TaxCur) + ' в базе ' + string(mtPayment2.TaxCur)) +
+                             if(mtPayment.Currency = mtPayment2.Currency, '', ' валюта ' + string(mtPayment.Currency) + ' в базе ' + string(mtPayment2.Currency)) +
                              if(mtPayment.Rate = mtPayment2.Rate, '', ' курс ' + DoubleToStr(mtPayment.Rate, '\4p[|-]3666666666~9999') + ' в базе ' + DoubleToStr(mtPayment2.Rate, '\4p[|-]3666666666~9999')) +
                              if(mtPayment.Info = mtPayment2.Info, '', ' коммент "' + string(mtPayment.Info) + '" в базе "' + string(mtPayment2.Info) + '"') + ']');
   }
@@ -264,7 +240,7 @@ public function SaveRok: boolean;
   WriteByte(Sort);
   WriteByte(Title);
   WriteDouble(Value);
-  WriteByte(TaxCur);
+  WriteByte(Currency);
   WriteDouble(Rate);
   WriteStr(Info);
 }
@@ -276,13 +252,13 @@ public function LoadRok: boolean;
   if CheckNewRec
   {
     ClearBuffer(#mtPayment);
-    Payed  := ReadDate;
-    Sort   := ReadByte;
-    Title  := ReadByte;
-    Value  := ReadDouble;
-    TaxCur := ReadByte;
-    Rate   := ReadDouble;
-    Info   := ReadStr;
+    Payed    := ReadDate;
+    Sort     := ReadByte;
+    Title    := ReadByte;
+    Value    := ReadDouble;
+    Currency := ReadByte;
+    Rate     := ReadDouble;
+    Info     := ReadStr;
     Person := oWage.PersonId;
     Period := oWage.PeriodId;
 
@@ -290,7 +266,7 @@ public function LoadRok: boolean;
                                      mtPayment.Period == mtPayment2.Period and
                                      mtPayment.Title  == mtPayment2.Title )) = tsOk)
     {
-      if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.TaxCur <> mtPayment2.TaxCur) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
+      if (mtPayment.Payed <> mtPayment2.Payed) or (mtPayment.Value <> mtPayment2.Value) or (mtPayment.Currency <> mtPayment2.Currency) or (mtPayment.Rate <> mtPayment2.Rate) or (mtPayment.Info <> mtPayment2.Info)
         oWage.Log(APE_WARNING, 'Запись уже существует: ' + ToString);
     }
     else

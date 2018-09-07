@@ -9,11 +9,8 @@ ObjInterface IDomDoc; forward;
 Const
 
   cgBYN = 1;
+  cgBYR = 2;
   cgUSD = 3;
-//  cgNetBYN = 1;
-//  cgTaxBYN = 2;
-//  cgNetUSD = 3;
-//  cgTaxUSD = 4;
 
   cgDepart  = 1;
   cgDepHist = 2;
@@ -184,16 +181,16 @@ ObjInterface IAppoint(ISerializable);
 end;
 
 ObjInterface IPersPer(ISerializable);
-  property Person:   byte;
-  property Period:   byte;
-  property FactDays: byte;
-  property DebtIn:   double;
-  property DebtOut:  double;
+  property Person:     byte;
+  property Period:     byte;
+  property FactDays:   byte;
+  property DebtIn:     double;
+  property DebtOut:    double;
   property SalaryRate: double;
-  property Privilege: double;
+  property Privilege:  double;
 
-  property PrevOut:  double read;
-  property dBeg:     date   read;
+  property PrevOut: double read;
+  property dBeg:    date   read;
 
   index ByPerson = Person, Period (unique);
   index ByPeriod = Period;
@@ -213,30 +210,27 @@ ObjInterface IPayTitle(ISerializable);
 end;
 
 ObjInterface IPayment(ISerializable);
-  property Person: byte;
-  property Period: byte;
-  property Payed:  date;
-  property Sort:   byte;
-  property Title:  byte;
-  property Value:  double;
-  property TaxCur: byte;
-  property Rate:   double;
-  property Info:   string;
-  property NetBYN: double read;
-  property TaxBYN: double read;
-  property NetUSD: double read;
-  property TaxUSD: double read;
-  property Error:  string read;
-  property dPeriod: date  read;
+  property Person:   byte;
+  property Period:   byte;
+  property Payed:    date;
+  property Sort:     byte;
+  property Title:    byte;
+  property Value:    double;
+  property Currency: byte;
+  property Rate:     double;
+  property Info:     string;
+  property InBYN:    double read;
+  property InUSD:    double read;
+  property dPeriod:  date   read;
 
   index Sorted = Person, Period, Sort;
   index Titled = Person, Period, Title (unique);
   index ByTitle = Title;
 
-  function GetValue(_pers: byte; _period: byte; _title: byte; _NeededTaxCur: byte; _rate: double = 0): double;
-  function GetRate(_pers: byte;  _period: byte; _title: byte): double;
-  function GetInfo(_pers: byte;  _period: byte; _title: byte): string;
-  function GetPayed(_pers: byte; _period: byte; _title: byte): date;
+  function GetValue(_pers, _period, _title: byte; _NeededCurrency: byte; _rate: double = 0): double;
+  function GetRate(_pers,  _period, _title: byte): double;
+  function GetInfo(_pers,  _period, _title: byte): string;
+  function GetPayed(_pers, _period, _title: byte): date;
   function GetTitleName: string;
   function ToString: string;
 end;

@@ -61,7 +61,7 @@ private function CheckSumm(_mode, _title1, _title2: byte; _name: string; _kill: 
   result := 0;
 
   var fValue, fRate: double = 0;
-  var wTaxCur: word = 0;
+  var wCurrency: word = 0;
   var sInfo: string = '';
 
   if (_mode = 1) or (_mode = 3)
@@ -72,13 +72,13 @@ private function CheckSumm(_mode, _title1, _title2: byte; _name: string; _kill: 
     {
       fValue := mtNachisl.Value;
       fRate := mtNachisl.Rate;
-      wTaxCur := mtNachisl.TaxCur;
+      wCurrency := mtNachisl.Currency;
       sInfo := mtNachisl.Info;
       if (GetFirst mtNachisl where (( mtPerson.Id == mtNachisl.Person and
                                       mtPeriod.Id == mtNachisl.Period and
                                       _title2     == mtNachisl.Title )) = tsOk) // Премия Отдела  (код 83)
       {
-        if (Round(fValue, 2) = Round(mtNachisl.Value, 2)) and (fRate = mtNachisl.Rate) and (wTaxCur = mtNachisl.TaxCur)
+        if (Round(fValue, 2) = Round(mtNachisl.Value, 2)) and (fRate = mtNachisl.Rate) and (wCurrency = mtNachisl.Currency)
         {
           result := if(_mode = 1, fValue, fValue * fRate);
           if not _kill
@@ -105,13 +105,13 @@ private function CheckSumm(_mode, _title1, _title2: byte; _name: string; _kill: 
     {
       fValue := mtPayment.Value;
       fRate := mtPayment.Rate;
-      wTaxCur := mtPayment.TaxCur;
+      wCurrency := mtPayment.Currency;
       sInfo := mtPayment.Info;
       if (GetFirst mtPayment where (( mtPerson.Id == mtPayment.Person and
                                       mtPeriod.Id == mtPayment.Period and
                                       _title2     == mtPayment.Title )) = tsOk)// Премия Отдела  (код 83)
       {
-        if (Round(fValue, 2) = Round(mtPayment.Value, 2)) and (fRate = mtPayment.Rate) and (wTaxCur = mtPayment.TaxCur)
+        if (Round(fValue, 2) = Round(mtPayment.Value, 2)) and (fRate = mtPayment.Rate) and (wCurrency = mtPayment.Currency)
         {
           result := if(_mode = 2, fValue / fRate, fValue);
           if not _kill

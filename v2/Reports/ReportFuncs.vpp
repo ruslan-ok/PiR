@@ -205,7 +205,7 @@ private function UE(_row: byte): double;
     R01:  result := CountSalary(true); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetUSD);
+      result := mtNachisl.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgUSD);
 
     R22:
     {
@@ -216,7 +216,7 @@ private function UE(_row: byte): double;
         if (mtNachisl.Title = GetSumId(R02)) or (mtNachisl.Title = GetSumId(R03)) or (mtNachisl.Title = GetSumId(R04))
           continue;
 
-        result += mtNachisl.NetUSD;
+        result += mtNachisl.InUSD;
       }
     }
 
@@ -224,7 +224,7 @@ private function UE(_row: byte): double;
     { // Начислено
       result := UE(R01);
       _loop mtNachisl
-        result += mtNachisl.NetUSD;
+        result += mtNachisl.InUSD;
     }
 
     R08: result := RB(R08) / Rate(R08); // Зачет с прошлого месяца
@@ -232,7 +232,7 @@ private function UE(_row: byte): double;
 
     R10, R11, R13:
     {
-      result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetUSD, Rate(_row));
+      result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgUSD, Rate(_row));
       if (result = 0)
         result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)), Rate(_row));
     }
@@ -246,7 +246,7 @@ private function UE(_row: byte): double;
         if (mtPayment.Title = GetSumId(R10)) or (mtPayment.Title = GetSumId(R11)) or (mtPayment.Title = GetSumId(R13))
           continue;
 
-        result += mtPayment.NetUSD;
+        result += mtPayment.InUSD;
       }
     }
 
@@ -256,7 +256,7 @@ private function UE(_row: byte): double;
     { // Выдано
       result := 0;
       _loop mtPayment
-        result += mtPayment.NetUSD;
+        result += mtPayment.InUSD;
     }
 
     R17: result := UE(R09) - UE(R16); // Долг за расчетный месяц
@@ -311,7 +311,7 @@ private function RB(_row: byte): double;
     R01:  result := CountSalary(false); // Оклад
 
     R02, R03, R04:
-      result := mtNachisl.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetBYN);
+      result := mtNachisl.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgBYN);
 
     R22:
     {
@@ -322,7 +322,7 @@ private function RB(_row: byte): double;
         if (mtNachisl.Title = GetSumId(R02)) or (mtNachisl.Title = GetSumId(R03)) or (mtNachisl.Title = GetSumId(R04))
           continue;
 
-        result += mtNachisl.NetBYN;
+        result += mtNachisl.InBYN;
       }
     }
 
@@ -330,7 +330,7 @@ private function RB(_row: byte): double;
     { // Начислено
       result := RB(R01);
       _loop mtNachisl
-        result += mtNachisl.NetBYN;
+        result += mtNachisl.InBYN;
     }
 
     R08: result := mtPersPer.DebtIn; // Зачет с прошлого месяца
@@ -338,9 +338,9 @@ private function RB(_row: byte): double;
 
     R10, R11, R13:
     {
-      result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgNetBYN);
+      result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, GetSumId(_row), cgBYN);
       if (result = 0)
-        result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)), cgNetBYN);
+        result := mtPayment.GetValue(mtPerson.Id, mtPeriod.Id, mtPayTitle.GetId(GetSumTitle(_row)), cgBYN);
     }
 
     R23:
@@ -352,7 +352,7 @@ private function RB(_row: byte): double;
         if (mtPayment.Title = GetSumId(R10)) or (mtPayment.Title = GetSumId(R11)) or (mtPayment.Title = GetSumId(R13))
           continue;
 
-        result += mtPayment.NetBYN;
+        result += mtPayment.InBYN;
       }
     }
 
@@ -362,7 +362,7 @@ private function RB(_row: byte): double;
     { // Выдано
       result := 0;
       _loop mtPayment
-        result += mtPayment.NetBYN;
+        result += mtPayment.InBYN;
     }
 
     R17: result := RB(R09) - RB(R16); // Долг за расчетный месяц
@@ -472,15 +472,15 @@ function PrintFormatted(_row, _col, _debug: byte): string;
     case _row of
       R02, R03, R04, R05, R06, R22:
         case _col of
-          2: value := mtNachisl.NetUSD;
+          2: value := mtNachisl.InUSD;
           3: value := mtNachisl.Rate;
-          4: value := mtNachisl.NetBYN;
+          4: value := mtNachisl.InBYN;
         end;
       R10, R11, R13, R14, R23:
         case _col of
-          2: value := mtPayment.NetUSD;
+          2: value := mtPayment.InUSD;
           3: value := mtPayment.Rate;
-          4: value := mtPayment.NetBYN;
+          4: value := mtPayment.InBYN;
         end;
     else
       case _col of
