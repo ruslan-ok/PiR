@@ -346,6 +346,7 @@ private procedure doExport(_silent: boolean);
   SaveMyDsk(wFormat, 'WageView_wFormat');
   SaveMyDsk(wToArchive, 'WageView_wToArchive');
   SaveMyDsk(sResFile, 'WageView_sResFile');
+  StopVisual;
 
   CloseWindow(wnExport);
 }
