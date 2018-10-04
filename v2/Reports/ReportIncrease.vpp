@@ -1,0 +1,103 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Отчет о статистике повышения окладов и должностей
+//------------------------------------------------------------------------------
+
+DataStream dsReportIncrease
+(
+  table mtIncrease
+  (
+    [FIO]            mtIncrease.FIO;           // Сотрудник
+    [Depart]         mtIncrease.Depart;        // Подразделение
+    [Post]           mtIncrease.Post;          // Должность
+    [Employed]       mtIncrease.Employed;      // Дата приема на работу
+    [Appointed]      mtIncrease.Appointed;     // Назначен с
+    [Contract]       mtIncrease.Contract;      // Контракт до
+    [Salary]         mtIncrease.Salary;        // Оклад
+    [Currency]       mtIncrease.Currency;      // Валюта
+    [LastSalInc]     mtIncrease.LastSalInc;    // Дата последнего повышения оклада
+    [MonthsSalInc]   mtIncrease.MonthsSalInc;  // Сколько месяцев прошло
+    [ValueSalInc]    mtIncrease.ValueSalInc;   // На сколько повысили
+    [LastPostInc]    mtIncrease.LastPostInc;   // Дата последнего повышения должности
+    [MonthsPostInc]  mtIncrease.MonthsPostInc; // Сколько месяцев прошло
+  );
+)
+end;
+
+procedure ReportIncrease;
+{
+  PushPos(#mtPeriod);
+  ResetBounds(#mtPerson);
+  if (CurFormatInArea(brAppoints) = brAppoints)
+    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
+
+  delete all mtIncrease;
+
+  GetFirst mtPeriod;
+  _loop mtPerson
+  {
+    ClearBuffer(#mtIncrease);
+    mtIncrease.FIO    := mtPerson.FIO;
+
+
+    _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
+    {
+      if (mtIncrease.Employed = ZeroDate)
+        mtIncrease.Employed := mtAppoint.dBeg;
+
+      if (mtIncrease.Appointed <> mtAppoint.dBeg)
+        mtIncrease.Appointed := mtAppoint.dBeg;
+
+      if (mtIncrease.Contract <> mtAppoint.dEnd)
+        mtIncrease.Contract := mtAppoint.dEnd;
+
+      if (mtIncrease.Salary <> mtAppoint.Salary) or (mtIncrease.Currency <> mtAppoint.Currency)
+      {
+        if (mtIncrease.Currency = mtAppoint.Currency)
+          mtIncrease.ValueSalInc := mtAppoint.Salary - mtIncrease.Salary;
+        else
+          mtIncrease.ValueSalInc := 0;
+
+        mtIncrease.Salary     := mtAppoint.Salary;
+        mtIncrease.Currency   := mtAppoint.Currency;
+        mtIncrease.LastSalInc := mtAppoint.dBeg;
+      }
+
+      if (mtIncrease.Depart <> mtDepart.Name)
+        mtIncrease.Depart := mtDepart.Name;
+
+      if (mtIncrease.Post <> mtPost.Name)
+      {
+        mtIncrease.Post := mtPost.Name;
+        mtIncrease.LastPostInc := mtAppoint.dBeg;
+      }
+    }
+
+    if (mtIncrease.LastSalInc <> ZeroDate)
+      mtIncrease.MonthsSalInc  := Months_Between(mtIncrease.LastSalInc, Cur_Date);
+
+    if (mtIncrease.LastPostInc <> ZeroDate)
+      mtIncrease.MonthsPostInc := Months_Between(mtIncrease.LastPostInc, Cur_Date);
+
+    if (mtIncrease.Salary = 0)
+    {
+      mtIncrease.Appointed     := ZeroDate;
+      mtIncrease.Contract      := ZeroDate;
+      mtIncrease.ValueSalInc   := 0;
+      mtIncrease.LastSalInc    := ZeroDate;
+      mtIncrease.MonthsSalInc  := 0;
+      mtIncrease.LastPostInc   := ZeroDate;
+      mtIncrease.MonthsPostInc := 0;
+    }
+
+    insert current mtIncrease;
+  }
+
+  if (CurFormatInArea(brAppoints) = brAppoints)
+    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
+  SetBounds(#mtPerson);
+  PopPos(#mtPeriod);
+
+  RunFReport(dsReportIncrease, '', false);
+}

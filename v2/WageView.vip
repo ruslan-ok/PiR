@@ -110,6 +110,27 @@ With index
   mtNrecId2 = wTable + Id
 );
 
+Table struct mtIncrease
+(
+  FIO: string,
+  Depart: string,
+  Post: string,
+  Employed: date,
+  Appointed: date,
+  Contract: date,
+  Salary: double,
+  Currency: string,
+  LastSalInc: date,
+  MonthsSalInc: word,
+  ValueSalInc: double,
+  LastPostInc: date,
+  MonthsPostInc: word
+)
+with index
+(
+  ByFIO = FIO
+);
+
 Create view as select
   *
 From
@@ -130,7 +151,8 @@ From
   mtSpCol,
   KatSotr,
   mtNrecId,
-  mtNrecId mtNrecId2
+  mtNrecId mtNrecId2,
+  mtIncrease
 
 Where ((
   mtPeriod.Id       == mtStruct.Period  and
@@ -375,6 +397,7 @@ private procedure DoSetStream(_stream: TPtr);
 #include ReportBySotr.vpp
 #include ReportByMonth.vpp
 #include ReportOwertime.vpp
+#include ReportIncrease.vpp
 
 #include DoSend.vpp
 #include DupCorrector.vpp
@@ -793,6 +816,9 @@ cmValue11:
 cmValue12:
   ReportOwertime;
 
+cmValue13:
+  ReportIncrease;
+
 cmValue10:
   DupCorrector;
 /*
@@ -828,6 +854,7 @@ mnWage menu
  - 'Отчет по сотруднику', cmValue9, 'Контрольный отчет по сотруднику за период',,,, sci1Esc;
  - 'Отчет по всем за месяц', cmValue11, 'Контрольный отчет по всем сотрудникам за выбранный месяц',,,, sci1Esc;
  - 'Сверхурочные', cmValue12, 'Сверхурочные',,,, sci1Esc;
+ - 'Повышения', cmValue13, 'Повышения',,,, sci1Esc;
  ------;
  - 'Корректор', cmValue10, 'Проверка и корректировка дублей в начислениях и выплатах',,,, sci1Esc;
 // - 'Курс зачета с прошлого месяца', cmValue13, 'Инициализация курсов зачета с прошлого месяца',,,, sci1Esc;
