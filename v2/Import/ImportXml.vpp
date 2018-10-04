@@ -85,6 +85,7 @@ private procedure LoadOnePerson(_e: IDomNode);
         'rok:FioHist': mtFioHist.LoadXml(_e.FndNode);
         'rok:Child': mtChild.LoadXml(_e.FndNode);
         'rok:Appoint': mtAppoint.LoadXml(_e.FndNode);
+        'rok:Education': mtEducation.LoadXml(_e.FndNode);
         'rok:PersPer': LoadPersPer(_e.FndNode);
       end;
     }

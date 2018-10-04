@@ -153,6 +153,8 @@ ObjInterface IPerson(ISerializable);
   property EMail:  s100;
   property Passw:  s50;
   property Sort:   byte;
+  property Born:   date;
+  property Info:   string;
 
   index PersId  = Id (unique);
   index ByLogin = Login;
@@ -197,6 +199,23 @@ ObjInterface IAppoint(ISerializable);
   index ByPost   = Post;
 
   function prSalary(_per: date): double;
+end;
+
+ObjInterface IEducation(ISerializable);
+  property Person:        byte;
+  property dBeg:          date;
+  property dEnd:          date;
+  property Institution:   string;
+  property Course:        string;
+  property Specialty:     string;
+  property Qualification: string;
+  property Document:      string;
+  property Number:        string;
+  property City:          string;
+  property DocDate:       date;
+  property Info:          string;
+
+  index ByPerson = Person, dBeg (unique);
 end;
 
 ObjInterface IPersPer(ISerializable);
@@ -374,6 +393,18 @@ end;
 
 VipInterface Appoint(Rok)
   implements IModify, IAppoint
+  licensed(free);
+public:
+  constructor Init;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
+end;
+
+VipInterface Education(Rok)
+  implements IModify, IEducation
   licensed(free);
 public:
   constructor Init;

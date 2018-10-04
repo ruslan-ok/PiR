@@ -72,6 +72,9 @@ private procedure DoExportXml;
           _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
             mtAppoint.Save(xpers);
 
+          _loop mtEducation where (( mtPerson.Id == mtEducation.Person ))
+            mtEducation.Save(xpers);
+
           _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
           {
             if not NextVisual

@@ -11,18 +11,21 @@ Screen scPerson ('',, sci178Esc);
   show at(,,, 8) fixed_y;
   table mtPerson;
 Fields
-  mtPerson.FIO    (''): noprotect;
-  mtPerson.Login  (''): noprotect;
-  mtPerson.EMail  (''): noprotect;
-  mtPerson.Passw  (''): noprotect;
-  mtPerson.Sort   (''): noprotect;
+  mtPerson.FIO:   NoProtect;
+  mtPerson.Login: NoProtect;
+  mtPerson.EMail: NoProtect;
+  mtPerson.Passw: NoProtect;
+  mtPerson.Sort:  NoProtect;
+  mtPerson.Born:  NoProtect;
+  mtPerson.Info:  NoProtect;
 <<
 
    `ФИО`             .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Логин`           .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `e-mail`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Пароль`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   `N для сортировки`.@@@@@@@@@@@@
+   `N для сортировки`.@@@@@@@@@@@@              `Дата рождения`.@@@@@@@@@@@@
+   `Коммент`         .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
 
@@ -42,21 +45,37 @@ Fields
   mtAppoint.TaxDed   'Налог и валюта': [10], NoProtect;
 End;
 
+Browse brChild 'Дети' ('',, sci178Esc);
+  table mtChild;
+Fields
+  mtChild.Name 'Имя':           [40], NoProtect;
+  mtChild.Born 'Дата рождения': [15], NoProtect;
+  mtChild.Num  'Номер':          [5], NoProtect;
+  mtChild.Info 'Коммент':       [40], NoProtect;
+End;
+
+Browse brEducation 'Образование' ('',, sci178Esc);
+  table mtEducation;
+Fields
+  mtEducation.dBeg          'Поступление':   [15], NoProtect;
+  mtEducation.dEnd          'Окончание':     [15], NoProtect;
+  mtEducation.Institution   'Учреждение':    [20], NoProtect;
+  mtEducation.Course        'Курс':          [20], NoProtect;
+  mtEducation.Specialty     'Специальность': [20], NoProtect;
+  mtEducation.Qualification 'Квалификация':  [20], NoProtect;
+  mtEducation.Document      'Тип документа': [10], NoProtect;
+  mtEducation.Number        'Номер':         [10], NoProtect;
+  mtEducation.City          'Город':         [10], NoProtect;
+  mtEducation.DocDate       'Дата':          [15], NoProtect;
+  mtEducation.Info          'Коммент':       [20], NoProtect;
+End;
+
 Browse brFioHist 'Фамилии' ('',, sci178Esc);
   table mtFioHist;
 Fields
   mtFioHist.FIO  'Фамилия': [45], NoProtect;
   mtFioHist.dEnd 'Была до': [15], NoProtect;
   mtFioHist.Info 'Коммент': [40], NoProtect;
-End;
-
-Browse brPersFam 'Дети' ('',, sci178Esc);
-  table mtChild;
-Fields
-  mtChild.Name 'Фамилия':       [40], NoProtect;
-  mtChild.Born 'Дата рождения': [15], NoProtect;
-  mtChild.Num  'Номер':          [5], NoProtect;
-  mtChild.Info 'Коммент':       [40], NoProtect;
 End;
 
 End; // tsPersInfo
@@ -176,6 +195,22 @@ cmUpdateRecord:
 cmDeleteRecord:
   if (message('Удалить?', YesNo + Confirmation) = cmYes)
     delete current mtChild;
+
+end;
+
+
+TableEvent
+  table mtEducation;
+
+cmInsertRecord:
+  insert current mtEducation;
+
+cmUpdateRecord:
+  update current mtEducation;
+
+cmDeleteRecord:
+  if (message('Удалить?', YesNo + Confirmation) = cmYes)
+    delete current mtEducation;
 
 end;
 

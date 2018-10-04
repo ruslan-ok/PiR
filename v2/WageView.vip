@@ -29,6 +29,7 @@ var
   mtFioHist: IFioHist(FioHist) new;
   mtChild: IChild(Child) new;
   mtAppoint: IAppoint(Appoint) new;
+  mtEducation: IEducation(Education) new;
   mtPersPer: IPersPer(PersPer) new;
   mtPayTitle: IPayTitle(PayTitle) new;
   mtNachisl: IPayment(Nachisl) new;
@@ -143,6 +144,7 @@ From
   mtFioHist,
   mtChild,
   mtAppoint,
+  mtEducation,
   mtPerson,
   mtStruct,
   mtStruct SubStruct,
@@ -167,6 +169,7 @@ Where ((
   mtPerson.Id       == mtFioHist.Person and
   mtPerson.Id       == mtChild.Person   and
   mtPerson.Id       == mtAppoint.Person and
+  mtPerson.Id       == mtEducation.Person and
 
   mtPerson.Id       == mtPersPer.Person and
   mtPeriod.Id       == mtPersPer.Period and
@@ -394,6 +397,7 @@ private procedure DoSetStream(_stream: TPtr);
   mtFioHist.SetStream(_stream);
   mtChild.SetStream(_stream);
   mtAppoint.SetStream(_stream);
+  mtEducation.SetStream(_stream);
   mtPersPer.SetStream(_stream);
   mtNachisl.SetStream(_stream);
   mtPayment.SetStream(_stream);
@@ -654,6 +658,7 @@ cmInit:
   mtFioHist.Clear(IWageView(self));
   mtChild.Clear(IWageView(self));
   mtAppoint.Clear(IWageView(self));
+  mtEducation.Clear(IWageView(self));
   mtPersPer.Clear(IWageView(self));
   mtPayTitle.Clear(IWageView(self));
   mtNachisl.Clear(IWageView(self));

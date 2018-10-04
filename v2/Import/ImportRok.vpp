@@ -132,6 +132,17 @@ private function DoImportRok: boolean;
         if CheckNewList
         {
           if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'Дети (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+
+          while (mtEducation.LoadRok) {}
+
+          if (wDetProt <> 0)
+            wlog.LogCommit;
+        }
+
+        if CheckNewList
+        {
+          if (wDetProt <> 0)
             wlog.LogMessage(APE_INFO, 'Расчеты (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
 
           while (mtPersPer.LoadRok)

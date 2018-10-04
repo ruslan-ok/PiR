@@ -1,0 +1,185 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект образований сотрудников
+//------------------------------------------------------------------------------
+
+#include AtlProtocol.vih
+
+Interface Education;
+
+// Назначение
+Table struct mtEducation
+(
+  Person:        byte,
+  dBeg:          date,
+  dEnd:          date,
+  Institution:   string,
+  Course:        string,
+  Specialty:     string,
+  Qualification: string,
+  Document:      string,
+  Number:        string,
+  City:          string,
+  DocDate:       date,
+  Info:          string
+)
+With index
+(
+  ByPerson = Person + dBeg (unique)
+);
+
+Create view from mtEducation, mtEducation mtEducation2;
+
+property Person:        byte   absolute mtEducation.Person;
+property dBeg:          date   absolute mtEducation.dBeg;
+property dEnd:          date   absolute mtEducation.dEnd;
+property Institution:   string absolute mtEducation.Institution;
+property Course:        string absolute mtEducation.Course;
+property Specialty:     string absolute mtEducation.Specialty;
+property Qualification: string absolute mtEducation.Qualification;
+property Document:      string absolute mtEducation.Document;
+property Number:        string absolute mtEducation.Number;
+property City:          string absolute mtEducation.City;
+property DocDate:       date   absolute mtEducation.DocDate;
+property Info:          string absolute mtEducation.Info;
+
+index ByPerson auto;
+
+function IModify.doInsert : word;
+{
+  result := insert current mtEducation;
+  oWage.DataChanged := true;
+}
+
+function IModify.doUpdate : word;
+{
+  result := update current mtEducation;
+  oWage.DataChanged := true;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtEducation;
+  oWage.DataChanged := true;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtEducation;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtEducation2;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Education');
+  xnode.AddAttr('rok:dBeg='          + string(dBeg));
+  xnode.AddAttr('rok:dEnd='          + string(dEnd));
+  xnode.AddAttr('rok:Institution='   + Institution);
+  xnode.AddAttr('rok:Course='        + Course);
+  xnode.AddAttr('rok:Specialty='     + Specialty);
+  xnode.AddAttr('rok:Qualification=' + Qualification);
+  xnode.AddAttr('rok:Document='      + Document);
+  xnode.AddAttr('rok:Number='        + Number);
+  xnode.AddAttr('rok:City='          + City);
+  xnode.AddAttr('rok:DocDate='       + string(DocDate));
+  xnode.AddAttr('rok:Info='          + Info);
+  result := xnode;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtEducation);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:dBeg':          dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:dEnd':          dEnd := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Institution':   Institution := _e.FndAttr.Value;
+        'rok:Course':        Course := _e.FndAttr.Value;
+        'rok:Specialty':     Specialty := _e.FndAttr.Value;
+        'rok:Qualification': Qualification := _e.FndAttr.Value;
+        'rok:Document':      Document := _e.FndAttr.Value;
+        'rok:Number':        Number := _e.FndAttr.Value;
+        'rok:City':          City := _e.FndAttr.Value;
+        'rok:DocDate':       DocDate := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Info':          Info := _e.FndAttr.Value;
+      end;
+    }
+    while (_e.GetNextAttr);
+
+  Person := oWage.PersonId;
+
+  if (Person = 0)
+    oWage.Log(APE_WARNING, 'Person = 0! '+ string(mtEducation.dBeg) + ' ' + mtEducation.Specialty);
+  else
+    if (GetFirst mtEducation2 where (( mtEducation.Person == mtEducation2.Person and
+                                       mtEducation.dBeg   == mtEducation2.dBeg )) <> tsOk)
+    {
+      insert current mtEducation;
+      oWage.Log(APE_WARNING, string(mtEducation.dBeg) + ' ' + mtEducation.Specialty);
+      oWage.DataChanged := true;
+    }
+
+  result := true;
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteDate(dBeg);
+  WriteDate(dEnd);
+  WriteStr(Institution);
+  WriteStr(Course);
+  WriteStr(Specialty);
+  WriteStr(Qualification);
+  WriteStr(Document);
+  WriteStr(Number);
+  WriteStr(City);
+  WriteDate(DocDate);
+  WriteStr(Info);
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtEducation);
+    dBeg          := ReadDate;
+    dEnd          := ReadDate;
+    Institution   := ReadStr;
+    Course        := ReadStr;
+    Specialty     := ReadStr;
+    Qualification := ReadStr;
+    Document      := ReadStr;
+    Number        := ReadStr;
+    City          := ReadStr;
+    DocDate       := ReadDate;
+    Info          := ReadStr;
+    Person        := oWage.PersonId;
+
+    if (GetFirst mtEducation2 where (( mtEducation.Person == mtEducation2.Person and
+                                       mtEducation.dBeg   == mtEducation2.dBeg )) <> tsOk)
+    {
+      insert current mtEducation;
+      oWage.Log(APE_INFO, string(mtEducation.dBeg) + ' ' + mtEducation.Specialty);
+    }
+
+    result := true;
+  }
+}
+
+end.

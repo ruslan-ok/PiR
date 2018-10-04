@@ -64,6 +64,11 @@ private procedure DoExportRok;
       mtAppoint.Save;
     mtAppoint.Stop;
 
+    mtEducation.Start;
+    _loop mtEducation where (( mtPerson.Id == mtEducation.Person ))
+      mtEducation.Save;
+    mtEducation.Stop;
+
     mtPersPer.Start;
     _loop mtPersPer where (( mtPerson.Id == mtPersPer.Person ))
     {

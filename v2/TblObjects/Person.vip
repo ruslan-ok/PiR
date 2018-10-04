@@ -16,7 +16,9 @@ Table struct mtPerson
   FIO:    s100,
   EMail:  s100,
   Passw:  s50,
-  Sort:   byte
+  Sort:   byte,
+  Born:   date,
+  Info:   string
 )
 With index
 (
@@ -33,6 +35,8 @@ property FIO:   s100 absolute mtPerson.FIO;
 property EMail: s100 absolute mtPerson.EMail;
 property Passw: s50  absolute mtPerson.Passw;
 property Sort:  byte absolute mtPerson.Sort;
+property Born:  date absolute mtPerson.Born;
+property Info:  string absolute mtPerson.Info;
 
 index PersId  auto;
 index ByLogin auto;
@@ -93,6 +97,8 @@ public function LoadXml(_e: IDomNode): boolean;
         'rok:EMail':  EMail  := _e.FndAttr.Value;
         'rok:Passw':  Passw  := _e.FndAttr.Value;
         'rok:Sort':   Sort   := byte(_e.FndAttr.Value);
+        'rok:Born':   Born   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Info':   Info   := _e.FndAttr.Value;
       end;
     }
     while (_e.GetNextAttr);
@@ -119,6 +125,8 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:EMail=' + EMail);
   xnode.AddAttr('rok:Passw=' + Passw);
   xnode.AddAttr('rok:Sort='  + Sort);
+  xnode.AddAttr('rok:Born='  + string(Born));
+  xnode.AddAttr('rok:Info='  + Info);
   result := xnode;
 }
 
@@ -132,6 +140,8 @@ public function SaveRok: boolean;
   WriteStr(EMail);
   WriteStr(Passw);
   WriteByte(Sort);
+  WriteDate(Born);
+  WriteStr(Info);
 }
 
 public function LoadRok: boolean;
@@ -147,6 +157,8 @@ public function LoadRok: boolean;
     EMail := ReadStr;
     Passw := ReadStr;
     Sort  := ReadByte;
+    Born  := ReadDate;
+    Info  := ReadStr;
     if (GetFirst mtPerson2 where (( mtPerson.Id == mtPerson2.Id )) <> tsOk)
     {
       insert current mtPerson;
