@@ -99,6 +99,28 @@ private function DoImportRok: boolean;
         if CheckNewList
         {
           if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'История фамилий (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+
+          while (mtFioHist.LoadRok) {}
+
+          if (wDetProt <> 0)
+            wlog.LogCommit;
+        }
+
+        if CheckNewList
+        {
+          if (wDetProt <> 0)
+            wlog.LogMessage(APE_INFO, 'Дети (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
+
+          while (mtChild.LoadRok) {}
+
+          if (wDetProt <> 0)
+            wlog.LogCommit;
+        }
+
+        if CheckNewList
+        {
+          if (wDetProt <> 0)
             wlog.LogMessage(APE_INFO, 'Назначения (строка ' + GetStrByPos + ', позиция ' + GetColByPos + ')');
 
           while (mtAppoint.LoadRok) {}

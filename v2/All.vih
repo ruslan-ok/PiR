@@ -159,6 +159,25 @@ ObjInterface IPerson(ISerializable);
   index ByFIO   = FIO;
 end;
 
+ObjInterface IFioHist(ISerializable);
+  property Person: byte;
+  property dEnd:   date;
+  property FIO:    string;
+  property Info:   string;
+
+  index ByPerson = Person, dEnd (unique);
+end;
+
+ObjInterface IChild(ISerializable);
+  property Person: byte;
+  property Born:   date;
+  property Num:    byte;
+  property Name:   string;
+  property Info:   string;
+
+  index ByPerson = Person, Born, Num (unique);
+end;
+
 ObjInterface IAppoint(ISerializable);
   property dBeg:   date;
   property dEnd:   date;
@@ -319,6 +338,30 @@ end;
 
 VipInterface Person(Rok)
   implements IModify, IPerson
+  licensed(free);
+public:
+  constructor Init;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
+end;
+
+VipInterface FioHist(Rok)
+  implements IModify, IFioHist
+  licensed(free);
+public:
+  constructor Init;
+  procedure ISerializable.Clear(_wage: IWageView = NullRef);
+  function ISerializable.LoadXml(_e: IDomNode): boolean;
+  function ISerializable.SaveXml(_e: IDomNode): IDomNode;
+  function ISerializable.LoadRok: boolean;
+  function ISerializable.SaveRok: boolean;
+end;
+
+VipInterface Child(Rok)
+  implements IModify, IChild
   licensed(free);
 public:
   constructor Init;

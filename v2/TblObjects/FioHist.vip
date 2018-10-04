@@ -1,0 +1,137 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект истории фамилий сотрудников
+//------------------------------------------------------------------------------
+
+#include AtlProtocol.vih
+
+Interface FioHist;
+
+// Назначение
+Table struct mtFioHist
+(
+  Person: byte,
+  dEnd:   date,
+  FIO:    string,
+  Info:   string
+)
+With index
+(
+  ByPerson = Person + dEnd (unique)
+);
+
+Create view from mtFioHist, mtFioHist mtFioHist2;
+
+property Person: byte   absolute mtFioHist.Person;
+property dEnd:   date   absolute mtFioHist.dEnd;
+property FIO:    string absolute mtFioHist.FIO;
+property Info:   string absolute mtFioHist.Info;
+
+index ByPerson auto;
+
+function IModify.doInsert : word;
+{
+  result := insert current mtFioHist;
+  oWage.DataChanged := true;
+}
+
+function IModify.doUpdate : word;
+{
+  result := update current mtFioHist;
+  oWage.DataChanged := true;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtFioHist;
+  oWage.DataChanged := true;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtFioHist;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtFioHist2;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:FioHist');
+  xnode.AddAttr('rok:dEnd=' + string(dEnd));
+  xnode.AddAttr('rok:FIO=' + FIO);
+  xnode.AddAttr('rok:Info=' + Info);
+  result := xnode;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtFioHist);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:dEnd': dEnd := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:FIO':   FIO := _e.FndAttr.Value;
+        'rok:Info':  Info := _e.FndAttr.Value;
+      end;
+    }
+    while (_e.GetNextAttr);
+
+  Person := oWage.PersonId;
+
+  if (Person = 0)
+    oWage.Log(APE_WARNING, 'Person = 0! '+ string(mtFioHist.dEnd) + ' ' + FIO);
+  else
+    if (GetFirst mtFioHist2 where (( mtFioHist.Person == mtFioHist2.Person and
+                                     mtFioHist.dEnd   == mtFioHist2.dEnd )) <> tsOk)
+    {
+      insert current mtFioHist;
+      oWage.Log(APE_WARNING, string(mtFioHist.dEnd) + ' ' + FIO);
+      oWage.DataChanged := true;
+    }
+
+  result := true;
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteDate(dEnd);
+  WriteStr(FIO);
+  WriteStr(Info);
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtFioHist);
+    dEnd   := ReadDate;
+    FIO    := ReadStr;
+    Info   := ReadStr;
+    Person := oWage.PersonId;
+
+    if (GetFirst mtFioHist2 where (( mtFioHist.Person == mtFioHist2.Person and
+                                     mtFioHist.dEnd   == mtFioHist2.dEnd )) <> tsOk)
+    {
+      insert current mtFioHist;
+      oWage.Log(APE_INFO, string(mtFioHist.dEnd) + ' ' + FIO);
+    }
+
+    result := true;
+  }
+}
+
+end.

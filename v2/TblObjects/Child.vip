@@ -1,0 +1,145 @@
+//------------------------------------------------------------------------------
+//                                                      (c) Корпорация Галактика
+// Заработная плата по отделу
+// Табличный объект детей сотрудников
+//------------------------------------------------------------------------------
+
+#include AtlProtocol.vih
+
+Interface Child;
+
+// Назначение
+Table struct mtChild
+(
+  Person: byte,
+  Born:   date,
+  Num:    byte,
+  Name:   string,
+  Info:   string
+)
+With index
+(
+  ByPerson = Person + Born + Num (unique)
+);
+
+Create view from mtChild, mtChild mtChild2;
+
+property Person: byte   absolute mtChild.Person;
+property Born:   date   absolute mtChild.Born;
+property Num:    byte   absolute mtChild.Num;
+property Name:   string absolute mtChild.Name;
+property Info:   string absolute mtChild.Info;
+
+index ByPerson auto;
+
+function IModify.doInsert : word;
+{
+  result := insert current mtChild;
+  oWage.DataChanged := true;
+}
+
+function IModify.doUpdate : word;
+{
+  result := update current mtChild;
+  oWage.DataChanged := true;
+}
+
+function IModify.doDelete : word;
+{
+  result := delete current mtChild;
+  oWage.DataChanged := true;
+}
+
+implementation IModify.doFlush abstract;
+
+constructor Init;
+{
+  result := true;
+  delete all mtChild;
+}
+
+public procedure Clear(_wage: IWageView = NullRef);
+{
+  oWage := _wage;
+  delete all mtChild2;
+}
+
+public function SaveXml(_e: IDomNode): IDomNode;
+{
+  var xnode: IDomNode
+  xnode := _e.AddNode('rok:Child');
+  xnode.AddAttr('rok:Born=' + string(Born));
+  xnode.AddAttr('rok:Num=' + string(Num));
+  xnode.AddAttr('rok:Name=' + Name);
+  xnode.AddAttr('rok:Info=' + Info);
+  result := xnode;
+}
+
+public function LoadXml(_e: IDomNode): boolean;
+{
+  ClearBuffer(#mtChild);
+  if _e.GetFirstAttr
+    do
+    {
+      case _e.FndAttr.Name of
+        'rok:Born': Born := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Num':  Num  := byte(_e.FndAttr.Value);
+        'rok:Name': Name := _e.FndAttr.Value;
+        'rok:Info': Info := _e.FndAttr.Value;
+      end;
+    }
+    while (_e.GetNextAttr);
+
+  Person := oWage.PersonId;
+
+  if (Person = 0)
+    oWage.Log(APE_WARNING, 'Person = 0! '+ string(mtChild.Born) + ' ' + mtChild.Name);
+  else
+    if (GetFirst mtChild2 where (( mtChild.Person == mtChild2.Person and
+                                   mtChild.Born   == mtChild2.Born and
+                                   mtChild.Num    == mtChild2.Num )) <> tsOk)
+    {
+      insert current mtChild;
+      oWage.Log(APE_WARNING, string(mtChild.Born) + ' ' + mtChild.Name);
+      oWage.DataChanged := true;
+    }
+
+  result := true;
+}
+
+public function SaveRok: boolean;
+{
+  result := true;
+  StartNewRec;
+  WriteDate(Born);
+  WriteByte(Num);
+  WriteStr(Name);
+  WriteStr(Info);
+}
+
+public function LoadRok: boolean;
+{
+  result := false;
+
+  if CheckNewRec
+  {
+    ClearBuffer(#mtChild);
+    Born   := ReadDate;
+    Num    := ReadByte;
+    Name   := ReadStr;
+    Info   := ReadStr;
+    Person := oWage.PersonId;
+
+    if (GetFirst mtChild2 where (( mtChild.Person == mtChild2.Person and
+                                   mtChild.Born   == mtChild2.Born and
+                                   mtChild.Num    == mtChild2.Num  )) <> tsOk)
+    {
+      insert current mtChild;
+      oWage.Log(APE_INFO, string(mtChild.Born) + ' ' + mtChild.Name);
+    }
+
+    result := true;
+  }
+}
+
+end.

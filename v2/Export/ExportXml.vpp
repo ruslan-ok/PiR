@@ -63,6 +63,12 @@ private procedure DoExportXml;
           SetVisualHeader(mtPerson.FIO);
           xpers := mtPerson.Save(xnode);
 
+          _loop mtFioHist where (( mtPerson.Id == mtFioHist.Person ))
+            mtFioHist.Save(xpers);
+
+          _loop mtChild where (( mtPerson.Id == mtChild.Person ))
+            mtChild.Save(xpers);
+
           _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
             mtAppoint.Save(xpers);
 

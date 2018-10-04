@@ -49,6 +49,16 @@ private procedure DoExportRok;
 
     mtPerson.Save;
 
+    mtFioHist.Start;
+    _loop mtFioHist where (( mtPerson.Id == mtFioHist.Person ))
+      mtFioHist.Save;
+    mtFioHist.Stop;
+
+    mtChild.Start;
+    _loop mtChild where (( mtPerson.Id == mtChild.Person ))
+      mtChild.Save;
+    mtChild.Stop;
+
     mtAppoint.Start;
     _loop mtAppoint where (( mtPerson.Id == mtAppoint.Person ))
       mtAppoint.Save;

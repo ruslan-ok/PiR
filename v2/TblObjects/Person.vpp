@@ -8,7 +8,7 @@ Window wnPerson 'Сотрудник';
   show at(,, 100, 20);
 
 Screen scPerson ('',, sci178Esc);
-  show at(,,, 8);
+  show at(,,, 8) fixed_y;
   table mtPerson;
 Fields
   mtPerson.FIO    (''): noprotect;
@@ -26,8 +26,10 @@ Fields
 >>
 End;
 
-Browse brPersApp ('',, sci178Esc);
+TabbedSheet bottom tsPersInfo;
   show at(, 9,,);
+
+Browse brPersApp 'Назначения' ('',, sci178Esc);
   table mtAppoint;
 Fields
   mtAppoint.TabNum   'Таб. номер':     [10], noProtect;
@@ -40,7 +42,26 @@ Fields
   mtAppoint.TaxDed   'Налог и валюта': [10], NoProtect;
 End;
 
+Browse brFioHist 'Фамилии' ('',, sci178Esc);
+  table mtFioHist;
+Fields
+  mtFioHist.FIO  'Фамилия': [45], NoProtect;
+  mtFioHist.dEnd 'Была до': [15], NoProtect;
+  mtFioHist.Info 'Коммент': [40], NoProtect;
 End;
+
+Browse brPersFam 'Дети' ('',, sci178Esc);
+  table mtChild;
+Fields
+  mtChild.Name 'Фамилия':       [40], NoProtect;
+  mtChild.Born 'Дата рождения': [15], NoProtect;
+  mtChild.Num  'Номер':          [5], NoProtect;
+  mtChild.Info 'Коммент':       [40], NoProtect;
+End;
+
+End; // tsPersInfo
+
+End; // wnPerson
 
 
 Window wnPersList 'Список сотрудников';
@@ -125,3 +146,37 @@ cmDeleteRecord:
   DelPerson(mtPerson.Id);
 
 end;
+
+
+TableEvent
+  table mtFioHist;
+
+cmInsertRecord:
+  insert current mtFioHist;
+
+cmUpdateRecord:
+  update current mtFioHist;
+
+cmDeleteRecord:
+  if (message('Удалить?', YesNo + Confirmation) = cmYes)
+    delete current mtFioHist;
+
+end;
+
+
+TableEvent
+  table mtChild;
+
+cmInsertRecord:
+  insert current mtChild;
+
+cmUpdateRecord:
+  update current mtChild;
+
+cmDeleteRecord:
+  if (message('Удалить?', YesNo + Confirmation) = cmYes)
+    delete current mtChild;
+
+end;
+
+
