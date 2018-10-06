@@ -155,6 +155,10 @@ ObjInterface IPerson(ISerializable);
   property Sort:   byte;
   property Born:   date;
   property Info:   string;
+  property Addr:   string;
+  property Phone:  string;
+  property Years:  word   read;
+  property Age:    string read;
 
   index PersId  = Id (unique);
   index ByLogin = Login;

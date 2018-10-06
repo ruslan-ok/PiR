@@ -8,29 +8,34 @@ Window wnPerson 'Сотрудник';
   show at(,, 100, 20);
 
 Screen scPerson ('',, sci178Esc);
-  show at(,,, 8) fixed_y;
+  show at(,,, 10) fixed_y;
   table mtPerson;
 Fields
   mtPerson.FIO:   NoProtect;
   mtPerson.Login: NoProtect;
+  mtPerson.Sort:  NoProtect;
   mtPerson.EMail: NoProtect;
   mtPerson.Passw: NoProtect;
-  mtPerson.Sort:  NoProtect;
   mtPerson.Born:  NoProtect;
+  mtPerson.Age:   Skip;
+  mtPerson.Phone: NoProtect;
+  mtPerson.Addr:  NoProtect;
   mtPerson.Info:  NoProtect;
 <<
 
-   `ФИО`             .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   `Логин`           .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   `e-mail`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   `Пароль`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   `N для сортировки`.@@@@@@@@@@@@              `Дата рождения`.@@@@@@@@@@@@
-   `Коммент`         .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `ФИО`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ `N для сортировки`
+   `Логин`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  .@@@@@@@@@@@@
+   `e-mail`       .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Пароль`       .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Дата рождения`.@@@@@@@@@@@@   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Телефон`      .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Адрес`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Коммент`      .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
 
 TabbedSheet bottom tsPersInfo;
-  show at(, 9,,);
+  show at(, 11,,);
 
 Browse brPersApp 'Назначения' ('',, sci178Esc);
   table mtAppoint;
@@ -82,6 +87,13 @@ End; // tsPersInfo
 
 End; // wnPerson
 
+WindowEvent wnPerson;
+
+cmDone:
+  UpdateTable;
+
+End;
+
 
 Window wnPersList 'Список сотрудников';
   show at(,, 100, 20);
@@ -89,11 +101,13 @@ Window wnPersList 'Список сотрудников';
 Browse brPerson ('',, sci1478Esc);
   table mtPerson;
 Fields
-  mtPerson.FIO   'ФИО':    [10], NoProtect;
-  mtPerson.Login 'Логин':  [10], NoProtect;
-  mtPerson.EMail 'e-mail': [20], NoProtect;
-  mtPerson.Passw 'Пароль': [15], NoProtect;
-  mtPerson.Sort  'Сорт.':  [05], NoProtect;
+  mtPerson.FIO   'ФИО':     [10], Protect;
+  mtPerson.Years 'Лет':     [05], Protect;
+  mtPerson.Login 'Логин':   [10], Protect;
+  mtPerson.EMail 'e-mail':  [20], Protect;
+  mtPerson.Passw 'Пароль':  [15], Protect;
+  mtPerson.Sort  'Сорт.':   [05], Protect;
+  mtPerson.Age   'Возраст': [15], Protect;
 End;
 
 End;
@@ -213,5 +227,3 @@ cmDeleteRecord:
     delete current mtEducation;
 
 end;
-
-

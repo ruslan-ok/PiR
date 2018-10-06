@@ -18,7 +18,9 @@ Table struct mtPerson
   Passw:  s50,
   Sort:   byte,
   Born:   date,
-  Info:   string
+  Info:   string,
+  Addr:   string,
+  Phone:  string
 )
 With index
 (
@@ -37,6 +39,12 @@ property Passw: s50  absolute mtPerson.Passw;
 property Sort:  byte absolute mtPerson.Sort;
 property Born:  date absolute mtPerson.Born;
 property Info:  string absolute mtPerson.Info;
+property Addr:  string absolute mtPerson.Addr;
+property Phone: string absolute mtPerson.Phone;
+function GetYears: word; forward;
+property Years: word read GetYears;
+function GetAge: string; forward;
+property Age:   string read GetAge;
 
 index PersId  auto;
 index ByLogin auto;
@@ -79,6 +87,29 @@ constructor Init;
   delete all mtPerson;
 }
 
+function GetYears: word;
+{
+  result := 0;
+  if (mtPerson.Born <> ZeroDate)
+    result := Year(Sub_Date(Cur_Date, mtPerson.Born))-1;
+}
+
+function GetAge: string;
+{
+  result := '';
+  if (mtPerson.Born <> ZeroDate)
+  {
+    var tmp: date;
+    tmp := Sub_Date(Cur_Date, mtPerson.Born);
+    var y, yr, m: byte;
+    y := Year(tmp)-1;
+    m := Month(tmp);
+    yr := y mod 10;
+    result := string(y) + ' ' + case(yr; 1: 'год', 2..4: 'года'; 'лет') +
+              if(m = 0, '', ' ' + string(m) + ' месяц' + case(m; 1: '', 2..4: 'а'; 'ев'));
+  }
+}
+
 public procedure Clear(_wage: IWageView = NullRef);
 {
   oWage := _wage;
@@ -99,6 +130,8 @@ public function LoadXml(_e: IDomNode): boolean;
         'rok:Sort':   Sort   := byte(_e.FndAttr.Value);
         'rok:Born':   Born   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
         'rok:Info':   Info   := _e.FndAttr.Value;
+        'rok:Addr':   Addr   := _e.FndAttr.Value;
+        'rok:Phone':  Phone  := _e.FndAttr.Value;
       end;
     }
     while (_e.GetNextAttr);
@@ -127,6 +160,8 @@ public function SaveXml(_e: IDomNode): IDomNode;
   xnode.AddAttr('rok:Sort='  + Sort);
   xnode.AddAttr('rok:Born='  + string(Born));
   xnode.AddAttr('rok:Info='  + Info);
+  xnode.AddAttr('rok:Addr='  + Addr);
+  xnode.AddAttr('rok:Phone=' + Phone);
   result := xnode;
 }
 
@@ -142,6 +177,8 @@ public function SaveRok: boolean;
   WriteByte(Sort);
   WriteDate(Born);
   WriteStr(Info);
+  WriteStr(Addr);
+  WriteStr(Phone);
 }
 
 public function LoadRok: boolean;
@@ -159,6 +196,8 @@ public function LoadRok: boolean;
     Sort  := ReadByte;
     Born  := ReadDate;
     Info  := ReadStr;
+    Addr  := ReadStr;
+    Phone := ReadStr;
     if (GetFirst mtPerson2 where (( mtPerson.Id == mtPerson2.Id )) <> tsOk)
     {
       insert current mtPerson;
