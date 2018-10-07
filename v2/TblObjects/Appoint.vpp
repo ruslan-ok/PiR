@@ -48,3 +48,69 @@ cmDeleteRecord:
     delete current mtAppoint;
 
 end;
+
+private procedure DoPick;
+{
+  case CurField of
+
+    #mtDepart.Name:
+    {
+      cSelectedDep := mtAppoint.Depart;
+      RunWindowModal(wnPickDepart);
+      if (cSelectedDep <> 0)
+        set mtAppoint.Depart := cSelectedDep;
+    }
+
+    #mtPost.Name:
+    {
+      cSelectedPost := mtAppoint.Post;
+      RunWindowModal(wnPickPost);
+      if (cSelectedPost <> 0)
+        set mtAppoint.Post := cSelectedPost;
+    }
+
+  end;
+}
+
+private procedure DoDel;
+{
+  case CurField of
+    #mtDepart.Name: set mtAppoint.Depart := 0;
+    #mtPost.Name:   set mtAppoint.Post   := 0;
+  end;
+}
+
+private procedure RunAppWin;
+{
+  RunWindowModal(wnAppoint);
+}
+
+procedure GetCurAppoint(_mode: byte);
+{
+  CurApp_dBeg := ZeroDate;
+  CurApp_dEnd := ZeroDate;
+  CurApp_Salary := 0;
+  CurApp_Currency := '';
+  CurApp_TaxDed := 0;
+  set CurApp_Depart := 0;
+  set CurApp_Post := 0;
+
+  if (_mode = 2)
+  {
+    PushPos(#mtAppoint);
+    if (GetFirst mtAppoint where (( mtPerson.Id    == mtAppoint.Person and
+                                    mtPeriod.dBeg >>= mtAppoint.dBeg and
+                                    ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg)) )) = tsOk)
+    {
+      CurApp_dBeg := mtAppoint.dBeg;
+      CurApp_dEnd := mtAppoint.dEnd;
+      CurApp_Salary := mtAppoint.Salary;
+      CurApp_Currency := mtAppoint.Currency;
+      CurApp_TaxDed := mtAppoint.TaxDed;
+      set CurApp_Depart := mtAppoint.Depart;
+      set CurApp_Post := mtAppoint.Post;
+    }
+    PopPos(#mtAppoint);
+  }
+}
+

@@ -43,12 +43,21 @@ DataStream dsReportByMonth
     [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
     [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
     [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN в распечатке
+    [OutgoingUE]       UE(R15);
     [OutgoingUE_Check] UE(R09) - UE(R16);              // Исх. остаток, USD расчет
     [OutgoingRB_Check] (UE(R09) - UE(R16)) * Rate(R13);           // Исх. остаток, BYN расчет
     [OutgoingUE_Delta] (UE(R09) - UE(R16)) * Rate(R13) - RB(R15); // Расхождение с распечаткой, BYN
   );
 )
-end;
+
+HandleEvent table mtStruct
+
+cmOnProcess:
+  GetCurAppoint(2);
+
+End;
+
+End;
 
 procedure ReportByMonth;
 {
@@ -63,4 +72,5 @@ procedure ReportByMonth;
   PopPos(#mtStruct);
   PopPos(#mtPayment);
   PopPos(#mtNachisl);
+  RereadRecord(#mtStruct);
 }

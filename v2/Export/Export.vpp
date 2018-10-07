@@ -326,8 +326,6 @@ private procedure doExport(_silent: boolean);
 
   PushPos(#mtPeriod);
   ResetBounds(#mtPerson);
-  if (CurFormatInArea(brAppoints) <> brAppoints)
-    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
 
   StartNewVisual(vtRotateVisual, vfTimer + vfBreak + vfConfirm, '', 1);
   SetVisualTitle('Сохранение в файл ' + sXmlFile);
@@ -336,9 +334,6 @@ private procedure doExport(_silent: boolean);
     DoExportRok;
   else
     DoExportXml;
-
-  if (CurFormatInArea(brAppoints) <> brAppoints)
-    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
 
   SetBounds(#mtPerson);
   PopPos(#mtPeriod);

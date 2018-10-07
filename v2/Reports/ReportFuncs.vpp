@@ -105,7 +105,7 @@ function GetComment(_row: byte): string;
 // 131 бел.руб. в месяц - для отдельных категорий граждан.
 function GetTaxDeduct: double;
 {
-  if (mtAppoint.TaxDed = 0)
+  if (CurApp_TaxDed = 0)
   {
     result := 0;
     exit;
@@ -114,17 +114,17 @@ function GetTaxDeduct: double;
   var fTaxDeduct: double;
 
   if (mtPeriod.dBeg < date(1, 1, 2017))
-    if (mtAppoint.TaxDed = 1)
+    if (CurApp_TaxDed = 1)
       fTaxDeduct := 24;
     else
       fTaxDeduct := 46;
   else
-    if (mtAppoint.TaxDed = 1)
+    if (CurApp_TaxDed = 1)
       fTaxDeduct := 27;
     else
       fTaxDeduct := 52;
 
-  result := Round(fTaxDeduct * mtAppoint.TaxDed * 0.09, 2); // 2.43, 9.36, 14.04, 18.72
+  result := Round(fTaxDeduct * CurApp_TaxDed * 0.09, 2); // 2.43, 9.36, 14.04, 18.72
 }
 
 private function Rate(_row: byte): double; forward;
@@ -133,46 +133,51 @@ private function RB(_row: byte): double; forward;
 private function CountSalary(_usd: boolean): double;
 {
   var AppStart, AppStop, LastDay: date;
-  AppStart := mtAppoint.dBeg;
+  AppStart := CurApp_dBeg;
   AppStop := LastDay := Sub_Day(Add_Months(mtPeriod.dBeg, 1), 1);
 
-  if (mtAppoint.dEnd <> ZeroDate) and (LastDay > mtAppoint.dEnd)
-    AppStop := mtAppoint.dEnd;
+  if (CurApp_dEnd <> ZeroDate) and (LastDay > CurApp_dEnd)
+    AppStop := CurApp_dEnd;
 
-  var p1, f1, p2, f2: longint;
-  p1 := f1 := CalcDaysBetweenDates(mtPeriod.dBeg, AppStop, true);
+  var p, f, f1, f2: longint;
 
-  if (mtPeriod.PlanDays <> 0) and (mtPersPer.FactDays <> 0)
-  {
-    if (p1 > mtPeriod.PlanDays)
-      p1 := mtPeriod.PlanDays;
+  if (mtPersPer.FactDays = 0)
+    f := CalcDaysBetweenDates(mtPeriod.dBeg, LastDay, true);
+  else
+    f := mtPersPer.FactDays;
 
-    f1 := mtPersPer.FactDays;
-    if (f1 > p1)
-      f1 := p1;
-  }
+  if (mtPeriod.PlanDays = 0)
+    p := CalcDaysBetweenDates(mtPeriod.dBeg, LastDay, true);
+  else
+    p := mtPeriod.PlanDays;
 
-  result := mtAppoint.Salary / p1 * f1;
+  if (AppStop < LastDay)
+    f1 := CalcDaysBetweenDates(mtPeriod.dBeg, AppStop, true);
+  else
+    f1 := f;
 
-  if _usd and (mtAppoint.Currency <> 'USD')
+  f2 := f - f1;
+
+  result := CurApp_Salary / p * f1;
+
+  if _usd and (CurApp_Currency <> 'USD')
     result := result / Rate(R01);
 
-  if (not _usd) and (mtAppoint.Currency = 'USD')
+  if (not _usd) and (CurApp_Currency = 'USD')
       result := result * Rate(R01);
 
   if (AppStop < LastDay)
   {
     PushPos(#mtAppoint);
 
-    var PersId: byte = mtAppoint.Person;
+    var PersId: byte = mtPerson.Id;
 
-    if (GetLast mtAppoint where (( PersId             == mtAppoint.Person and
+    if (GetLast mtAppoint where (( PersId              == mtAppoint.Person and
                                    Add_Day(AppStop, 1) == mtAppoint.dBeg )) = tsOk)
     {
-      p2 := mtPeriod.PlanDays - p1;
       f2 := mtPersPer.FactDays - f1;
 
-      result := mtAppoint.Salary / p2 * f2;
+      result += mtAppoint.Salary / p * f2;
 
       if _usd and (mtAppoint.Currency <> 'USD')
         result := result / Rate(R01);

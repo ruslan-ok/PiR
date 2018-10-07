@@ -16,10 +16,16 @@ var
   cSotr: comp;
   sav_Mode: word;
   sav_cRec: byte;
-  CurPerson: byte;
   ByteCounter: byte;
   yPersonId, yPeriodId: byte;
   wlog: AtlProtocol;
+  CurApp_dBeg: date;
+  CurApp_dEnd: date;
+  CurApp_Salary: double;
+  CurApp_Currency: string;
+  CurApp_TaxDed: double;
+  CurApp_Depart: byte;
+  CurApp_Post: byte;
 
   mtPeriod:  IPeriod(Period) new;
   mtDepHist: IDepHist;
@@ -186,13 +192,11 @@ Where ((
   cSotr             == KatSotr.NRec
 ))
 
-Condition CurAppoint = ((mtPeriod.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg)))
-Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) and (mtStruct.Name[1] <> '_') and (mtPersPer.FactDays > 0))
+Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) and (mtPersPer.FactDays > 0))
 
-Bounds CurSotr     = mtPeriod.Id == mtStruct.Period and word(2) == mtStruct.Mode and CurPerson == mtStruct.Person
 Bounds ViewDepHist = mtDepart.Id == mtDepHist.Depart
-Bounds AppDep      = mtAppoint.Depart == mtDepart.Id
-Bounds AppPost     = mtAppoint.Post   == mtPost.Id
+Bounds AppDep      = CurApp_Depart == mtDepart.Id
+Bounds AppPost     = CurApp_Post   == mtPost.Id
 Bounds SelDep      = root == mtDepart.Sort ordered by mtDepart.Sort
 Bounds SelPost     = root == mtPost.Name ordered by mtPost.Name
 ;
@@ -205,8 +209,8 @@ property DataChanged: boolean read bDataChanged write bDataChanged := result;
 private function GetNachisl(_mode: byte): double; forward;
 private function GetPayment(_mode: byte): double; forward;
 private procedure BuildTree(_mode, _rec: byte); forward;
-//private function GetDebtInRate: double; forward;
 private function isHitPeriod(dateBeg, dateEnd, dateTest: date): boolean; forward;
+procedure GetCurAppoint(_mode: byte); forward;
 
 
 Browse brPeriods ('',, sci1478EnEsc);
@@ -250,6 +254,7 @@ cmPositionChanged:
     else
       TreeGetFirst(trFilling);
   }
+  GetCurAppoint(sav_Mode);
 }
 
 End;
@@ -286,6 +291,7 @@ cmPositionChanged:
 {
   sav_Mode := mtStruct.Mode;
   sav_cRec := if(sav_Mode = 1, mtStruct.Depart, mtStruct.Person);
+  GetCurAppoint(mtStruct.Mode);
 }
 
 End;
@@ -296,10 +302,10 @@ TabbedSheet right tsInfo;
 Screen scInfo 'Основное' ('',, sci178Esc);
   table mtPersPer;
 Fields
-  mtAppoint.dBeg:       protect;
-  mtAppoint.dEnd:       protect;
-  mtAppoint.Salary:     [13.2,'\2p[|-]366`666`666~99'], protect;
-  mtAppoint.Currency:   skip;
+  CurApp_dBeg:       protect;
+  CurApp_dEnd:       protect;
+  CurApp_Salary:     [13.2,'\2p[|-]366`666`666~99'], protect;
+  CurApp_Currency:   skip;
   mtPersPer.SalaryRate: [13.4,'\4p[|-]366`666~9999'], noProtect;
   mtDepart.Name:        protect;
   mtPost.Name:          protect;
@@ -308,7 +314,7 @@ Fields
 
   mtPersPer.Privilege: [13.2,'\2p[|-]366`666`666.88'], noProtect;
 
-  (mtPersPer.DebtIn / mtPeriod.DebtInRate /*GetDebtInRate*/) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
+  (mtPersPer.DebtIn / mtPeriod.DebtInRate) ('',, sci178Esc): [13.2,'\2p[|-]366`666`666.88'], protect;
   mtPersPer.DebtIn ('',, sci1478Esc): [13.2,'\2p[|-]366`666`666.88'], noProtect;
 
   GetNachisl(cgUSD): [13.2,'\2p[|-]366`666`666.88'], protect;
@@ -449,13 +455,20 @@ private procedure ScanAppoint(_dep: byte; _dst: comp);
     if (GetFirst mtPerson where (( mtAppoint.Person == mtPerson.Id )) <> tsOk)
       continue;
 
+    var sFIO: string;
+    if (GetLast mtFioHist where (( mtPerson.Id    == mtFioHist.Person and
+                                   mtPeriod.dBeg <<= mtFioHist.dEnd )) = tsOk)
+      sFIO := mtFioHist.FIO;
+    else
+      sFIO := mtPerson.FIO;
+
     insert mtStruct set mtStruct.Period := mtPeriod.Id,
                         mtStruct.Node   := _dst,
                         mtStruct.Mode   := 2,
                         mtStruct.dBeg   := mtAppoint.dBeg,
                         mtStruct.dEnd   := mtAppoint.dEnd,
                         mtStruct.Person := mtAppoint.Person,
-                        mtStruct.Name   := mtPerson.FIO,
+                        mtStruct.Name   := sFIO,
                         mtStruct.Sort   := LPadCh(string(mtPerson.Sort), '0', 6);
 
   }
@@ -558,37 +571,6 @@ private function GetPayment(_mode: byte): double;
       cgUSD: result += mtPayment.inUSD;
       cgBYN: result += mtPayment.inBYN;
     end;
-}
-
-private procedure DoPick;
-{
-  case CurField of
-
-    #mtDepart.Name:
-    {
-      cSelectedDep := mtAppoint.Depart;
-      RunWindowModal(wnPickDepart);
-      if (cSelectedDep <> 0)
-        set mtAppoint.Depart := cSelectedDep;
-    }
-
-    #mtPost.Name:
-    {
-      cSelectedPost := mtAppoint.Post;
-      RunWindowModal(wnPickPost);
-      if (cSelectedPost <> 0)
-        set mtAppoint.Post := cSelectedPost;
-    }
-
-  end;
-}
-
-private procedure DoDel;
-{
-  case CurField of
-    #mtDepart.Name: set mtAppoint.Depart := 0;
-    #mtPost.Name:   set mtAppoint.Post   := 0;
-  end;
 }
 
 private function GenerateNewId(_table: word): byte;
@@ -703,8 +685,6 @@ cmInit:
   PushBounds(tbAppPost);
   TreeGetFirst(trFilling);
   RereadRecord;
-  PushConditionForLeave(tcCurAppoint, tnmtAppoint);
-  SetTitle('Отдел разработки "Управление персоналом" [+]');
   AutoImport;
 
   if isValid(#mtPeriod)
@@ -715,20 +695,6 @@ cmInit:
 
 cmDone:
   AutoExport;
-
-cmChangeTabbedSheetFormat:
-  if (Target = brAppoints)
-  {
-    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
-    SetTitle('Отдел разработки "Управление персоналом" [-]');
-    RereadRecord;
-  }
-  else
-  {
-    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
-    SetTitle('Отдел разработки "Управление персоналом" [+]');
-    RereadRecord;
-  }
 
 cmEdit:
   case CurTable of
@@ -851,6 +817,10 @@ cmValue13:
   message('done');
 }
 */
+
+cmAlt2:
+  message(string(UE(R01)));
+
 End;
 End.
 
@@ -872,5 +842,6 @@ mnWage menu
  - 'Повышения', cmValue13, 'Повышения',,,, sci1Esc;
  ------;
  - 'Корректор', cmValue10, 'Проверка и корректировка дублей в начислениях и выплатах',,,, sci1Esc;
+// - 'Расчет повременной оплаты', cmAlt2, '',, 'Alt+2', kbAlt2, sci1Esc;
 // - 'Курс зачета с прошлого месяца', cmValue13, 'Инициализация курсов зачета с прошлого месяца',,,, sci1Esc;
 }

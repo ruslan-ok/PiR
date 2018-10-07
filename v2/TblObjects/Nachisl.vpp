@@ -13,7 +13,7 @@ Fields
   mtStruct.Name: skip;
   mtNachisl.dPeriod:  ['MM.YYYY'], skip;
   mtNachisl.Sort:         noprotect;
-  mtNachisl.GetTitleName: noprotect;
+  [sPayTitle] mtNachisl.GetTitleName() ('',, sci1378Esc): protect;
   mtNachisl.Payed:        noprotect;
   mtNachisl.Value: [13.2,'\2p[|-]366`666`666~99'], noprotect;
   mtNachisl.Currency: [list cgBYN 'BYN', cgUSD 'USD'], protect;
@@ -33,6 +33,23 @@ Fields
    `Комментарий`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
+
+End;
+
+WindowEvent wnNachisl;
+
+cmPick:
+  if (CurField = #sPayTitle)
+  {
+    cSelectedPayTitle := mtNachisl.Title;
+    RunWindowModal(wnPickPayTitle);
+    if (cSelectedPayTitle <> 0)
+      set mtNachisl.Title := cSelectedPayTitle;
+  }
+
+cmDelOnProtect:
+  if (CurField = #sPayTitle)
+    set mtNachisl.Title := 0;
 
 End;
 

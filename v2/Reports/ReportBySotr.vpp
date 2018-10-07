@@ -6,15 +6,15 @@
 
 DataStream dsReportBySotr
 (
-  [FIO] mtStruct.Name;
+  [FIO] mtPerson.FIO;
 
   table mtPeriod
   (
-    [Year]             Year(mtPeriod.dBeg);           // Год
-    [Month]            Month(mtPeriod.dBeg);          // Месяц
-    [DaysPlan]         mtPeriod.PlanDays;             // Дней по плану
+    [Year]             Year(mtPeriod.dBeg);            // Год
+    [Month]            Month(mtPeriod.dBeg);           // Месяц
+    [DaysPlan]         mtPeriod.PlanDays;              // Дней по плану
     [DaysFact]         mtPersPer.FactDays;             // Дней фактически
-    [Salary]           mtAppoint.Salary;                        // Оклад
+    [Salary]           CurApp_Salary;                  // Оклад
     [Salary_Check]     GetPrevSalary;                  // Оклад за прошлый месяц
     [DepBonus]         UE(R02);                        // Премия отдела
     [GovBonus]         UE(R03);                        // Премия Управления
@@ -22,7 +22,7 @@ DataStream dsReportBySotr
     [OthBonus]         UE(R22);                        // Остальные начисления
                                                        // Начислено
     [Accrued]          UE(R07);
-    [TaxDeductKol]     mtAppoint.TaxDed;               // Льгота по подоходному налогу, количество
+    [TaxDeductKol]     CurApp_TaxDed;                  // Льгота по подоходному налогу, количество
     [TaxDeductRB]      RB(R21);                        // Льгота по подоходному налогу, BYN
     [TaxDeductUE]      UE(R21);                        // Льгота по подоходному налогу, USD
     [IncomingRB]       RB(R08);                        // Вх. остаток, BYN
@@ -49,7 +49,15 @@ DataStream dsReportBySotr
     [OutgoingUE_Delta] UE(R09) - UE(R16) - UE(R15);
   );
 )
-end;
+
+HandleEvent table mtPeriod
+
+cmOnProcess:
+  GetCurAppoint(2);
+
+End;
+
+End;
 
 private procedure ReportBySotr;
 {
@@ -59,12 +67,17 @@ private procedure ReportBySotr;
     exit;
   }
 
+  var CurPerson: byte;
   CurPerson := mtStruct.Person;
+  PushPos(#mtPerson);
+  PushPos(#mtStruct);
   PushPos(#mtPeriod);
-  ResetBounds(#mtStruct);
-  PushBounds(tbCurSotr);
-  RunFReport(dsReportBySotr, '', false);
-  PopBounds(tbCurSotr);
-  SetBounds(#mtStruct);
+  ResetBounds(#mtPerson);
+  if (GetFirst mtPerson where (( CurPerson == mtPerson.Id )) = tsOk)
+    RunFReport(dsReportBySotr, '', false);
+  SetBounds(#mtPerson);
   PopPos(#mtPeriod);
+  PopPos(#mtStruct);
+  PopPos(#mtPerson);
+  RereadRecord(#mtStruct);
 }

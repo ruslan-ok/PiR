@@ -29,8 +29,6 @@ procedure ReportIncrease;
 {
   PushPos(#mtPeriod);
   ResetBounds(#mtPerson);
-  if (CurFormatInArea(brAppoints) = brAppoints)
-    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
 
   delete all mtIncrease;
 
@@ -94,8 +92,6 @@ procedure ReportIncrease;
     insert current mtIncrease;
   }
 
-  if (CurFormatInArea(brAppoints) = brAppoints)
-    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
   SetBounds(#mtPerson);
   PopPos(#mtPeriod);
 

@@ -4,7 +4,7 @@
 // Проверка и корректировка дублей в начислениях и выплатах
 //------------------------------------------------------------------------------
 
-var fMagic: double;
+var fMagic: double; // хз что это
 
 Window wnDupCorrector 'Проверка и корректировка дублей в начислениях и выплатах';
   show at (,, 120, 35);
@@ -134,9 +134,8 @@ private function CheckSumm(_mode, _title1, _title2: byte; _name: string; _kill: 
 private procedure StartCorrector(_kill: boolean);
 {
   wlog.LogStartVisual('Проверка дубликатов', 0);
-  PushPos(#mtAppoint);
+  PushPos(#mtPerson);
   PushPos(#mtPeriod);
-  ResetBounds(#mtAppoint);
   ResetBounds(#mtPerson);
   var bBreak: boolean = false;
   var wYear: word = 0;
@@ -153,9 +152,6 @@ private procedure StartCorrector(_kill: boolean);
       wlog.LogMessage(APE_INFO, string(wYear));
     }
 
-//    if (mtPeriod.dBeg = date(1,6,2016))
-//      break;
-
     wlog.LogMessage(APE_INFO, DateToStr(mtPeriod.dBeg, 'MM.YYYY'));
 
     _loop mtPerson
@@ -170,9 +166,7 @@ private procedure StartCorrector(_kill: boolean);
                                       mtPeriod.Id == mtPersPer.Period )) <> tsOk)
         continue;
 
-      if (GetFirst mtAppoint where (( mtPerson.Id == mtAppoint.Person and
-                                     ((mtPeriod.dBeg >= mtAppoint.dBeg) and ((mtAppoint.dEnd = ZeroDate) or (mtAppoint.dEnd > mtPeriod.dBeg))) )) <> tsOk)
-        continue;
+      GetCurAppoint(2);
 
       wlog.LogMessage(APE_INFO, mtPerson.FIO);
 
@@ -318,9 +312,8 @@ private procedure StartCorrector(_kill: boolean);
     wlog.LogCommit;
 
   SetBounds(#mtPerson);
-  SetBounds(#mtAppoint);
   PopPos(#mtPeriod);
-  PopPos(#mtAppoint);
+  PopPos(#mtPerson);
   wlog.LogStopVisual;
   wlog.Refresh;
 }

@@ -72,9 +72,9 @@ public function Correct: boolean;
     exit;
   }
 
-  if (mtPeriod.PlanDays < 18) or (mtPeriod.PlanDays > 22)
+  if (mtPeriod.PlanDays < 15) or (mtPeriod.PlanDays > 25)
   {
-    message('Количество рабочих дней должно быть в диапазоне от 18 до 22');
+    message('Количество рабочих дней должно быть в диапазоне от 15 до 25');
     result := false;
     exit;
   }

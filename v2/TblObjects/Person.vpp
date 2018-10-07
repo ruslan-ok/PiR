@@ -37,7 +37,7 @@ End;
 TabbedSheet bottom tsPersInfo;
   show at(, 11,,);
 
-Browse brPersApp 'Назначения' ('',, sci178Esc);
+Browse brPersApp 'Назначения' ('',, sci1478Esc);
   table mtAppoint;
 Fields
   mtAppoint.TabNum   'Таб. номер':     [10], noProtect;
@@ -45,8 +45,8 @@ Fields
   mtAppoint.dEnd     'Контракт до':    [15], NoProtect;
   mtAppoint.Salary   'Оклад':          [13.2,'\2p[|-]366`666`666~99'], NoProtect;
   mtAppoint.Currency 'Вал.':           [ 5], NoProtect;
-  mtDepart.Name      'Подразделение' ('',, sci1378Esc): [15], Protect;
-  mtPost.Name        'Должность'     ('',, sci1378Esc): [25], Protect;
+  mtDepart.Name      'Подразделение' ('',, sci13478Esc): [15], Protect;
+  mtPost.Name        'Должность'     ('',, sci13478Esc): [25], Protect;
   mtAppoint.TaxDed   'Налог и валюта': [10], NoProtect;
 End;
 
@@ -87,10 +87,16 @@ End; // tsPersInfo
 
 End; // wnPerson
 
+procedure RunAppWin; forward;
+
 WindowEvent wnPerson;
 
 cmDone:
   UpdateTable;
+
+cmEdit:
+  if (CurTable = #mtAppoint)
+    RunAppWin;
 
 End;
 
@@ -118,13 +124,6 @@ WindowEvent wnPersList;
 
 cmInit:
 {
-  bRestoreCond := false;
-  if ConditionActiveInLeave(tcCurAppoint, tnmtAppoint)
-  {
-    bRestoreCond := true;
-    PopConditionForLeave(tcCurAppoint, tnmtAppoint);
-  }
-
   var cGoto: byte;
   cGoto := 0;
   if isValid(#mtStruct)
@@ -137,11 +136,7 @@ cmInit:
 }
 
 cmDone:
-{
   SetBounds(#mtPerson);
-  if bRestoreCond
-    PushConditionForLeave(tcCurAppoint, tnmtAppoint);
-}
 
 cmEdit:
   RunWindow(wnPerson);
