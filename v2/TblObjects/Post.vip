@@ -28,6 +28,14 @@ property Name: s100 absolute mtPost.Name;
 index PostId auto;
 index ByName auto;
 
+public function GetName(_Id: byte): string;
+{
+  result := '';
+
+  if (GetFirst mtPost2 where (( _Id == mtPost2.Id )) = tsOk)
+    result := mtPost2.Name;
+}
+
 private function GenerateNewId: byte;
 {
   result := 1;

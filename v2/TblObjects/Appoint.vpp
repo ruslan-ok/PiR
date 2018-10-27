@@ -14,8 +14,8 @@ Fields
   mtAppoint.TabNum: NoProtect;
   mtAppoint.dBeg  : NoProtect;
   mtAppoint.dEnd  : NoProtect;
-  mtDepart.Name ('',, sci1378Esc): Protect;
-  mtPost.Name   ('',, sci1378Esc): Protect;
+  mtDepart.GetName(mtAppoint.Depart) ('',, sci1378Esc): Protect;
+  mtPost.GetName(mtAppoint.Post)   ('',, sci1378Esc): Protect;
   mtAppoint.Salary (''): [13.2,'\2p[|-]366`666`666~99'], NoProtect;
   mtAppoint.Currency: NoProtect;
   mtAppoint.TaxDed: NoProtect;
@@ -113,4 +113,3 @@ procedure GetCurAppoint(_mode: byte);
     PopPos(#mtAppoint);
   }
 }
-

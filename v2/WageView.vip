@@ -372,8 +372,8 @@ Fields
   mtAppoint.dEnd     'Контракт до':   [15], Protect;
   mtAppoint.Salary   'Оклад':         [13.2,'\2p[|-]366`666`666~99'], Protect;
   mtAppoint.Currency 'Вал.':          [ 5], Protect;
-  mtDepart.Name      'Подразделение': [15], Protect;
-  mtPost.Name        'Должность':     [25], Protect;
+  mtDepart.GetName(mtAppoint.Depart) 'Подразделение': [15], Protect;
+  mtPost.GetName(mtAppoint.Post)     'Должность':     [25], Protect;
 End;
 
 End; // tsInfo
@@ -694,7 +694,10 @@ cmInit:
 }
 
 cmDone:
-  AutoExport;
+  if (message('Закрыть?', Confirmation + YesNo) <> cmYes)
+     abort;
+  else
+    AutoExport;
 
 cmEdit:
   case CurTable of
@@ -729,7 +732,6 @@ cmAddNewRec:
   {
     abort;
     RunWindowModal(wnNewStruct);
-    //BuildTree;
   }
 
 cmInsert:
@@ -820,6 +822,9 @@ cmValue13:
 
 cmAlt2:
   message(string(UE(R01)));
+
+cmAlt3:
+  message(string(GetPayment(cgBYN)));
 
 End;
 End.

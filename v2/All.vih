@@ -144,6 +144,8 @@ ObjInterface IPost(ISerializable);
 
   index PostId = Id (unique);
   index ByName = Name;
+
+  function GetName(_Id: byte): string;
 end;
 
 ObjInterface IPerson(ISerializable);

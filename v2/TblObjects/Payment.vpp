@@ -13,7 +13,7 @@ Fields
   mtStruct.Name: skip;
   mtPayment.dPeriod:  ['MM.YYYY'], skip;
   mtPayment.Sort:         noprotect;
-  mtPayment.GetTitleName: noprotect;
+  [sPayTitle2] mtPayment.GetTitleName() ('',, sci1378Esc): protect;
   mtPayment.Payed:        noprotect;
   mtPayment.Value: [13.2,'\2p[|-]366`666`666~99'], noprotect;
   mtPayment.Currency: [list cgBYN 'BYN', cgUSD 'USD'], protect;
@@ -27,12 +27,29 @@ Fields
    `Период`       .@@@@@@@@@@@@              `Номер п/п`    .@@@@@@@@@@@@
    `Название`     .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Дата выплаты` .@@@@@@@@@@@@
-   `Сумма`        .@@@@@@@@@@@@ .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Сумма`        .@@@@@@@@@@@@ .@@@@@@@@@@@
 
    `Сумма в BYN`  .@@@@@@@@@@@@ `Курс` .@@@@@@@@@@@@  `USD` .@@@@@@@@@@@@
    `Комментарий`  .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 >>
 End;
+
+End;
+
+WindowEvent wnPayment;
+
+cmPick:
+  if (CurField = #sPayTitle2)
+  {
+    cSelectedPayTitle := mtPayment.Title;
+    RunWindowModal(wnPickPayTitle);
+    if (cSelectedPayTitle <> 0)
+      set mtPayment.Title := cSelectedPayTitle;
+  }
+
+cmDelOnProtect:
+  if (CurField = #sPayTitle2)
+    set mtPayment.Title := 0;
 
 End;
 
