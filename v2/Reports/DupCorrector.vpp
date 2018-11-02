@@ -4,7 +4,7 @@
 // Проверка и корректировка дублей в начислениях и выплатах
 //------------------------------------------------------------------------------
 
-var fMagic: double; // хз что это
+var wCorrectorMode: word;
 
 Window wnDupCorrector 'Проверка и корректировка дублей в начислениях и выплатах';
   show at (,, 120, 35);
@@ -12,14 +12,15 @@ Window wnDupCorrector 'Проверка и корректировка дублей в начислениях и выплатах'
 Screen scTop;
   show at (,,, 4) fixed_y;
 Fields
-  fMagic: NoProtect;
+  wCorrectorMode: NoProtect;
 Buttons
   cmOk, default;
   cmValue16;
   cmCancel;
 <<
 
-   `Магическое число` .@@@@@@@@@@@@@@@@      <. Проверить .>  <. Исправить .>  <. Отмена .>
+  (.) дубли начислений и выплат`                              <. Проверить .>  <. Исправить .>  <. Отмена .>
+  (.) нестандартные наименования начислений и выплат`
 >>
 End;
 
@@ -29,26 +30,33 @@ End;
 
 End;
 
-private procedure StartCorrector(_kill: boolean); forward;
+private procedure StartCorrector1(_kill: boolean); forward;
+private procedure StartCorrector2(_kill: boolean); forward;
 
 WindowEvent wnDupCorrector;
 
 cmInit:
 {
-  fMagic := 106;
-  ReadMyDsk(fMagic, 'DupCorrector_fMagic', false);
+  wCorrectorMode := 2;
+  ReadMyDsk(wCorrectorMode, 'DupCorrector_wCorrectorMode', false);
   BindEmbeddedInterface(embProt, wlog);
   wlog.Clear;
 }
 
 cmDone:
-  SaveMyDsk(fMagic, 'DupCorrector_fMagic');
+  SaveMyDsk(wCorrectorMode, 'DupCorrector_wCorrectorMode');
 
 cmOk:
-  StartCorrector(false);
+  case wCorrectorMode of
+    0: StartCorrector1(false);
+    1: StartCorrector2(false);
+  end;
 
 cmValue16:
-  StartCorrector(true);
+  case wCorrectorMode of
+    0: StartCorrector1(true);
+    1: StartCorrector2(true);
+  end;
 
 End;
 
@@ -131,7 +139,7 @@ private function CheckSumm(_mode, _title1, _title2: byte; _name: string; _kill: 
   }
 }
 
-private procedure StartCorrector(_kill: boolean);
+private procedure StartCorrector1(_kill: boolean);
 {
   wlog.LogStartVisual('Проверка дубликатов', 0);
   PushPos(#mtPerson);
@@ -312,8 +320,97 @@ private procedure StartCorrector(_kill: boolean);
     wlog.LogCommit;
 
   SetBounds(#mtPerson);
-  PopPos(#mtPeriod);
-  PopPos(#mtPerson);
+}
+
+var qnt: array[1..255] of longint;
+var added: array[1..255] of longint;
+var deleted: array[1..255] of longint;
+var kill: array[1..255] of longint;
+
+private function ChangeTitle(_title: byte; _kill: boolean): byte;
+{
+  result := _title;
+
+  if (_kill)
+  {
+    case _title of
+      3:  result := 16; // Перечислено
+      5:  result := 12; // Межрасчетные выплаты (отпускные)
+      10: result := 9;  // Премия Отдела  (код 83)
+      11: result := 1;  // Премия Управления-3 (код 85)
+      14: result := 18; // Премия ТК по рабочим группам (код 84)
+      15: result := 20; // Прочие премии  (код 85)
+      19: result := 9;  // Премия отдела (код 83)
+    end;
+  }
+  else
+  {
+    if (GetFirst mtPayTitle where (( _title == mtPayTitle.Id )) <> tsOk)
+      wlog.LogLine(APE_WARNING, 'Начисление или выплата с неизвестным кодом ' + string(_title));
+  }
+
+  qnt[result]++;
+
+  if (result <> _title)
+  {
+    added[result]++;
+    deleted[_title]++;
+  }
+}
+
+private procedure StartCorrector2(_kill: boolean);
+{
+  wlog.LogStartVisual('Проверка нестандартных наименований начислений и выплат', 0);
+
+  var i: longint;
+  for (i := 1; i <= 255; i++)
+  {
+    qnt[i] := 0;
+    added[i] := 0;
+    deleted[i] := 0;
+    kill[i] := 0;
+  }
+
+  ResetBounds(#mtNachisl);
+  ResetBounds(#mtPayment);
+  ResetBounds(#mtPayTitle);
+
+  _loop mtNachisl
+  {
+    mtNachisl.Title := ChangeTitle(mtNachisl.Title, _kill);
+    update current mtNachisl;
+  }
+
+  _loop mtPayment
+  {
+    mtPayment.Title := ChangeTitle(mtPayment.Title, _kill);
+    update current mtPayment;
+  }
+
+  _loop mtPayTitle
+    if _kill
+      wlog.LogLine(APE_INFO, string(qnt[mtPayTitle.Id]) + '/' + string(added[mtPayTitle.Id]) + '/' + string(deleted[mtPayTitle.Id]) + ': ' + string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+    else
+      wlog.LogLine(APE_INFO, string(qnt[mtPayTitle.Id]) + ': ' + string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+
+  if _kill
+  {
+    _loop mtPayTitle
+      if (qnt[mtPayTitle.Id] = 0)
+      {
+        kill[mtPayTitle.Id] := 1;
+        wlog.LogLine(APE_WARNING, 'Удалена ' + string(mtPayTitle.Id) + '. ' + mtPayTitle.Name);
+      }
+
+    for (i := 1; i <= 255; i++)
+      if (kill[i] = 1)
+        delete mtPayTitle where (( i == mtPayTitle.Id ));
+  }
+
+  SetBounds(#mtNachisl);
+  SetBounds(#mtPayment);
+  SetBounds(#mtPayTitle);
+
   wlog.LogStopVisual;
   wlog.Refresh;
 }

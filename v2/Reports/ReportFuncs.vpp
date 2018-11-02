@@ -38,7 +38,7 @@ private function GetSumTitle(_row: byte): string;
 
   case _row of
     R01: result := 'Повременная оплата (оклад)';
-    R02: result := 'Премия Отдела  (код 83)'; //'Премия отдела';
+    R02: result := 'Премия отдела';
     R03: result := 'Премия Управления';
     R04: result := 'Проектный бизнес';
     R21: result := 'Льгота по подоходному налогу';
@@ -47,9 +47,9 @@ private function GetSumTitle(_row: byte): string;
     R08: result := 'Зачет с прошлого месяца';
     R09: result := 'К выдаче';
     R10: result := 'Аванс';
-    R11: result := 'Межрасчетные выплаты (отпускные)';
+    R11: result := 'Межрасчеты';
     R12: result := 'К доплате';
-    R13: result := 'Перечислено';
+    R13: result := 'Зарплата';
     R23: result := mtPayment.GetTitleName; // Остальные выплаты
     R16: result := 'Выдано';
     R15: result := 'Зачет на следующий месяц';
@@ -63,13 +63,7 @@ private function GetSumTitle(_row: byte): string;
 private function GetSumId(_row: byte): byte;
 {
   var sTitle: string = '';
-  case _row of
-    R11: sTitle := 'Межрасчеты';
-    R13: sTitle := 'Зарплата';
-  else
-    sTitle := GetSumTitle(_row);
-  end;
-
+  sTitle := GetSumTitle(_row);
   result := mtPayTitle.GetId(sTitle);
 }
 
@@ -78,10 +72,10 @@ function GetComment(_row: byte): string;
   result := '';
 
   case _row of
-    R02, R03, R04:
+    R02, R03, R04, R22:
       result := mtNachisl.GetInfo(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
 
-    R10, R11, R13:
+    R10, R11, R13, R23:
     {
       result := mtPayment.GetInfo(mtPerson.Id, mtPeriod.Id, GetSumId(_row));
       if (result = '')
@@ -105,11 +99,10 @@ function GetComment(_row: byte): string;
 // 131 бел.руб. в месяц - для отдельных категорий граждан.
 function GetTaxDeduct: double;
 {
-  if (CurApp_TaxDed = 0)
-  {
-    result := 0;
+  result := CurApp_TaxDed;
+
+  if (result <> 1) and (result <> 2) and (result <> 3) and (result <> 4) and (result <> 5)
     exit;
-  }
 
   var fTaxDeduct: double;
 
@@ -132,8 +125,7 @@ private function RB(_row: byte): double; forward;
 
 private function CountSalary(_usd: boolean): double;
 {
-  var AppStart, AppStop, LastDay: date;
-  AppStart := CurApp_dBeg;
+  var AppStop, LastDay: date;
   AppStop := LastDay := Sub_Day(Add_Months(mtPeriod.dBeg, 1), 1);
 
   if (CurApp_dEnd <> ZeroDate) and (LastDay > CurApp_dEnd)
@@ -164,7 +156,7 @@ private function CountSalary(_usd: boolean): double;
     result := result / Rate(R01);
 
   if (not _usd) and (CurApp_Currency = 'USD')
-      result := result * Rate(R01);
+    result := result * Rate(R01);
 
   if (AppStop < LastDay)
   {
@@ -177,13 +169,16 @@ private function CountSalary(_usd: boolean): double;
     {
       f2 := mtPersPer.FactDays - f1;
 
-      result += mtAppoint.Salary / p * f2;
+      var part2: double;
+      part2 := mtAppoint.Salary / p * f2;
 
       if _usd and (mtAppoint.Currency <> 'USD')
-        result := result / Rate(R01);
+        part2 := part2 / Rate(R01);
 
       if (not _usd) and (mtAppoint.Currency = 'USD')
-          result := result * Rate(R01);
+        part2 := part2 * Rate(R01);
+
+      result += part2;
     }
 
     PopPos(#mtAppoint);
@@ -217,12 +212,8 @@ private function UE(_row: byte): double;
       result := 0;
 
       _loop mtNachisl
-      {
-        if (mtNachisl.Title = GetSumId(R02)) or (mtNachisl.Title = GetSumId(R03)) or (mtNachisl.Title = GetSumId(R04))
-          continue;
-
-        result += mtNachisl.InUSD;
-      }
+        if (mtNachisl.Title <> GetSumId(R02)) and (mtNachisl.Title <> GetSumId(R03)) and (mtNachisl.Title <> GetSumId(R04))
+          result += mtNachisl.InUSD;
     }
 
     R07:
@@ -233,7 +224,7 @@ private function UE(_row: byte): double;
     }
 
     R08: result := RB(R08) / Rate(R08); // Зачет с прошлого месяца
-    R09: result := UE(R07) + UE(R08) /*+ UE(R21)*/; // К выдаче
+    R09: result := UE(R07) + UE(R08) + UE(R21); // К выдаче
 
     R10, R11, R13:
     {
@@ -247,12 +238,8 @@ private function UE(_row: byte): double;
       result := 0;
 
       _loop mtPayment
-      {
-        if (mtPayment.Title = GetSumId(R10)) or (mtPayment.Title = GetSumId(R11)) or (mtPayment.Title = GetSumId(R13))
-          continue;
-
-        result += mtPayment.InUSD;
-      }
+        if (mtPayment.Title <> GetSumId(R10)) and (mtPayment.Title <> GetSumId(R11)) and (mtPayment.Title <> GetSumId(R13))
+          result += mtPayment.InUSD;
     }
 
     R15: result := RB(R15) / Rate(R15); // Зачет на следующий месяц
@@ -385,57 +372,115 @@ function IsVisible(_row, _col, _debug: byte): boolean;
 {
   var s: array[1..50] of string;
 
-  if (_debug = 1)
-  { // Отладочный вариант
-    s[R01] := '1    '; // Оклад
-    s[R02] := '1    '; // Премия отдела
-    s[R03] := '1    '; // Премия Управления
-    s[R04] := '1    '; // Проектный бизнес
-    s[R05] := '     '; // Компенсация разницы курс
-    s[R06] := '     '; // Выплата отложенной части
-    s[R22] := '1 1 1'; // Остальные начисления
-    s[R21] := '1 1 1'; // Льгота по подоходному налогу
-    s[R07] := '1    '; // Начислено
-    s[R08] := '1 1 1'; // Зачет с прошлого месяца
-    s[R09] := '1    '; // К выдаче
-    s[R10] := '1 1 1'; // Аванс
-    s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
-    s[R12] := '     '; // К доплате
-    s[R13] := '1 1 1'; // Перечислено
-    s[R14] := '     '; // 2 часть
-    s[R23] := '1 1 1'; // Остальные выплаты
-    s[R16] := '1   1'; // Выдано
-    s[R15] := '1   1'; // Зачет на следующий месяц
-    s[R17] := '1   1'; // Долг за расчетный месяц
-    s[R20] := '1    '; // Долг за предыдущие месяцы
-    s[R18] := '     '; // Выплата отложенной части
-    s[R19] := '     '; // Долг
+  if (CurApp_Currency = 'BYN')
+  {
+    if (_debug = 1)
+    { // Отладочный вариант
+      s[R01] := '1 1 1'; // Оклад
+      s[R02] := '1 1 1'; // Премия отдела
+      s[R03] := '1 1 1'; // Премия Управления
+      s[R04] := '1 1 1'; // Проектный бизнес
+      s[R05] := '     '; // Компенсация разницы курс
+      s[R06] := '     '; // Выплата отложенной части
+      s[R22] := '1 1 1'; // Остальные начисления
+      s[R21] := '1 1 1'; // Льгота по подоходному налогу
+      s[R07] := '1   1'; // Начислено
+      s[R08] := '1 1 1'; // Зачет с прошлого месяца
+      s[R09] := '1    '; // К выдаче
+      s[R10] := '1 1 1'; // Аванс
+      s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
+      s[R12] := '     '; // К доплате
+      s[R13] := '1 1 1'; // Перечислено
+      s[R14] := '     '; // 2 часть
+      s[R23] := '1 1 1'; // Остальные выплаты
+      s[R16] := '1   1'; // Выдано
+      s[R15] := '1 1 1'; // Зачет на следующий месяц
+      s[R17] := '1   1'; // Долг за расчетный месяц
+      s[R20] := '1    '; // Долг за предыдущие месяцы
+      s[R18] := '     '; // Выплата отложенной части
+      s[R19] := '     '; // Долг
+    }
+    else
+    {
+      s[R01] := '1 1 1'; // Оклад
+      s[R02] := '1 1 1'; // Премия отдела
+      s[R03] := '1 1 1'; // Премия Управления
+      s[R04] := '1 1 1'; // Проектный бизнес
+      s[R05] := '     '; // Компенсация разницы курс
+      s[R06] := '     '; // Выплата отложенной части
+      s[R22] := '1 1 1'; // Остальные начисления
+      s[R21] := '1 1 1'; // Льгота по подоходному налогу
+      s[R07] := '1   1'; // Начислено
+      s[R08] := '1 1 1'; // Зачет с прошлого месяца
+      s[R09] := '1    '; // К выдаче
+      s[R10] := '1 1 1'; // Аванс
+      s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
+      s[R12] := '     '; // К доплате
+      s[R13] := '1 1 1'; // Перечислено
+      s[R14] := '     '; // 2 часть
+      s[R23] := '1 1 1'; // Остальные выплаты
+      s[R16] := '1   1'; // Выдано
+      s[R15] := '1 1 1'; // Зачет на следующий месяц
+      s[R17] := '     '; // Долг за расчетный месяц
+      s[R20] := '     '; // Долг за предыдущие месяцы
+      s[R18] := '     '; // Выплата отложенной части
+      s[R19] := '     '; // Долг
+    }
   }
   else
   {
-    s[R01] := '1    '; // Оклад
-    s[R02] := '1    '; // Премия отдела
-    s[R03] := '1    '; // Премия Управления
-    s[R04] := '1    '; // Проектный бизнес
-    s[R05] := '     '; // Компенсация разницы курс
-    s[R06] := '     '; // Выплата отложенной части
-    s[R22] := '1    '; // Остальные начисления
-    s[R21] := '1 1 1'; // Льгота по подоходному налогу
-    s[R07] := '1    '; // Начислено
-    s[R08] := '1 1 1'; // Зачет с прошлого месяца
-    s[R09] := '1    '; // К выдаче
-    s[R10] := '1 1 1'; // Аванс
-    s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
-    s[R12] := '     '; // К доплате
-    s[R13] := '1 1 1'; // Перечислено
-    s[R14] := '     '; // 2 часть
-    s[R23] := '1 1 1'; // Остальные выплаты
-    s[R16] := '1   1'; // Выдано
-    s[R15] := '1 1 1'; // Зачет на следующий месяц
-    s[R17] := '     '; // Долг за расчетный месяц
-    s[R20] := '     '; // Долг за предыдущие месяцы
-    s[R18] := '     '; // Выплата отложенной части
-    s[R19] := '     '; // Долг
+    if (_debug = 1)
+    { // Отладочный вариант
+      s[R01] := '1    '; // Оклад
+      s[R02] := '1    '; // Премия отдела
+      s[R03] := '1    '; // Премия Управления
+      s[R04] := '1    '; // Проектный бизнес
+      s[R05] := '     '; // Компенсация разницы курс
+      s[R06] := '     '; // Выплата отложенной части
+      s[R22] := '1 1 1'; // Остальные начисления
+      s[R21] := '1 1 1'; // Льгота по подоходному налогу
+      s[R07] := '1    '; // Начислено
+      s[R08] := '1 1 1'; // Зачет с прошлого месяца
+      s[R09] := '1    '; // К выдаче
+      s[R10] := '1 1 1'; // Аванс
+      s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
+      s[R12] := '     '; // К доплате
+      s[R13] := '1 1 1'; // Перечислено
+      s[R14] := '     '; // 2 часть
+      s[R23] := '1 1 1'; // Остальные выплаты
+      s[R16] := '1   1'; // Выдано
+      s[R15] := '1 1 1'; // Зачет на следующий месяц
+      s[R17] := '1   1'; // Долг за расчетный месяц
+      s[R20] := '1    '; // Долг за предыдущие месяцы
+      s[R18] := '     '; // Выплата отложенной части
+      s[R19] := '     '; // Долг
+    }
+    else
+    {
+      s[R01] := '1    '; // Оклад
+      s[R02] := '1    '; // Премия отдела
+      s[R03] := '1    '; // Премия Управления
+      s[R04] := '1    '; // Проектный бизнес
+      s[R05] := '     '; // Компенсация разницы курс
+      s[R06] := '     '; // Выплата отложенной части
+      s[R22] := '1    '; // Остальные начисления
+      s[R21] := '1 1 1'; // Льгота по подоходному налогу
+      s[R07] := '1    '; // Начислено
+      s[R08] := '1 1 1'; // Зачет с прошлого месяца
+      s[R09] := '1    '; // К выдаче
+      s[R10] := '1 1 1'; // Аванс
+      s[R11] := '1 1 1'; // Межрасчетные выплаты (отпускные)
+      s[R12] := '     '; // К доплате
+      s[R13] := '1 1 1'; // Перечислено
+      s[R14] := '     '; // 2 часть
+      s[R23] := '1 1 1'; // Остальные выплаты
+      s[R16] := '1   1'; // Выдано
+      s[R15] := '1 1 1'; // Зачет на следующий месяц
+      s[R17] := '     '; // Долг за расчетный месяц
+      s[R20] := '     '; // Долг за предыдущие месяцы
+      s[R18] := '     '; // Выплата отложенной части
+      s[R19] := '     '; // Долг
+    }
   }
   result := false;
 

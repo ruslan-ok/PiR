@@ -4,6 +4,8 @@
 // Объектные интерфейсы
 //------------------------------------------------------------------------------
 
+#component "Z_Wage"
+
 ObjInterface IDomDoc; forward;
 
 Const
@@ -94,6 +96,7 @@ end;
 ObjInterface IPeriod(ISerializable);
   property Id: byte;
   property dBeg: date;
+  property dEnd: date read;
   property PlanDays: byte;
   property AvansDate: date;
   property PaymentDate: date;
@@ -278,7 +281,6 @@ ObjInterface IPayment(ISerializable);
   function GetTitleName: string;
   function ToString: string;
 end;
-
 
 
 

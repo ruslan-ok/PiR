@@ -43,10 +43,8 @@ DataStream dsReportByMonth
     [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
     [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD
     [OutgoingRB]       RB(R15);                        // Исх. остаток, BYN в распечатке
-    [OutgoingUE]       UE(R15);
-    [OutgoingUE_Check] UE(R09) - UE(R16);              // Исх. остаток, USD расчет
-    [OutgoingRB_Check] (UE(R09) - UE(R16)) * Rate(R13);           // Исх. остаток, BYN расчет
-    [OutgoingUE_Delta] (UE(R09) - UE(R16)) * Rate(R13) - RB(R15); // Расхождение с распечаткой, BYN
+    [OutgoingRB_Count] (UE(R09) - UE(R16)) * Rate(R13);              // Исх. остаток, BYN расчет
+    [OutgoingRB_Delta] RB(R15) - ((UE(R09) - UE(R16)) * Rate(R13));    // Выдано лишнее, BYN
   );
 )
 
@@ -65,9 +63,10 @@ procedure ReportByMonth;
   PushPos(#mtPayment);
   PushPos(#mtStruct);
   ResetBounds(#mtStruct);
-  PushCondition(tcSotrOnly);
+  PushConditionForLeave(tcSotrOnly, tnmtStruct);
+  if (GetFirst mtStruct = tsOk) {}
   RunFReport(dsReportByMonth, '', false);
-  PopCondition(tcSotrOnly);
+  PopConditionForLeave(tcSotrOnly, tnmtStruct);
   SetBounds(#mtStruct);
   PopPos(#mtStruct);
   PopPos(#mtPayment);

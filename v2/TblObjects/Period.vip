@@ -31,6 +31,7 @@ Create view from mtPeriod, mtPeriod mtPeriod2;
 
 property Id:          byte   absolute mtPeriod.Id;
 property dBeg:        date   absolute mtPeriod.dBeg;
+property dEnd:        date   read date(Last_Day(mtPeriod.dBeg), Month(mtPeriod.dBeg), Year(mtPeriod.dBeg));
 property PlanDays:    byte   absolute mtPeriod.PlanDays;
 property AvansDate:   date   absolute mtPeriod.AvansDate;
 property PaymentDate: date   absolute mtPeriod.PaymentDate;

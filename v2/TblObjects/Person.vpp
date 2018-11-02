@@ -15,18 +15,20 @@ Fields
   mtPerson.Login: NoProtect;
   mtPerson.Sort:  NoProtect;
   mtPerson.EMail: NoProtect;
-  mtPerson.Passw: NoProtect;
+  mtPerson.Passw: Protect;
   mtPerson.Born:  NoProtect;
   mtPerson.Age:   Skip;
   mtPerson.Phone: NoProtect;
   mtPerson.Addr:  NoProtect;
   mtPerson.Info:  NoProtect;
+Buttons
+  cmValue7;
 <<
 
    `ФИО`          .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ `N для сортировки`
    `Логин`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  .@@@@@@@@@@@@
    `e-mail`       .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   `Пароль`       .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   `Пароль`       .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ <. Генерировать .>
    `Дата рождения`.@@@@@@@@@@@@   .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Телефон`      .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    `Адрес`        .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -88,6 +90,7 @@ End; // tsPersInfo
 End; // wnPerson
 
 procedure RunAppWin; forward;
+function NextRandomCode(CodeLength: longInt): string; forward;
 
 WindowEvent wnPerson;
 
@@ -97,6 +100,10 @@ cmDone:
 cmEdit:
   if (CurTable = #mtAppoint)
     RunAppWin;
+
+cmValue7:
+    if (message('Генерировать пароль для сотрудника ' + mtPerson.FIO + '?', Confirmation + YesNo) = cmYes)
+      set mtPerson.Passw := NextRandomCode(20);
 
 End;
 
@@ -164,6 +171,12 @@ private function DelPerson(_pers: byte): boolean;
 TableEvent
   table mtPerson;
 
+cmPositionChanged:
+  if (mtPerson.Passw = '')
+    EnableCommand(cmValue7);
+  else
+    DisableCommand(cmValue7);
+
 cmInsertRecord:
   insert current mtPerson;
 
@@ -222,3 +235,32 @@ cmDeleteRecord:
     delete current mtEducation;
 
 end;
+
+
+// Генерация псевдослучайного кода
+// (C) copyright C_Common\vip\CommonRandom.vip
+
+var LastRandomCntr: comp; // счетчик псевдослучайной последовательности
+
+const
+  Symbols: string = 'ABCDEFGHIGHKLMNOPQRSTUWVXYZ0123456789'; // массив букв и цифр
+end;
+
+// функция генерации следующего числа псевдослучайной последовательности
+// результат - случайное число от 0 до Range-1
+function NextRandomNumber(Range: longInt): byte;
+{
+  LastRandomCntr := 1664525 * LastRandomCntr + 1013904223 - ((1664525 * LastRandomCntr + 1013904223) / 2147483647) * 2147483647 + _ToSec100(Cur_Time_NoAQA);
+  result := byte(abs(LastRandomCntr - (LastRandomCntr/Range) * Range));
+}
+
+// функция генерации случайной последовательности букв и цифр длиною CodeLength
+function NextRandomCode(CodeLength: longInt): string;
+{
+  var SymbolNum: longInt;
+
+  result := '';
+
+  for(SymbolNum := 1; SymbolNum <= CodeLength; SymbolNum++)
+    result += Symbols[NextRandomNumber(Length(Symbols)) + 1];
+}

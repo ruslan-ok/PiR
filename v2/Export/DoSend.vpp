@@ -98,6 +98,8 @@ Procedure SendThis;
   if (GetFirst mtPerson where (( mtStruct.Person == mtPerson.Id )) <> tsOk)
     exit;
 
+  GetCurAppoint(2);
+
   if (sPath[length(sPath)] <> '\')
     sPath += '\';
 
@@ -149,20 +151,35 @@ Procedure SendThis;
     if NeedPrint(row, wDebug)
     {
       case row of
+
+        R02, R03, R04:
+        {
+          if (GetFirst mtNachisl where (( mtPerson.Id   == mtNachisl.Person and
+                                          mtPeriod.Id   == mtNachisl.Period and
+                                          GetSumId(row) == mtNachisl.Title )) = tsOk)
+            PrintString(row, wDebug);
+        }
+
         R22:
         {
           _loop mtNachisl
-            PrintString(R22, wDebug);
+            if (mtNachisl.Title <> GetSumId(R02)) and (mtNachisl.Title <> GetSumId(R03)) and (mtNachisl.Title <> GetSumId(R04))
+              PrintString(R22, wDebug);
+        }
+
+        R10, R11, R13:
+        {
+          if (GetFirst mtPayment where (( mtPerson.Id   == mtPayment.Person and
+                                          mtPeriod.Id   == mtPayment.Period and
+                                          GetSumId(row) == mtPayment.Title )) = tsOk)
+            PrintString(row, wDebug);
         }
 
         R23:
         {
           _loop mtPayment
-            PrintString(R23, wDebug);
-        }
-
-        R02, R03, R04, R05, R06, R10, R11, R13, R14:
-        { // Ничего не делаем, т.к. должны были обработать при R02 или R10
+            if (mtPayment.Title <> GetSumId(R10)) and (mtPayment.Title <> GetSumId(R11)) and (mtPayment.Title <> GetSumId(R13))
+              PrintString(R23, wDebug);
         }
 
       else
