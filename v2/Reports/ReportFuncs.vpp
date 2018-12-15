@@ -104,7 +104,7 @@ function GetTaxDeduct: double;
   if (result <> 1) and (result <> 2) and (result <> 3) and (result <> 4) and (result <> 5)
     exit;
 
-  var fTaxDeduct: double;
+  var fTaxDeduct: double = 0;
 
   if (mtPeriod.dBeg < date(1, 1, 2017))
     if (CurApp_TaxDed = 1)
@@ -117,7 +117,8 @@ function GetTaxDeduct: double;
     else
       fTaxDeduct := 52;
 
-  result := Round(fTaxDeduct * CurApp_TaxDed * 0.09, 2); // 2.43, 9.36, 14.04, 18.72
+  if (fTaxDeduct <> 0)
+    result := Round(fTaxDeduct * CurApp_TaxDed * 0.1, 2); // 2.43, 9.36, 14.04, 18.72
 }
 
 private function Rate(_row: byte): double; forward;
@@ -486,8 +487,7 @@ function IsVisible(_row, _col, _debug: byte): boolean;
 
   if (_row < 1) or (_row > 50)
   {
-    message('IsVisible(_row = ' + string(_row) + ', _col = ' + string(_col) +
-                           ') _row not valid');
+    message('IsVisible(_row = ' + string(_row) + ', _col = ' + string(_col) + ') _row not valid');
     exit;
   }
   case _col of

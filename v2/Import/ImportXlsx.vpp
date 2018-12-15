@@ -98,7 +98,7 @@ private function isNachisl(_name: string): boolean;
 
 private function isPayment(_name: string): boolean;
 {
-  result := (Pos('Аванс', _name) = 1) or (Pos('Межрасчеты', _name) = 1) or (Pos('Зарплата', _name) = 1);
+  result := (Pos('Аванс', _name) = 1) or (Pos('Межрасчеты', _name) = 1) or (Pos('Зарплата', _name) = 1) or (Pos('2-я часть', _name) = 1);
 }
 
 private function GetPayTitle(_name: string): byte;
@@ -109,7 +109,7 @@ private function GetPayTitle(_name: string): byte;
     result := GetTitleId(_name);
 }
 
-private function ReadColumns(var _PlanDays: byte; var _AvansDate, _PaymentDate: date; var _AvansRate, _PaymentRate: double): boolean;
+private function ReadColumns(var _PlanDays: byte; var _AvansDate, _PaymentDate, _Part2Date: date; var _AvansRate, _PaymentRate, _Part2Rate: double): boolean;
 {
   result := false;
 
@@ -266,6 +266,14 @@ private function ReadColumns(var _PlanDays: byte; var _AvansDate, _PaymentDate: 
             wAttr := 2;
           }
 
+          '2-я часть':
+          {
+            _Part2Date := StrToDate(sCell, 'DD.MM.YYYY');
+//            if NeedChangeParam(string(mtPeriod.PaymentDate), string(dTmp), 'Дата выплаты зарплаты')
+//              mtPeriod.PaymentDate := dTmp;
+            wAttr := 3;
+          }
+
           'межрасчеты':
           {
           }
@@ -291,11 +299,18 @@ private function ReadColumns(var _PlanDays: byte; var _AvansDate, _PaymentDate: 
 //                    mtPeriod.PaymentRate := fCell;
                 }
 
+                3:
+                {
+                  _Part2Rate := fCell;
+//                  if NeedChangeParam(DoubleToStr(mtPeriod.PaymentRate, '\4p[|-]366 666.8888'), DoubleToStr(fCell, '\4p[|-]366 666.8888'), 'Курс выплаты зарплаты')
+//                    mtPeriod.PaymentRate := fCell;
+                }
+
               end;
             wAttr := 0;
           }
 
-          'курс прошлого месяца':
+          'курс прошлого месяца', 'курс вход':
           {
           }
 
@@ -418,28 +433,43 @@ private procedure CheckNachisl;
   if (sCell = '') or (mtColTitle.PayTitle = 0)
     exit;
 
+  var fValue: double = fCell;
+  var yCurr: byte = cgUSD;
+  var fInBYN: double = fValue/0.91*mtPeriod.PaymentRate;
+  var sInfo: string = '';
+
+  if (mtPerson.Login = 'IP') and (fInBYN >= 299) and (fInBYN <= 301)
+  {
+    fValue := 273;
+    yCurr := cgBYN;
+    sInfo := 'Персональная надбавка';
+  }
+
   if (GetFirst mtNachisl where (( mtPerson.Id == mtNachisl.Person and
                                   mtPeriod.Id == mtNachisl.Period and
                           mtColTitle.PayTitle == mtNachisl.Title )) = tsOk)
   {
-    if (mtNachisl.Value <> fCell) or (mtNachisl.Currency <> cgUSD) or (mtNachisl.Rate <> mtPeriod.PaymentRate)
+    if (mtNachisl.Value <> fValue) or (mtNachisl.Currency <> yCurr) or (mtNachisl.Rate <> mtPeriod.PaymentRate)
     {
-      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD (было ' + string(mtNachisl.Value) + ' USD)');
-      mtNachisl.Value    := fCell;
-      mtNachisl.Currency := cgUSD;
+      wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(fValue) + ' ' + if(yCurr = cgUSD, 'USD', 'BYN') + ' (было ' + string(mtNachisl.Value) + ' ' + if(yCurr = cgUSD, 'USD', 'BYN') + ')');
+      mtNachisl.Value    := fValue;
+      mtNachisl.Currency := yCurr;
       mtNachisl.Rate     := mtPeriod.PaymentRate;
+      if (mtNachisl.Info = '')
+        mtNachisl.Info     := sInfo;
       update current mtNachisl;
     }
   }
   else
   {
-    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + sCell + ' USD');
+    wlog.LogLine(APE_INFO, mtColTitle.Name + ': ' + string(fValue) + ' ' + if(yCurr = cgUSD, 'USD', 'BYN'));
     mtNachisl.Person   := mtPerson.Id;
     mtNachisl.Period   := mtPeriod.Id;
     mtNachisl.Title    := mtColTitle.PayTitle;
-    mtNachisl.Value    := fCell;
-    mtNachisl.Currency := cgUSD;
+    mtNachisl.Value    := fValue;
+    mtNachisl.Currency := yCurr;
     mtNachisl.Rate     := mtPeriod.PaymentRate;
+    mtNachisl.Info     := sInfo;
     insert current mtNachisl;
   }
 }
@@ -653,6 +683,12 @@ private procedure ReadPersons;
               fRate := mtPeriod.PaymentRate;
             }
 
+            '2-я ч':
+            {
+              dPayed := mtPeriod.Part2Date;
+              fRate := mtPeriod.Part2Rate;
+            }
+
           end;
 
           CheckPayment(fCell, fRate, dPayed);
@@ -720,30 +756,33 @@ private procedure CheckDepAndPost;
 var
   bSelected: boolean;
   yPlanDays: byte;
-  dAvansDate, dPaymentDate: date;
-  fAvansRate, fPaymentRate: double;
+  dAvansDate, dPaymentDate, dPart2Date: date;
+  fAvansRate, fPaymentRate, fPart2Rate: double;
 
 Window wnGetPeriodParam 'Параметры периода';
-  show at(,, 70, 7);
+  show at(,, 70, 9);
 
 Screen scPeriodParam ('',, sci1EnEsc);
   NoTableNavigation;
 Fields
   yPlanDays:    NoProtect, {font = {backcolor = if(yPlanDays = 0, ColorNeed, 0)}};
   dAvansDate:   NoProtect, {font = {backcolor = if(dAvansDate = ZeroDate, ColorNeed, 0)}};
-  dPaymentDate: NoProtect, {font = {backcolor = if(dPaymentDate = ZeroDate, ColorNeed, 0)}};
   fAvansRate:   [13.4,'\4p[|-]366`666~9999'], NoProtect, {font = {backcolor = if(fAvansRate = 0, ColorNeed, 0)}};
+  dPaymentDate: NoProtect, {font = {backcolor = if(dPaymentDate = ZeroDate, ColorNeed, 0)}};
   fPaymentRate: [13.4,'\4p[|-]366`666~9999'], NoProtect, {font = {backcolor = if(fPaymentRate = 0, ColorNeed, 0)}};
+  dPart2Date:   NoProtect;
+  fPart2Rate:   [13.4,'\4p[|-]366`666~9999'], NoProtect;
 Buttons
   cmOk, default;
   cmCancel;
 <<
 
   `Плановое количество дней` .@@@@
-  `Дата аванса`              .@@@@@@@@@@@@@       <. Продолжить .>
-  `Дата выплаты`             .@@@@@@@@@@@@@
-  `Курс на дату аванса`      .@@@@@@@@@@@@@       <.   Отмена   .>
-  `Курс на дату выплаты`     .@@@@@@@@@@@@@
+                                               <. Продолжить .>
+                  `Дата`          `Курс`
+  `Аванс`     .@@@@@@@@@@@@@  .@@@@@@@@@@@@@   <.   Отмена   .>
+  `Зарплата`  .@@@@@@@@@@@@@  .@@@@@@@@@@@@@
+  `2-я часть` .@@@@@@@@@@@@@  .@@@@@@@@@@@@@
 >>
 End;
 
@@ -831,7 +870,7 @@ private procedure DoImportXlsx;
 
       wlog.LogMessage(APE_INFO, DateToStr(dPeriod, 'MM.YYYY'));
 
-      bOk := ReadColumns(yPlanDays, dAvansDate, dPaymentDate, fAvansRate, fPaymentRate);
+      bOk := ReadColumns(yPlanDays, dAvansDate, dPaymentDate, dPart2Date, fAvansRate, fPaymentRate, fPart2Rate);
 
       if (yPlanDays = 0)
         wlog.LogLine(APE_ERROR, 'Не удалось прочитать плановое количество дней.');
@@ -866,14 +905,21 @@ private procedure DoImportXlsx;
           mtPeriod.PlanDays := yPlanDays;
           mtPeriod.AvansDate := dAvansDate;
           mtPeriod.PaymentDate := dPaymentDate;
+          mtPeriod.Part2Date := dPart2Date;
           mtPeriod.AvansRate := fAvansRate;
           mtPeriod.PaymentRate := fPaymentRate;
+          mtPeriod.Part2Rate := fPart2Rate;
           insert current mtPeriod;
-          wlog.LogLine(APE_WARNING, 'Добавлен период: ' + string(yPlanDays) + ' дней, ' + string(dAvansDate) + ' аванс по курсу ' + DoubleToStr(fAvansRate, '\4p[|-]366 666.8888') + ', ' + string(dPaymentDate) + ' выплата зарплаты по курсу ' + DoubleToStr(fPaymentRate, '\4p[|-]366 666.8888'));
+          wlog.LogLine(APE_WARNING, 'Добавлен период: ' + string(yPlanDays) + ' дней, ' +
+                                    string(dAvansDate) + ' аванс по курсу ' + DoubleToStr(fAvansRate, '\4p[|-]366 666.8888') + ', ' +
+                                    string(dPaymentDate) + ' выплата зарплаты по курсу ' + DoubleToStr(fPaymentRate, '\4p[|-]366 666.8888') +
+                                    if(dPart2Date = ZeroDate and fPart2Rate = 0, '',
+                                       ', ' + string(dPart2Date) + ' выплата 2-й части по курсу ' + DoubleToStr(fPart2Rate, '\4p[|-]366 666.8888')));
         }
         else
         {
-          if (mtPeriod.PlanDays <> yPlanDays) or (mtPeriod.AvansDate <> dAvansDate) or (mtPeriod.PaymentDate <> dPaymentDate) or (mtPeriod.AvansRate <> fAvansRate) or (mtPeriod.PaymentRate <> fPaymentRate)
+          if (mtPeriod.PlanDays <> yPlanDays) or (mtPeriod.AvansDate <> dAvansDate) or (mtPeriod.PaymentDate <> dPaymentDate) or
+             (mtPeriod.AvansRate <> fAvansRate) or (mtPeriod.PaymentRate <> fPaymentRate) or (mtPeriod.Part2Date <> dPart2Date) or (mtPeriod.Part2Rate <> fPart2Rate)
           {
             var mess: string = '';
 
@@ -886,7 +932,8 @@ private procedure DoImportXlsx;
             if (mtPeriod.AvansDate <> dAvansDate) or (mtPeriod.AvansRate <> fAvansRate)
             {
               mess += if(mess = '', '', ', ');
-              mess += string(dAvansDate) + ' аванс по курсу ' + DoubleToStr(fAvansRate, '\4p[|-]366 666.8888') + ' (было ' + string(mtPeriod.AvansDate) + ' аванс по курсу ' + DoubleToStr(mtPeriod.AvansRate, '\4p[|-]366 666.8888') + ')';
+              mess += string(dAvansDate) + ' аванс по курсу ' + DoubleToStr(fAvansRate, '\4p[|-]366 666.8888') +
+                      ' (было ' + string(mtPeriod.AvansDate) + ' аванс по курсу ' + DoubleToStr(mtPeriod.AvansRate, '\4p[|-]366 666.8888') + ')';
               mtPeriod.dBeg := dPeriod;
               mtPeriod.AvansDate := dAvansDate;
               mtPeriod.AvansRate := fAvansRate;
@@ -895,10 +942,21 @@ private procedure DoImportXlsx;
             if (mtPeriod.PaymentDate <> dPaymentDate) or (mtPeriod.PaymentRate <> fPaymentRate)
             {
               mess += if(mess = '', '', ', ');
-              mess += string(dPaymentDate) + ' выплата зарплаты по курсу ' + DoubleToStr(fPaymentRate, '\4p[|-]366 666.8888') + ' (было ' + string(mtPeriod.PaymentDate) + ' аванс по курсу ' + DoubleToStr(mtPeriod.PaymentRate, '\4p[|-]366 666.8888') + ')';
+              mess += string(dPaymentDate) + ' выплата зарплаты по курсу ' + DoubleToStr(fPaymentRate, '\4p[|-]366 666.8888') +
+                      ' (было ' + string(mtPeriod.PaymentDate) + ' выплата зарплаты по курсу ' + DoubleToStr(mtPeriod.PaymentRate, '\4p[|-]366 666.8888') + ')';
               mtPeriod.dBeg := dPeriod;
               mtPeriod.PaymentDate := dPaymentDate;
               mtPeriod.PaymentRate := fPaymentRate;
+            }
+
+            if (mtPeriod.Part2Date <> dPart2Date) or (mtPeriod.Part2Rate <> fPart2Rate)
+            {
+              mess += if(mess = '', '', ', ');
+              mess += string(dPart2Date) + ' выплата 2-й части по курсу ' + DoubleToStr(fPart2Rate, '\4p[|-]366 666.8888') +
+                      ' (было ' + string(mtPeriod.Part2Date) + ' выплата 2-й по курсу ' + DoubleToStr(mtPeriod.Part2Rate, '\4p[|-]366 666.8888') + ')';
+              mtPeriod.dBeg := dPeriod;
+              mtPeriod.Part2Date := dPart2Date;
+              mtPeriod.Part2Rate := fPart2Rate;
             }
 
             update current mtPeriod;

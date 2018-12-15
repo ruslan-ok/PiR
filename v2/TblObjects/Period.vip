@@ -18,7 +18,9 @@ Table struct mtPeriod
   PaymentDate: date,
   AvansRate:   double,
   PaymentRate: double,
-  DebtInRate:  double
+  DebtInRate:  double,
+  Part2Date:   date,
+  Part2Rate:   double
 )
 With index
 (
@@ -29,15 +31,17 @@ With index
 
 Create view from mtPeriod, mtPeriod mtPeriod2;
 
-property Id:          byte   absolute mtPeriod.Id;
-property dBeg:        date   absolute mtPeriod.dBeg;
-property dEnd:        date   read date(Last_Day(mtPeriod.dBeg), Month(mtPeriod.dBeg), Year(mtPeriod.dBeg));
-property PlanDays:    byte   absolute mtPeriod.PlanDays;
-property AvansDate:   date   absolute mtPeriod.AvansDate;
-property PaymentDate: date   absolute mtPeriod.PaymentDate;
-property AvansRate:   double absolute mtPeriod.AvansRate;
-property PaymentRate: double absolute mtPeriod.PaymentRate;
-property DebtInRate:  double absolute mtPeriod.DebtInRate;
+property Id:           byte   absolute mtPeriod.Id;
+property dBeg:         date   absolute mtPeriod.dBeg;
+property dEnd:         date   read date(Last_Day(mtPeriod.dBeg), Month(mtPeriod.dBeg), Year(mtPeriod.dBeg));
+property PlanDays:     byte   absolute mtPeriod.PlanDays;
+property AvansDate:    date   absolute mtPeriod.AvansDate;
+property PaymentDate:  date   absolute mtPeriod.PaymentDate;
+property AvansRate:    double absolute mtPeriod.AvansRate;
+property PaymentRate:  double absolute mtPeriod.PaymentRate;
+property DebtInRate:   double absolute mtPeriod.DebtInRate;
+property Part2Date: date   absolute mtPeriod.Part2Date;
+property Part2Rate: double absolute mtPeriod.Part2Rate;
 
 index ById auto;
 index ByDate auto;
@@ -156,12 +160,14 @@ public function LoadXml(_e: IDomNode): boolean;
           dBeg := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
           Id := PeriodToId(dBeg);
         }
-        'rok:PlanDays':    PlanDays    := byte(_e.FndAttr.Value);
-        'rok:AvansDate':   AvansDate   := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-        'rok:PaymentDate': PaymentDate := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
-        'rok:AvansRate':   AvansRate   := double(_e.FndAttr.Value);
-        'rok:PaymentRate': PaymentRate := double(_e.FndAttr.Value);
-        'rok:DebtInRate':  DebtInRate  := double(_e.FndAttr.Value);
+        'rok:PlanDays':     PlanDays     := byte(_e.FndAttr.Value);
+        'rok:AvansDate':    AvansDate    := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:PaymentDate':  PaymentDate  := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:AvansRate':    AvansRate    := double(_e.FndAttr.Value);
+        'rok:PaymentRate':  PaymentRate  := double(_e.FndAttr.Value);
+        'rok:DebtInRate':   DebtInRate   := double(_e.FndAttr.Value);
+        'rok:Part2Date': Part2Date := StrToDate(_e.FndAttr.Value, 'DD/MM/YYYY');
+        'rok:Part2Rate': Part2Rate := double(_e.FndAttr.Value);
       end;
     }
     while (_e.GetNextAttr);
@@ -179,13 +185,15 @@ public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
   xnode := _e.AddNode('rok:Period');
-  xnode.AddAttr('rok:dBeg='        + string(dBeg));
-  xnode.AddAttr('rok:PlanDays='    + string(PlanDays));
-  xnode.AddAttr('rok:AvansDate='   + string(AvansDate));
-  xnode.AddAttr('rok:PaymentDate=' + string(PaymentDate));
-  xnode.AddAttr('rok:AvansRate='   + DoubleToStr(AvansRate,   '\4p[|-]3666666666~9999'));
-  xnode.AddAttr('rok:PaymentRate=' + DoubleToStr(PaymentRate, '\4p[|-]3666666666~9999'));
-  xnode.AddAttr('rok:DebtInRate='  + DoubleToStr(DebtInRate,  '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:dBeg='         + string(dBeg));
+  xnode.AddAttr('rok:PlanDays='     + string(PlanDays));
+  xnode.AddAttr('rok:AvansDate='    + string(AvansDate));
+  xnode.AddAttr('rok:PaymentDate='  + string(PaymentDate));
+  xnode.AddAttr('rok:AvansRate='    + DoubleToStr(AvansRate,   '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:PaymentRate='  + DoubleToStr(PaymentRate, '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:DebtInRate='   + DoubleToStr(DebtInRate,  '\4p[|-]3666666666~9999'));
+  xnode.AddAttr('rok:Part2Date=' + string(Part2Date));
+  xnode.AddAttr('rok:Part2Rate=' + DoubleToStr(Part2Rate, '\4p[|-]3666666666~9999'));
   result := xnode;
 }
 
@@ -208,6 +216,9 @@ public function LoadRok: boolean;
     AvansRate   := ReadDouble;
     PaymentRate := ReadDouble;
     DebtInRate  := ReadDouble;
+    r1 := ReadByte;
+    Part2Date := if(r1 = 0, ZeroDate, date(r1, Month(Add_Months(dBeg, 1)), Year(Add_Months(dBeg, 1))));
+    Part2Rate := ReadDouble;
     if (Id <> 0) and (GetFirst mtPeriod2 where (( mtPeriod.Id == mtPeriod2.Id )) <> tsOk)
     {
       insert current mtPeriod;
@@ -241,6 +252,8 @@ public function SaveRok: boolean;
   WriteDouble(AvansRate);
   WriteDouble(PaymentRate);
   WriteDouble(DebtInRate);
+  WriteByte(Day(Part2Date));
+  WriteDouble(Part2Rate);
 }
 
 end.

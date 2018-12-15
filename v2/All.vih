@@ -103,6 +103,8 @@ ObjInterface IPeriod(ISerializable);
   property AvansRate: double;
   property PaymentRate: double;
   property DebtInRate: double;
+  property Part2Date: date;
+  property Part2Rate: double;
 
   index ById = Id (unique);
   index ByDate = dBeg (desc);

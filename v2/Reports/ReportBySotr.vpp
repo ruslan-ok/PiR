@@ -39,7 +39,7 @@ DataStream dsReportBySotr
     [SecPartEx]        if(RB(R13) = 0, 0, Rate(R13));  // Выплата, курс
     [SecPartUE]        UE(R13);                        // Выплата, USD
     [ThrdPartRB]       RB(R23);                        // Остальные выплаты, BYN
-    [ThrdPartEx]       0;                              // Остальные выплаты, курс
+    [ThrdPartEx]       Rate(R23);                      // Остальные выплаты, курс
     [ThrdPartUE]       UE(R23);                        // Остальные выплаты, USD
     [TotalIssuedRB]    RB(R16);                        // Итого выдано, BYN
     [TotalIssuedUE]    UE(R16);                        // Итого выдано, USD

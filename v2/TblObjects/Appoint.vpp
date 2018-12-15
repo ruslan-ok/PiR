@@ -18,7 +18,7 @@ Fields
   [sPost] mtPost.GetName(mtAppoint.Post)   ('',, sci1378Esc): Protect;
   mtAppoint.Salary (''): [13.2,'\2p[|-]366`666`666~99'], NoProtect;
   mtAppoint.Currency: NoProtect;
-  mtAppoint.TaxDed: NoProtect;
+  mtAppoint.TaxDed: [5.2,'\2p[|-]366~99'], NoProtect;
   mtAppoint.Info: NoProtect;
 <<
 
@@ -116,7 +116,8 @@ procedure GetCurAppoint(_mode: byte);
     if (GetFirst mtPersPer where (( mtPerson.Id == mtPersPer.Person and
                                     mtPeriod.Id == mtPersPer.Period )) = tsOk)
     {
-      CurApp_TaxDed := mtPersPer.Privilege;
+      if (mtPersPer.Privilege <> 0)
+        CurApp_TaxDed := mtPersPer.Privilege;
     }
     PopPos(#mtPersPer);
   }
