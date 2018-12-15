@@ -70,13 +70,17 @@ private procedure MyLoad#_table(_mess: string);
 
 private function DoImportRok: boolean;
 {
+  RunWindowModal(wnPassword);
+  if (not bProceed)
+    exit;
+
   fRok.OpenFile(sFile, stOpenRead);
 
   _try
   {
     wlog.LogStartVisual('Чтение данных из файла ' + sFile, 0);
 
-    DoSetStream(fRok.Handle);
+    DoSetStream(fRok.Handle, sRokPass);
 
     MyLoadPeriod('Периоды');
     MyLoadDepart('Подразделения');

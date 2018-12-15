@@ -82,7 +82,7 @@ End;
 
 private ObjInterface ISerializable;
   procedure Clear(_wage: IWageView = NullRef);
-  procedure SetStream(_stream: TPtr);
+  procedure SetStream(_stream: TPtr; _passw: string = '');
   function Load(_e: IDomNode = NullRef): boolean;
   function Save(_e: IDomNode = NullRef): IDomNode;
   function LoadXml(_e: IDomNode): boolean;

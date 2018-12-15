@@ -191,7 +191,7 @@ Where ((
   cSotr             == KatSotr.NRec
 ))
 
-Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) and (mtPersPer.FactDays > 0))
+Condition SotrOnly = ((mtPeriod.Id = mtStruct.Period) and (mtStruct.Mode = 2) /*and (mtPersPer.FactDays > 0)*/)
 
 Bounds ViewDepHist = mtDepart.Id == mtDepHist.Depart
 Bounds AppDep      = CurApp_Depart == mtDepart.Id
@@ -392,21 +392,21 @@ End; // tsInfo
 #include Payment.vpp
 #include Appoint.vpp
 
-private procedure DoSetStream(_stream: TPtr);
+private procedure DoSetStream(_stream: TPtr; _passw: string = '');
 {
-  mtPeriod.SetStream(_stream);
-  mtDepart.SetStream(_stream);
-  mtDepHist.SetStream(_stream);
-  mtPost.SetStream(_stream);
-  mtPayTitle.SetStream(_stream);
-  mtPerson.SetStream(_stream);
-  mtFioHist.SetStream(_stream);
-  mtChild.SetStream(_stream);
-  mtAppoint.SetStream(_stream);
-  mtEducation.SetStream(_stream);
-  mtPersPer.SetStream(_stream);
-  mtNachisl.SetStream(_stream);
-  mtPayment.SetStream(_stream);
+  mtPeriod.SetStream(_stream, _passw);
+  mtDepart.SetStream(_stream, _passw);
+  mtDepHist.SetStream(_stream, _passw);
+  mtPost.SetStream(_stream, _passw);
+  mtPayTitle.SetStream(_stream, _passw);
+  mtPerson.SetStream(_stream, _passw);
+  mtFioHist.SetStream(_stream, _passw);
+  mtChild.SetStream(_stream, _passw);
+  mtAppoint.SetStream(_stream, _passw);
+  mtEducation.SetStream(_stream, _passw);
+  mtPersPer.SetStream(_stream, _passw);
+  mtNachisl.SetStream(_stream, _passw);
+  mtPayment.SetStream(_stream, _passw);
 }
 
 #include Export.vpp

@@ -18,11 +18,20 @@ End;
 var i, cc, step, ndx: byte;
 var j: word;
 var a: array[1..255] of byte;
+var password: string;
+var passoffs: byte;
 
 private function EncodeBytes(_qnt: byte): string; forward;
 private procedure EncodeManyBytes(_qnt: byte; var _part1: string; var _part2: string); forward;
 private function CheckDataLength(_data: string; _len: byte): boolean; forward;
 private procedure DecodeBytes(_part1: string; _part2: string = ''); forward;
+
+//---------------------------------------------------------------------------------
+public procedure SetPassword(_pass: string);
+{
+  password := _pass;
+  passoffs := 0;
+}
 
 //---------------------------------------------------------------------------------
 // Кодирование
@@ -85,17 +94,19 @@ public function EncodeDate(_data: date): string;
   result := EncodeBytes(4);
 }
 
+private function EncryptByte(_value: byte): byte; forward;
+
 public function EncodeStr(_data: string): string; // Для строк длиной не более 191 символа
 {
   for (i := 1; i <= length(_data); i++)
-    a[i] := ord(_data[i]);
+    a[i] := EncryptByte(ord(_data[i]));
   result := EncodeBytes(length(_data));
 }
 
 public procedure EncodeLongStr(_data: string; var _part1: string; var _part2: string); // Для строк длиной от 192 до 255 символов
 {
   for (i := 1; i <= length(_data); i++)
-    a[i] := ord(_data[i]);
+    a[i] := EncryptByte(ord(_data[i]));
   EncodeManyBytes(length(_data), _part1, _part2);
 }
 
@@ -203,13 +214,15 @@ public function DecodeDate(_data: string): date;
   }
 }
 
+private function DecryptByte(_value: byte): byte; forward;
+
 public function DecodeStr(_data: string): string; // Для строк длиной не более 191 символа
 {
   result := '';
   DecodeBytes(_data);
   for (j := 1; j < i; j++)
     if (a[j] <> 0)
-      result += chr(a[j]);
+      result += chr(DecryptByte(a[j]));
 }
 
 public function DecodeLongStr(_part1, _part2: string): string; // Для строк длиной от 192 до 255 символов
@@ -217,7 +230,7 @@ public function DecodeLongStr(_part1, _part2: string): string; // Для строк длин
   result := '';
   DecodeBytes(_part1, _part2);
   for (j := 1; j < i; j++)
-    result += chr(a[j]);
+    result += chr(DecryptByte(a[j]));
 }
 
 //---------------------------------------------------------------------------------
@@ -381,95 +394,28 @@ private procedure DecodeBytes(_part1: string; _part2: string = '');
   }
 }
 
-
-
-
-/*
-public function cEncode(_data: comp): string;
+private function EncryptByte(_value: byte): byte;
 {
-  result := '';
-  step := 0;
-
-  for (i := 1; i <= length(_data); i++)
+  result := _value;
+  if (length(password) > 0)
   {
-    cc := ord(_data[i]);
-    DoStep(result);
-  }
-
-  if (step <> 0)
-  {
-    cc := 0;
-    DoStep(result);
+    if (passoffs = length(password))
+      passoffs := 0;
+    result := result xor ord(password[passoffs+1]);
+    passoffs++;
   }
 }
 
-public function sEncode(_data: string): string;
+private function DecryptByte(_value: byte): byte;
 {
-  result := '';
-  step := 0;
-
-  for (i := 1; i <= length(_data); i++)
+  result := _value;
+  if (length(password) > 0)
   {
-    cc := ord(_data[i]);
-    DoStep(result);
-  }
-
-  if (step <> 0)
-  {
-    cc := 0;
-    DoStep(result);
+    if (passoffs = length(password))
+      passoffs := 0;
+    result := result xor ord(password[passoffs+1]);
+    passoffs++;
   }
 }
 
-
-
-
-
-
-
-
-public function sDecode(_data: string): string;
-{
-  result := '';
-  step := 0;
-
-  for (i := 1; i <= length(_data); i++)
-  {
-    cc := GetPos64(_data[i]);
-
-    case step of
-
-      0:
-      {
-        ndx := ((cc shl 2) and 0FCh);
-        step := 1;
-      }
-
-      1:
-      {
-        ndx := ndx or ((cc shr 4) and 03h);
-        result += chr(ndx);
-        ndx := ((cc shl 4) and 0F0h);
-        step := 2;
-      }
-
-      2:
-      {
-        ndx := ndx or ((cc shr 2) and 0Fh);
-        result += chr(ndx);
-        ndx := ((cc shl 6) and 0C0h);
-        step := 3;
-      }
-
-      3:
-      {
-        ndx := ndx or (cc and 3Fh);
-        result += chr(ndx);
-        step := 0;
-      }
-
-    end;
-  }
-}
-*/
 End.

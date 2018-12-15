@@ -6,6 +6,8 @@
 
 ObjInterface IBase64;
 
+  procedure SetPassword(_pass: string);
+
   function EncodeByte(_data: byte): string;
   function EncodeWord(_data: word): string;
   function EncodeInt(_data: integer): string;

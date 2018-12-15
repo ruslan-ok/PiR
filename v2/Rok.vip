@@ -223,9 +223,10 @@ public procedure Clear(_wage: IWageView = NullRef);
   oWage := _wage;
 }
 
-public procedure SetStream(_stream: TPtr);
+public procedure SetStream(_stream: TPtr; _passw: string = '');
 {
   pStream := _stream;
+  b64.SetPassword(_passw);
 }
 
 public function Load(_e: IDomNode = NullRef): boolean;

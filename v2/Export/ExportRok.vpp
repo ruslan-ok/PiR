@@ -6,11 +6,55 @@
 
 File fRok;
 
+var
+  sRokPass: string;
+  bProceed: boolean;
+
+Window wnPassword 'Пароль';
+  show at (,, 55, 6);
+
+Screen scPassword ('',, sci1TnEsc);
+  NoTableNavigation;
+Fields
+  sRokPass: NoProtect, anLeft, anRight;
+Buttons
+  cmOk, default;
+  cmCancel;
+<<
+
+   `Пароль`.@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+    <.  Продолжить  .>   <.    Отмена    .>
+>>
+End;
+
+End;
+
+WindowEvent wnPassword;
+
+cmInit:
+{
+  sRokPass := '';
+  bProceed := false;
+}
+
+cmOk:
+{
+  bProceed := true;
+  CloseWindow(wnPassword);
+}
+
+End;
+
 private procedure DoExportRok;
 {
+  RunWindowModal(wnPassword);
+  if (not bProceed)
+    exit;
+
   wlog.LogStartVisual('Запись в файл ' + sResFile, 0);
   fRok.OpenFile(sResFile, stCreate);
-  DoSetStream(fRok.Handle);
+  DoSetStream(fRok.Handle, sRokPass);
 
   mtPeriod.Start;
   _loop backward mtPeriod
