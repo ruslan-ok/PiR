@@ -102,7 +102,7 @@ public procedure Clear(_wage: IWageView = NullRef);
 public function SaveXml(_e: IDomNode): IDomNode;
 {
   var xnode: IDomNode
-  xnode := _e.AddNode('rok:Post');
+  xnode := _e.AddNode('rok:PayTitle');
   xnode.AddAttr('rok:Id='   + string(Id));
   xnode.AddAttr('rok:Name=' + Name);
   result := xnode;

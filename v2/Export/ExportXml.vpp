@@ -54,6 +54,16 @@ private procedure DoExportXml;
         }
         SetBounds(#mtPost);
 
+        ResetBounds(#mtPayTitle);
+        _loop mtPayTitle
+        {
+          if not NextVisual
+            _raise exUserBreaked;
+
+          mtPayTitle.Save(xnode);
+        }
+        SetBounds(#mtPayTitle);
+
       xnode := xwage.AddNode('rok:Persons');
         _loop mtPerson
         {
@@ -102,7 +112,7 @@ private procedure DoExportXml;
     }
   _finally
   {
-    StopVisual;
+    //StopVisual;
     Archivate;
     SaveMyDsk(sResFile, 'WageView_sResFile');
     SaveMyDsk(wToArchive, 'WageView_wToArchive');

@@ -380,7 +380,7 @@ End; // tsInfo
 
 #include ReportFuncs.vpp
 
-#include Period.vpp
+#include PeriodWage.vpp
 #include Depart.vpp
 #include DepHist.vpp
 #include Post.vpp
